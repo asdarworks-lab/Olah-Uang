@@ -6,7 +6,7 @@
 const SUPABASE_URL = 'https://uezjncjapumyrkjxzslw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_gMbWszjY1XIou5Cj4wDkjg_UlGiuOd5';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const APP_VERSION = '20260618-v3-cachefix';
+const APP_VERSION = '20260618-v15-mobile-summary-cards';
 console.log(`Olah Uang script loaded: ${APP_VERSION}`);
 window.OLAH_UANG_VERSION = APP_VERSION;
 document.documentElement.setAttribute('data-olah-uang-version', APP_VERSION);
@@ -19,10 +19,18 @@ let adminRealtimeChannel = null;
 let jenisAktif = 'keluar';
 let grafikKeuangan = null;
 let adminChart = null;
-let filterTahunAktif = 'Semua';
+let filterTahunAktif = String(new Date().getFullYear());
 let currentPage = 1;
 let itemsPerPage = 10;
 let pengeluaranBulanIni = {};
+let filterRiwayatInitialized = false;
+const targetTabunganBulanan = 5000000;
+
+// Supabase REST API default hanya mengembalikan 1.000 baris per request.
+// Untuk data besar, aplikasi mengambil data bertahap.
+// Target praktis versi ini: sampai ±20.000 transaksi per user/admin.
+const DATA_PAGE_SIZE = 1000;
+const MAX_FETCH_ROWS = 25000;
 
 let adminTrxPage = 1;
 const adminTrxPerPage = 15;
@@ -150,8 +158,91 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+
+async function fetchAllTransaksi({ userId = null, ascending = true, maxRows = MAX_FETCH_ROWS } = {}) {
+  let allRows = [];
+  let from = 0;
+
+  while (from < maxRows) {
+    const to = Math.min(from + DATA_PAGE_SIZE - 1, maxRows - 1);
+
+    let query = db
+      .from('transaksi')
+      .select('*')
+      .order('created_at', { ascending })
+      .range(from, to);
+
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const batch = data || [];
+    allRows = allRows.concat(batch);
+
+    if (batch.length < DATA_PAGE_SIZE) break;
+    from += DATA_PAGE_SIZE;
+  }
+
+  return allRows;
+}
+
+async function fetchAllProfiles({ maxRows = MAX_FETCH_ROWS } = {}) {
+  let allRows = [];
+  let from = 0;
+
+  while (from < maxRows) {
+    const to = Math.min(from + DATA_PAGE_SIZE - 1, maxRows - 1);
+
+    const { data, error } = await db
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) throw error;
+
+    const batch = data || [];
+    allRows = allRows.concat(batch);
+
+    if (batch.length < DATA_PAGE_SIZE) break;
+    from += DATA_PAGE_SIZE;
+  }
+
+  return allRows;
+}
+
 function csvCell(value) {
   return `"${String(value ?? '').replace(/"/g, '""')}"`;
+}
+
+function applyDarkMode(enabled) {
+  const root = document.documentElement;
+  const body = document.body;
+  root.classList.toggle('dark', enabled);
+  body?.classList.toggle('dark', enabled);
+  localStorage.setItem('olahUangDarkMode', enabled ? '1' : '0');
+  const toggle = $('darkModeToggle');
+  if (toggle) toggle.textContent = enabled ? '☀️' : '🌙';
+
+  // Redraw chart agar warna grid/label ikut mode terbaru. Ya, chart juga butuh diajak refresh.
+  if (currentUser && $('monthlyChart')) updateUI();
+}
+
+function initDarkMode() {
+  const saved = localStorage.getItem('olahUangDarkMode') === '1';
+  applyDarkMode(saved);
+}
+
+function toggleDarkMode() {
+  const enabled = !document.documentElement.classList.contains('dark');
+  applyDarkMode(enabled);
+}
+
+function isDarkMode() {
+  return document.documentElement.classList.contains('dark');
 }
 
 async function getSession() {
@@ -378,6 +469,26 @@ async function initLoginPage() {
 // ============================================================
 // DASHBOARD USER
 // ============================================================
+
+function setDefaultFilterBulanBerjalan() {
+  if (filterRiwayatInitialized) return;
+
+  const sekarang = new Date();
+  const bulanSekarang = String(sekarang.getMonth());
+  const tahunSekarang = String(sekarang.getFullYear());
+
+  const selectBulan = $('filterBulan');
+  const selectTahun = $('filterTahunRiwayat');
+
+  if (selectBulan) selectBulan.value = bulanSekarang;
+
+  // Tahun biasanya baru diisi setelah data transaksi dibaca.
+  // Jadi simpan dulu sebagai default sementara.
+  if (selectTahun) selectTahun.setAttribute('data-default-year', tahunSekarang);
+
+  filterRiwayatInitialized = true;
+}
+
 function setupUserRealtime() {
   if (!currentUser || userRealtimeChannel) return;
 
@@ -433,7 +544,29 @@ function resetUserPageAndUpdate() {
 }
 
 function ubahFilterTahun() {
-  filterTahunAktif = $('filterTahunChart')?.value || 'Semua';
+  const selectedYear = $('filterTahunChart')?.value || String(new Date().getFullYear());
+  filterTahunAktif = selectedYear;
+
+  // Sinkronkan filter tahun grafik dengan filter tahun riwayat.
+  const riwayatYear = $('filterTahunRiwayat');
+  if (riwayatYear && riwayatYear.value !== selectedYear) {
+    riwayatYear.value = selectedYear;
+  }
+
+  currentPage = 1;
+  updateUI();
+}
+
+function syncYearFilterFromRiwayat() {
+  const selectedYear = $('filterTahunRiwayat')?.value || String(new Date().getFullYear());
+  filterTahunAktif = selectedYear;
+
+  const chartYear = $('filterTahunChart');
+  if (chartYear && chartYear.value !== selectedYear) {
+    chartYear.value = selectedYear;
+  }
+
+  currentPage = 1;
   updateUI();
 }
 
@@ -472,20 +605,43 @@ async function addTransaction() {
   if (error) return showError('Gagal simpan', error);
 
   if ($('amount')) $('amount').value = '';
+
+  // Update UI dulu supaya hitungan budget periode aktif sudah memasukkan transaksi terbaru.
   await updateUI();
 
-  const limitBudget = rencanaBudget[kategori];
-  const totalTerpakaiBulanIni = pengeluaranBulanIni[kategori.trim()] || 0;
+  const limitBudget = Number(rencanaBudget[kategori] || 0);
+  const totalTerpakaiPeriodeAktif = Number(pengeluaranBulanIni[kategori.trim()] || 0);
 
-  if (jenisAktif === 'keluar' && limitBudget > 0 && totalTerpakaiBulanIni > limitBudget) {
-    return Swal.fire({
+  const isOverBudget =
+    jenisAktif === 'keluar' &&
+    limitBudget > 0 &&
+    totalTerpakaiPeriodeAktif > limitBudget;
+
+  if (isOverBudget) {
+    await Swal.fire({
       title: 'Over Budget!',
       html:
-        `Pengeluaran untuk <b>${escapeHTML(kategori)}</b> sudah melewati budget bulanan.<br><br>` +
+        `Pengeluaran untuk <b>${escapeHTML(kategori)}</b> sudah melewati budget periode ini.<br><br>` +
         `Budget: <b>${formatRupiah(limitBudget)}</b><br>` +
-        `Total Bulan Ini: <b class="text-rose-600">${formatRupiah(totalTerpakaiBulanIni)}</b>`,
+        `Total Terpakai: <b class="text-rose-600">${formatRupiah(totalTerpakaiPeriodeAktif)}</b>`,
       icon: 'warning',
-      confirmButtonColor: '#e11d48'
+      confirmButtonColor: '#e11d48',
+      confirmButtonText: 'Oke, Saya Mengerti'
+    });
+  } else if (
+    jenisAktif === 'keluar' &&
+    limitBudget > 0 &&
+    (totalTerpakaiPeriodeAktif / limitBudget) >= 0.8
+  ) {
+    await Swal.fire({
+      title: 'Budget Hampir Habis',
+      html:
+        `Kategori <b>${escapeHTML(kategori)}</b> sudah memakai ` +
+        `<b>${Math.round((totalTerpakaiPeriodeAktif / limitBudget) * 100)}%</b> dari budget.<br><br>` +
+        `Sisa: <b>${formatRupiah(Math.max(limitBudget - totalTerpakaiPeriodeAktif, 0))}</b>`,
+      icon: 'info',
+      confirmButtonColor: '#f59e0b',
+      confirmButtonText: 'Oke, saya pantau'
     });
   }
 
@@ -498,15 +654,15 @@ async function addTransaction() {
   });
 }
 
-async function fetchUserTransactions() {
-  const { data, error } = await db
-    .from('transaksi')
-    .select('*')
-    .eq('user_id', currentUser.id)
-    .order('created_at', { ascending: true });
+async function fetchUserTransactions(options = {}) {
+  if (!currentUser?.id) return [];
 
-  if (error) throw error;
-  return data || [];
+  const { ascending = true } = options;
+  return fetchAllTransaksi({
+    userId: currentUser.id,
+    ascending,
+    maxRows: MAX_FETCH_ROWS
+  });
 }
 
 function fillYearSelects(daftarTahun) {
@@ -514,7 +670,16 @@ function fillYearSelects(daftarTahun) {
   const selectTahunRiwayat = $('filterTahunRiwayat');
   if (!selectTahunChart || !selectTahunRiwayat) return;
 
-  const currentRiwayatVal = selectTahunRiwayat.value || 'Semua';
+  const tahunSekarang = String(new Date().getFullYear());
+  daftarTahun.add(tahunSekarang);
+
+  const defaultYear = selectTahunRiwayat.getAttribute('data-default-year');
+  const requestedYear =
+    defaultYear ||
+    selectTahunRiwayat.value ||
+    filterTahunAktif ||
+    tahunSekarang;
+
   const years = Array.from(daftarTahun).sort((a, b) => Number(b) - Number(a));
   const optionsHTML = ['<option value="Semua">Semua Tahun</option>']
     .concat(years.map((year) => `<option value="${escapeHTML(year)}">${escapeHTML(year)}</option>`))
@@ -523,66 +688,132 @@ function fillYearSelects(daftarTahun) {
   selectTahunChart.innerHTML = optionsHTML;
   selectTahunRiwayat.innerHTML = optionsHTML;
 
-  selectTahunChart.value = years.includes(filterTahunAktif) ? filterTahunAktif : 'Semua';
-  selectTahunRiwayat.value = years.includes(currentRiwayatVal) ? currentRiwayatVal : 'Semua';
+  const finalYear = requestedYear === 'Semua' || years.includes(requestedYear)
+    ? requestedYear
+    : tahunSekarang;
+
+  // Tahun riwayat dan tahun grafik selalu sama.
+  selectTahunRiwayat.value = finalYear;
+  selectTahunChart.value = finalYear;
+  filterTahunAktif = finalYear;
+
+  // Setelah tahun default dipakai sekali, jangan paksa lagi pilihan user berikutnya.
+  selectTahunRiwayat.removeAttribute('data-default-year');
 }
 
-function renderBudgetList(pengeluaranTerpakai, sekarang) {
+function renderBudgetList(pengeluaranTerpakai, namaPeriodeRingkasan) {
   const budgetList = $('budgetList');
   if (!budgetList) return;
 
-  const namaBulanIni = sekarang.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-  budgetList.innerHTML = `<p class="text-xs text-gray-400 mb-3">Periode: ${escapeHTML(namaBulanIni)}</p>`;
+  budgetList.innerHTML = `<p class="text-xs text-gray-400 mb-3">Periode: ${escapeHTML(namaPeriodeRingkasan)}</p>`;
 
-  Object.entries(rencanaBudget).forEach(([kategori, target]) => {
-    const terpakai = pengeluaranTerpakai[kategori] || 0;
-    let persentase = target > 0 ? (terpakai / target) * 100 : (terpakai > 0 ? 100 : 0);
-    persentase = Math.min(Math.max(persentase, 0), 100);
-    const colorClass = persentase >= 90 ? 'bg-rose-500' : (persentase >= 70 ? 'bg-amber-400' : 'bg-emerald-500');
+  const items = Object.entries(rencanaBudget)
+    .map(([kategori, target]) => {
+      const terpakai = Number(pengeluaranTerpakai[kategori] || 0);
+      const safeTarget = Number(target || 0);
+      const rawPercent = safeTarget > 0 ? (terpakai / safeTarget) * 100 : (terpakai > 0 ? 100 : 0);
+      return { kategori, target: safeTarget, terpakai, rawPercent, shownPercent: Math.min(Math.max(rawPercent, 0), 100) };
+    })
+    .sort((a, b) => b.terpakai - a.terpakai);
+
+  if (!items.some((item) => item.terpakai > 0)) {
+    budgetList.innerHTML += `
+      <div class="rounded-2xl bg-gray-50 border border-dashed border-gray-200 p-5 text-center">
+        <p class="text-3xl mb-2">🧾</p>
+        <p class="font-bold text-gray-700">Belum ada pengeluaran periode ini</p>
+        <p class="text-sm text-gray-400 mt-1">Catat pengeluaran pertama agar progress budget mulai berjalan.</p>
+      </div>`;
+    return;
+  }
+
+  items.forEach(({ kategori, target, terpakai, rawPercent, shownPercent }) => {
+    const sisa = Math.max(target - terpakai, 0);
+    const colorClass = rawPercent >= 100 ? 'bg-rose-600' : (rawPercent >= 80 ? 'bg-amber-400' : 'bg-emerald-500');
+    const badgeClass = rawPercent >= 100 ? 'bg-rose-100 text-rose-700' : (rawPercent >= 80 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700');
 
     budgetList.innerHTML += `
-      <div class="mb-4">
-        <div class="flex justify-between text-sm mb-1 gap-3">
-          <span class="font-semibold text-gray-700">${escapeHTML(kategori)}</span>
-          <span class="text-gray-500 whitespace-nowrap">${formatRupiah(terpakai)} / ${formatRupiah(target)}</span>
+      <div class="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+        <div class="flex justify-between items-start gap-3 mb-2">
+          <div>
+            <p class="font-extrabold text-gray-800">${escapeHTML(kategori)}</p>
+            <p class="text-xs text-gray-400">Sisa ${target > 0 ? formatRupiah(sisa) : 'tanpa target'}</p>
+          </div>
+          <span class="px-2.5 py-1 rounded-full text-xs font-extrabold ${badgeClass}">${Math.round(rawPercent)}%</span>
         </div>
-        <div class="w-full bg-gray-200 rounded-full h-2.5">
-          <div class="${colorClass} h-2.5 rounded-full" style="width:${persentase}%"></div>
+        <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+          <div class="${colorClass} h-3 rounded-full transition-all" style="width:${shownPercent}%"></div>
+        </div>
+        <div class="flex justify-between text-xs text-gray-500 mt-2">
+          <span>${formatRupiah(terpakai)}</span>
+          <span>${target > 0 ? formatRupiah(target) : 'Tidak dibatasi'}</span>
         </div>
       </div>`;
   });
 }
 
-function renderIncomeList(pemasukanTerkumpul) {
+function renderIncomeList(pemasukanTerkumpul, namaPeriodeRingkasan) {
   const incomeList = $('incomeList');
   if (!incomeList) return;
 
-  incomeList.innerHTML = '';
-  Object.entries(targetPemasukan).forEach(([kategori, target]) => {
-    const terkumpul = pemasukanTerkumpul[kategori] || 0;
-    let persentase = target > 0 ? (terkumpul / target) * 100 : (terkumpul > 0 ? 100 : 0);
-    persentase = Math.min(Math.max(persentase, 0), 100);
+  incomeList.innerHTML = `<p class="text-xs text-gray-400 mb-3">Periode: ${escapeHTML(namaPeriodeRingkasan)}</p>`;
 
+  const items = Object.entries(targetPemasukan).map(([kategori, target]) => {
+    const terkumpul = Number(pemasukanTerkumpul[kategori] || 0);
+    const safeTarget = Number(target || 0);
+    const rawPercent = safeTarget > 0 ? (terkumpul / safeTarget) * 100 : (terkumpul > 0 ? 100 : 0);
+    return { kategori, target: safeTarget, terkumpul, rawPercent, shownPercent: Math.min(Math.max(rawPercent, 0), 100) };
+  });
+
+  if (!items.some((item) => item.terkumpul > 0)) {
     incomeList.innerHTML += `
-      <div class="mb-4">
-        <div class="flex justify-between text-sm mb-1 gap-3">
-          <span class="font-semibold text-gray-700">${escapeHTML(kategori)}</span>
-          <span class="text-gray-500 whitespace-nowrap">${formatRupiah(terkumpul)} / ${formatRupiah(target)}</span>
+      <div class="rounded-2xl bg-gray-50 border border-dashed border-gray-200 p-5 text-center">
+        <p class="text-3xl mb-2">🌱</p>
+        <p class="font-bold text-gray-700">Belum ada pemasukan periode ini</p>
+        <p class="text-sm text-gray-400 mt-1">Masukkan gaji atau pemasukan lain agar pantauan mulai bergerak.</p>
+      </div>`;
+    return;
+  }
+
+  items.forEach(({ kategori, target, terkumpul, rawPercent, shownPercent }) => {
+    incomeList.innerHTML += `
+      <div class="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+        <div class="flex justify-between items-start gap-3 mb-2">
+          <div>
+            <p class="font-extrabold text-gray-800">${escapeHTML(kategori)}</p>
+            <p class="text-xs text-gray-400">${target > 0 ? `Target ${formatRupiah(target)}` : 'Tidak ada target tetap'}</p>
+          </div>
+          <span class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-700">${Math.round(rawPercent)}%</span>
         </div>
-        <div class="w-full bg-gray-200 rounded-full h-2.5">
-          <div class="bg-emerald-500 h-2.5 rounded-full" style="width:${persentase}%"></div>
+        <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+          <div class="bg-emerald-500 h-3 rounded-full transition-all" style="width:${shownPercent}%"></div>
         </div>
+        <p class="text-xs text-gray-500 mt-2">Terkumpul ${formatRupiah(terkumpul)}</p>
       </div>`;
   });
 }
 
 function renderUserChart(dataBulanan) {
   const canvas = $('monthlyChart');
+  const empty = $('monthlyChartEmpty');
+  const wrap = $('monthlyChartWrap');
   if (!canvas) return;
 
   const labels = Object.keys(dataBulanan);
+  const hasData = labels.some((label) => (dataBulanan[label].masuk || 0) > 0 || (dataBulanan[label].keluar || 0) > 0);
+
+  if (!hasData) {
+    if (grafikKeuangan) grafikKeuangan.destroy();
+    if (empty) empty.classList.remove('hidden');
+    if (wrap) wrap.classList.add('hidden');
+    return;
+  }
+
+  if (empty) empty.classList.add('hidden');
+  if (wrap) wrap.classList.remove('hidden');
+
   const datasetMasuk = labels.map((label) => dataBulanan[label].masuk);
   const datasetKeluar = labels.map((label) => dataBulanan[label].keluar);
+  const dark = isDarkMode();
 
   if (grafikKeuangan) grafikKeuangan.destroy();
   grafikKeuangan = new Chart(canvas, {
@@ -590,19 +821,22 @@ function renderUserChart(dataBulanan) {
     data: {
       labels,
       datasets: [
-        { label: 'Pemasukan', data: datasetMasuk, backgroundColor: '#059669', borderRadius: 6 },
-        { label: 'Pengeluaran', data: datasetKeluar, backgroundColor: '#e11d48', borderRadius: 6 }
+        { label: 'Pemasukan', data: datasetMasuk, backgroundColor: '#059669', borderRadius: 8 },
+        { label: 'Pengeluaran', data: datasetKeluar, backgroundColor: '#e11d48', borderRadius: 8 }
       ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { labels: { boxWidth: 12 } } },
+      plugins: {
+        legend: { labels: { boxWidth: 12, color: dark ? '#e5e7eb' : '#374151' } },
+        tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatRupiah(ctx.raw)}` } }
+      },
       scales: {
+        x: { ticks: { color: dark ? '#cbd5e1' : '#64748b' }, grid: { display: false } },
         y: {
-          ticks: {
-            callback: (value) => formatRupiah(value).replace('Rp', 'Rp ')
-          }
+          ticks: { color: dark ? '#cbd5e1' : '#64748b', callback: (value) => formatRupiah(value).replace('Rp', 'Rp ') },
+          grid: { color: dark ? '#1e293b' : '#e5e7eb' }
         }
       }
     }
@@ -635,7 +869,7 @@ function renderHistoryTable(filteredData) {
   if (!pageData.length) {
     historyBody.innerHTML = `
       <tr>
-        <td colspan="4" class="py-6 text-center text-gray-400">Belum ada transaksi pada filter ini.</td>
+        <td colspan="4" class="py-6 text-center text-gray-400">Belum ada transaksi di periode ini. Saatnya catat yang pertama, sebelum dompet pura-pura baik-baik saja.</td>
       </tr>`;
   } else {
     historyBody.innerHTML = pageData.map((item) => {
@@ -686,6 +920,145 @@ function renderUserPagination(totalPages) {
   }
 }
 
+
+function getPreviousMonthYear(month, year) {
+  if (month === 0) return { month: 11, year: year - 1 };
+  return { month: month - 1, year };
+}
+
+function sumByTypeForPeriod(data, month, year) {
+  return data.reduce((acc, item) => {
+    const date = new Date(item.created_at);
+    if (Number.isNaN(date.getTime())) return acc;
+    if (date.getMonth() !== month || date.getFullYear() !== year) return acc;
+    const nominal = Number(item.nominal) || 0;
+    if (item.jenis === 'masuk') acc.masuk += nominal;
+    if (item.jenis === 'keluar') acc.keluar += nominal;
+    return acc;
+  }, { masuk: 0, keluar: 0 });
+}
+
+function renderSummaryCards(totalMasukAkumulasi, totalKeluarAkumulasi, namaPeriodeRingkasan) {
+  if ($('summaryIncomePeriod')) $('summaryIncomePeriod').textContent = formatRupiah(totalMasukAkumulasi);
+  if ($('summaryExpensePeriod')) $('summaryExpensePeriod').textContent = formatRupiah(totalKeluarAkumulasi);
+  if ($('summaryNetPeriod')) $('summaryNetPeriod').textContent = 'Akumulasi semua transaksi pengeluaran.';
+  if ($('currentPeriodLabel')) $('currentPeriodLabel').textContent = `Ringkasan ${namaPeriodeRingkasan}`;
+}
+
+function renderSavingsTarget(totalMasuk, totalKeluar) {
+  const potensi = totalMasuk - totalKeluar;
+  const progress = targetTabunganBulanan > 0 ? Math.max(0, Math.min((potensi / targetTabunganBulanan) * 100, 100)) : 0;
+  if ($('targetSavingsAmount')) $('targetSavingsAmount').textContent = formatRupiah(Math.max(potensi, 0));
+  if ($('targetSavingsProgress')) $('targetSavingsProgress').style.width = `${progress}%`;
+  if ($('targetSavingsStatus')) {
+    $('targetSavingsStatus').textContent = `${Math.round(progress)}%`;
+    $('targetSavingsStatus').className = progress >= 100
+      ? 'px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold'
+      : progress >= 50
+        ? 'px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold'
+        : 'px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-bold';
+  }
+}
+
+function renderBudgetAlerts(pengeluaranTerpakai) {
+  const container = $('budgetAlertList');
+  if (!container) return;
+
+  const alerts = Object.entries(rencanaBudget)
+    .map(([kategori, target]) => {
+      const used = Number(pengeluaranTerpakai[kategori] || 0);
+      const safeTarget = Number(target || 0);
+      const percent = safeTarget > 0 ? (used / safeTarget) * 100 : 0;
+      return { kategori, used, target: safeTarget, percent };
+    })
+    .filter((item) => item.target > 0 && item.percent >= 80)
+    .sort((a, b) => b.percent - a.percent)
+    .slice(0, 3);
+
+  if (!alerts.length) {
+    container.innerHTML = `
+      <div class="rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-700 p-3 text-sm">
+        Budget masih aman. Keajaiban kecil yang patut dipertahankan.
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = alerts.map((item) => {
+    const over = item.percent >= 100;
+    return `
+      <div class="rounded-2xl ${over ? 'bg-rose-50 border-rose-100 text-rose-700' : 'bg-amber-50 border-amber-100 text-amber-700'} border p-3 text-sm mb-2">
+        <b>${escapeHTML(item.kategori)}</b> ${over ? 'sudah over budget' : 'hampir habis'}: ${Math.round(item.percent)}% terpakai.
+      </div>`;
+  }).join('');
+}
+
+function renderCategorySummary(pengeluaranTerpakai) {
+  const container = $('categorySummaryList');
+  if (!container) return;
+
+  const items = Object.entries(pengeluaranTerpakai)
+    .map(([kategori, nominal]) => ({ kategori, nominal: Number(nominal) || 0 }))
+    .filter((item) => item.nominal > 0)
+    .sort((a, b) => b.nominal - a.nominal)
+    .slice(0, 6);
+
+  const total = items.reduce((acc, item) => acc + item.nominal, 0);
+
+  if (!items.length) {
+    container.innerHTML = `
+      <div class="rounded-2xl bg-gray-50 border border-dashed border-gray-200 p-5 text-center">
+        <p class="text-3xl mb-2">🗂️</p>
+        <p class="font-bold text-gray-700">Kategori masih kosong</p>
+        <p class="text-sm text-gray-400 mt-1">Data kategori muncul setelah ada pengeluaran.</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = items.map((item) => {
+    const percent = total > 0 ? Math.round((item.nominal / total) * 100) : 0;
+    return `
+      <div class="flex items-center justify-between gap-3 rounded-2xl bg-gray-50 border border-gray-100 p-3">
+        <div class="min-w-0">
+          <p class="font-bold text-gray-800 truncate">${escapeHTML(item.kategori)}</p>
+          <p class="text-xs text-gray-400">${percent}% dari top kategori</p>
+        </div>
+        <p class="font-extrabold text-gray-900 whitespace-nowrap">${formatRupiah(item.nominal)}</p>
+      </div>`;
+  }).join('');
+}
+
+function renderInsights({ totalMasuk, totalKeluar, previousKeluar, pengeluaranTerpakai }) {
+  const container = $('insightList');
+  if (!container) return;
+
+  const insights = [];
+
+  if (previousKeluar > 0) {
+    const diff = totalKeluar - previousKeluar;
+    const percent = Math.round((diff / previousKeluar) * 100);
+    if (percent > 0) insights.push(`Pengeluaran kamu naik ${percent}% dibandingkan bulan lalu. Tuh iya shopping terus😒`);
+    if (percent < 0) insights.push(`Pengeluaran kamu turun ${Math.abs(percent)}% dibandingkan bulan lalu. Kok bisa?🤔`);
+    if (percent === 0) insights.push('Pengeluaran Anda sama dengan bulan lalu. Konsisten, meski semesta tetap kacau.');
+  } else if (totalKeluar > 0) {
+    insights.push('Pengeluaran Bulan ini sudah mulai tercatat. Tenang, kamu tidak ada yang membandingkan🤣');
+  }
+
+  const potensiTabungan = totalMasuk - totalKeluar;
+  insights.push(`Jadi cuman segini kamu bisa nabung ${formatRupiah(Math.max(potensiTabungan, 0))}.🙄`);
+
+  const topExpense = Object.entries(pengeluaranTerpakai)
+    .map(([kategori, nominal]) => ({ kategori, nominal: Number(nominal) || 0 }))
+    .sort((a, b) => b.nominal - a.nominal)[0];
+  if (topExpense?.nominal > 0) insights.push(`Ini dia penyumbang pengeluaran kamu, "${topExpense.kategori}" sebesar ${formatRupiah(topExpense.nominal)}.😘`);
+
+  container.innerHTML = insights.slice(0, 4).map((text) => `
+    <div class="flex gap-3 rounded-2xl bg-gray-50 border border-gray-100 p-3">
+      <span>•</span>
+      <p class="text-gray-700">${escapeHTML(text)}</p>
+    </div>
+  `).join('');
+}
+
 async function updateUI() {
   if (!currentUser) return;
 
@@ -696,11 +1069,27 @@ async function updateUI() {
     return showError('Gagal mengambil data', error);
   }
 
-  const filterBulanVal = $('filterBulan')?.value || 'Semua';
-  const filterTahunVal = $('filterTahunRiwayat')?.value || 'Semua';
   const sekarang = new Date();
-  const bulanSekarang = sekarang.getMonth();
-  const tahunSekarang = sekarang.getFullYear();
+  const selectBulanRiwayat = $('filterBulan');
+  const selectTahunRiwayat = $('filterTahunRiwayat');
+
+  const tahunSekarang = String(sekarang.getFullYear());
+  const bulanSekarang = String(sekarang.getMonth());
+
+  const filterBulanVal = selectBulanRiwayat?.value || bulanSekarang;
+  const defaultYearRiwayat = selectTahunRiwayat?.getAttribute('data-default-year');
+  const filterTahunVal =
+    defaultYearRiwayat ||
+    selectTahunRiwayat?.value ||
+    filterTahunAktif ||
+    tahunSekarang;
+
+  // Grafik Pemasukan vs Pengeluaran memakai tahun yang sama dengan filter Riwayat Transaksi.
+  filterTahunAktif = filterTahunVal;
+  const selectTahunChartAwal = $('filterTahunChart');
+  if (selectTahunChartAwal && selectTahunChartAwal.value !== filterTahunVal) {
+    selectTahunChartAwal.value = filterTahunVal;
+  }
 
   const filteredData = data.filter((item) => {
     const tgl = new Date(item.created_at);
@@ -709,6 +1098,23 @@ async function updateUI() {
     const cocokBulan = filterBulanVal === 'Semua' || String(tgl.getMonth()) === filterBulanVal;
     const cocokTahun = filterTahunVal === 'Semua' || String(tgl.getFullYear()) === filterTahunVal;
     return cocokBulan && cocokTahun;
+  });
+
+  // Periode ringkasan:
+  // - Jika user memilih bulan tertentu, Budget dan Pantauan Pemasukan mengikuti bulan itu.
+  // - Jika user memilih Semua Bulan, Budget dan Pantauan Pemasukan kembali ke bulan berjalan.
+  const bulanUntukRingkasan = filterBulanVal === 'Semua'
+    ? sekarang.getMonth()
+    : Number(filterBulanVal);
+
+  const tahunUntukRingkasan = filterBulanVal === 'Semua'
+    ? sekarang.getFullYear()
+    : (filterTahunVal === 'Semua' ? sekarang.getFullYear() : Number(filterTahunVal));
+
+  const tanggalPeriodeRingkasan = new Date(tahunUntukRingkasan, bulanUntukRingkasan, 1);
+  const namaPeriodeRingkasan = tanggalPeriodeRingkasan.toLocaleDateString('id-ID', {
+    month: 'long',
+    year: 'numeric'
   });
 
   const pengeluaranTerpakai = {};
@@ -727,7 +1133,10 @@ async function updateUI() {
     const kategori = (item.kategori || '-').trim();
     const nominal = Number(item.nominal) || 0;
 
-    if (tanggalObj.getMonth() === bulanSekarang && tanggalObj.getFullYear() === tahunSekarang) {
+    if (
+      tanggalObj.getMonth() === bulanUntukRingkasan &&
+      tanggalObj.getFullYear() === tahunUntukRingkasan
+    ) {
       if (item.jenis === 'masuk') {
         pemasukanTerkumpul[kategori] = (pemasukanTerkumpul[kategori] || 0) + nominal;
       }
@@ -746,16 +1155,38 @@ async function updateUI() {
     }
   });
 
-  const totalSaldo = data.reduce((acc, item) => {
+  const totalMasukPeriode = Object.values(pemasukanTerkumpul).reduce((acc, value) => acc + Number(value || 0), 0);
+  const totalKeluarPeriode = Object.values(pengeluaranTerpakai).reduce((acc, value) => acc + Number(value || 0), 0);
+  const previousPeriod = getPreviousMonthYear(bulanUntukRingkasan, tahunUntukRingkasan);
+  const previousTotals = sumByTypeForPeriod(data, previousPeriod.month, previousPeriod.year);
+
+  const totalMasukAkumulasi = data.reduce((acc, item) => {
     const nominal = Number(item.nominal) || 0;
-    return item.jenis === 'masuk' ? acc + nominal : acc - nominal;
+    return item.jenis === 'masuk' ? acc + nominal : acc;
   }, 0);
+
+  const totalKeluarAkumulasi = data.reduce((acc, item) => {
+    const nominal = Number(item.nominal) || 0;
+    return item.jenis === 'keluar' ? acc + nominal : acc;
+  }, 0);
+
+  const totalSaldo = totalMasukAkumulasi - totalKeluarAkumulasi;
 
   if ($('totalBalance')) $('totalBalance').textContent = formatRupiah(totalSaldo);
 
   fillYearSelects(daftarTahun);
-  renderBudgetList(pengeluaranTerpakai, sekarang);
-  renderIncomeList(pemasukanTerkumpul);
+  renderSummaryCards(totalMasukAkumulasi, totalKeluarAkumulasi, namaPeriodeRingkasan);
+  renderSavingsTarget(totalMasukPeriode, totalKeluarPeriode);
+  renderBudgetAlerts(pengeluaranTerpakai);
+  renderBudgetList(pengeluaranTerpakai, namaPeriodeRingkasan);
+  renderIncomeList(pemasukanTerkumpul, namaPeriodeRingkasan);
+  renderCategorySummary(pengeluaranTerpakai);
+  renderInsights({
+    totalMasuk: totalMasukPeriode,
+    totalKeluar: totalKeluarPeriode,
+    previousKeluar: previousTotals.keluar,
+    pengeluaranTerpakai
+  });
   renderUserChart(dataBulanan);
   renderHistoryTable(filteredData);
 }
@@ -794,32 +1225,36 @@ async function hapusTransaksi(id) {
   });
 }
 
-async function exportToCSV() {
+async function exportToExcel() {
   if (!currentUser) return;
 
-  const { data, error } = await db
-    .from('transaksi')
-    .select('*')
-    .eq('user_id', currentUser.id)
-    .order('created_at', { ascending: false });
+  let data = [];
+  try {
+    data = await fetchUserTransactions({ ascending: false });
+  } catch (error) {
+    return showError('Gagal export Excel', error);
+  }
 
-  if (error) return showError('Gagal export', error);
+  const rows = (data || []).map((row) => ({
+    Tanggal: row.created_at,
+    Jenis: row.jenis,
+    Kategori: row.kategori,
+    Nominal: Number(row.nominal) || 0,
+    User_ID: row.user_id
+  }));
 
-  const rows = [
-    ['Tanggal', 'Kategori', 'Jenis', 'Nominal'],
-    ...(data || []).map((row) => [row.created_at, row.kategori, row.jenis, row.nominal])
-  ];
+  if (!rows.length) {
+    return showWarning('Belum ada data', 'Belum ada transaksi untuk diexport ke Excel. File kosong itu bukan laporan, itu harapan.');
+  }
 
-  const csv = rows.map((row) => row.map(csvCell).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `riwayat-keuangan-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  if (typeof XLSX === 'undefined') {
+    return showWarning('Library Excel belum siap', 'XLSX belum termuat. Coba refresh halaman atau cek koneksi internet.');
+  }
+
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Transaksi');
+  XLSX.writeFile(workbook, `riwayat-keuangan-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 async function initUserDashboard() {
@@ -840,6 +1275,7 @@ async function initUserDashboard() {
   if ($('userNama')) $('userNama').textContent = currentProfile?.nama || currentUser.email || 'Pengguna';
 
   setJenis('keluar');
+  setDefaultFilterBulanBerjalan();
   setupUserRealtime();
   await updateUI();
 }
@@ -862,16 +1298,20 @@ async function muatData(showLoading = true) {
     $('userTableBody').innerHTML = '<tr><td colspan="5" class="px-6 py-6 text-center text-gray-400">Memuat data...</td></tr>';
   }
 
-  const [profilesResult, trxResult] = await Promise.all([
-    db.from('profiles').select('*').order('created_at', { ascending: false }),
-    db.from('transaksi').select('*').order('created_at', { ascending: false })
-  ]);
+  let profilesData = [];
+  let trxData = [];
 
-  if (profilesResult.error) return showError('Gagal mengambil profil', profilesResult.error);
-  if (trxResult.error) return showError('Gagal mengambil transaksi', trxResult.error);
+  try {
+    [profilesData, trxData] = await Promise.all([
+      fetchAllProfiles(),
+      fetchAllTransaksi({ ascending: false, maxRows: MAX_FETCH_ROWS })
+    ]);
+  } catch (error) {
+    return showError('Gagal mengambil data admin', error);
+  }
 
-  allProfiles = profilesResult.data || [];
-  allTrxData = trxResult.data || [];
+  allProfiles = profilesData || [];
+  allTrxData = trxData || [];
 
   renderStatCards(allProfiles, allTrxData);
   renderUserTable(allProfiles, allTrxData);
@@ -1136,6 +1576,7 @@ function detectPageFromPath() {
 // INIT PAGE
 // ============================================================
 async function initApp() {
+  initDarkMode();
   const page = document.body.dataset.page || detectPageFromPath();
 
   try {
@@ -1161,7 +1602,8 @@ window.changePage = changePage;
 window.resetUserPageAndUpdate = resetUserPageAndUpdate;
 window.ubahFilterTahun = ubahFilterTahun;
 window.hapusTransaksi = hapusTransaksi;
-window.exportToCSV = exportToCSV;
+window.exportToExcel = exportToExcel;
+window.toggleDarkMode = toggleDarkMode;
 window.muatData = muatData;
 window.toggleRole = toggleRole;
 window.changeAdminTrxPage = changeAdminTrxPage;
