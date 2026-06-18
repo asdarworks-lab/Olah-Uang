@@ -3,102 +3,193 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Olah Uang</title>
+  <title>Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     * { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .soft-card { box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .dark body, body.dark { background: #020617 !important; color: #e5e7eb !important; }
+    .dark .bg-white { background-color: #0f172a !important; }
+    .dark .bg-gray-50 { background-color: #020617 !important; }
+    .dark .bg-gray-100 { background-color: #1e293b !important; }
+    .dark .bg-gray-200 { background-color: #334155 !important; }
+    .dark .text-gray-900, .dark .text-gray-800, .dark .text-gray-700 { color: #f8fafc !important; }
+    .dark .text-gray-600, .dark .text-gray-500, .dark .text-gray-400 { color: #94a3b8 !important; }
+    .dark .border-gray-50, .dark .border-gray-100, .dark .border-gray-200 { border-color: #1e293b !important; }
+    .dark input, .dark select { background-color: #111827 !important; color: #e5e7eb !important; border-color: #334155 !important; }
+    .dark .soft-card { box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25); }
   </style>
 </head>
-<body data-page="dashboard-user" class="bg-gray-50 text-gray-800 antialiased min-h-screen flex justify-center pb-10">
+<body data-page="dashboard-user" class="bg-gray-50 text-gray-800 antialiased min-h-screen pb-10">
 
-  <main class="w-full max-w-md mt-4 px-4">
-    <header class="flex justify-between items-center mb-6">
+  <main class="w-full max-w-5xl mx-auto px-4 py-5">
+    <header class="flex items-center justify-between gap-3 mb-5">
       <div>
         <p class="text-xs text-gray-500">Halo,</p>
-        <p class="text-sm font-bold text-gray-900" id="userNama">Pengguna</p>
+        <p class="text-lg font-extrabold text-gray-900" id="userNama">Pengguna</p>
+        <p class="text-xs text-gray-400 mt-0.5">Ayo mulai olah keuangan kamu!</p>
       </div>
-      <div class="flex gap-2">
-        <button onclick="exportToCSV()" class="px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg shadow-sm cursor-pointer">CSV</button>
-        <button onclick="doLogout()" class="px-3 py-1.5 bg-rose-100 text-rose-700 text-xs font-semibold rounded-lg shadow-sm cursor-pointer">Keluar</button>
+      <div class="flex items-center gap-2">
+        <button onclick="toggleDarkMode()" id="darkModeToggle" class="px-3 py-2 bg-white border border-gray-100 text-gray-700 text-xs font-bold rounded-xl soft-card cursor-pointer" title="Dark mode">🌙</button>
+        <button onclick="exportToExcel()" class="px-3 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl soft-card cursor-pointer">Excel</button>
+        <button onclick="doLogout()" class="px-3 py-2 bg-rose-100 text-rose-700 text-xs font-bold rounded-xl soft-card cursor-pointer">Keluar</button>
       </div>
     </header>
 
-    <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 text-center">
-      <h1 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Total Saldo Saat Ini</h1>
-      <h2 class="text-4xl font-bold text-gray-900" id="totalBalance">Rp 0</h2>
-    </section>
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-5">
+      <div class="col-span-2 md:col-span-2 bg-gradient-to-br from-emerald-600 to-emerald-800 p-6 rounded-3xl soft-card text-white">
+        <p class="text-xs font-semibold uppercase tracking-wider text-emerald-100 mb-2">Total saldo saat ini</p>
+        <h1 class="text-4xl md:text-5xl font-extrabold" id="totalBalance">Rp 0</h1>
+        <p class="text-xs text-emerald-100 mt-3">Saldo adalah akumulasi seluruh transaksi, bukan hanya bulan terpilih.</p>
+      </div>
 
-    <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
-      <h2 class="font-bold text-gray-900 mb-4">Catat Transaksi</h2>
-      <div class="space-y-4">
-        <div class="flex bg-gray-100 p-1 rounded-xl">
-          <button type="button" id="btnMasuk" onclick="setJenis('masuk')" class="w-1/2 py-2 text-sm font-bold rounded-lg text-gray-500 transition cursor-pointer">Pemasukan</button>
-          <button type="button" id="btnKeluar" onclick="setJenis('keluar')" class="w-1/2 py-2 text-sm font-bold rounded-lg bg-white shadow text-rose-600 transition cursor-pointer">Pengeluaran</button>
-        </div>
-        <div>
-          <label for="kategori" class="sr-only">Kategori</label>
-          <select id="kategori" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-800 transition cursor-pointer"></select>
-        </div>
-        <div>
-          <label for="amount" class="sr-only">Nominal</label>
-          <input type="number" id="amount" min="1" inputmode="numeric" placeholder="Nominal (mis: 50000)"
-            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-800 transition"
-            onkeydown="if(event.key==='Enter') addTransaction()" />
-        </div>
-        <button type="button" onclick="addTransaction()" class="w-full py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition shadow-md cursor-pointer">
-          Simpan Data
-        </button>
+      <div class="col-span-1 bg-white p-4 sm:p-5 rounded-3xl border border-gray-100 soft-card min-w-0">
+        <p class="text-[10px] sm:text-xs text-gray-400 font-bold uppercase mb-2 leading-tight">Total Pemasukan</p>
+        <p id="summaryIncomePeriod" class="text-[clamp(1.05rem,4.7vw,1.5rem)] leading-tight tracking-tight font-extrabold text-emerald-600 break-words">Rp 0</p>
+        <p class="text-[11px] sm:text-xs text-gray-400 mt-2 leading-snug">Akumlasi uang yang keluar.</p>
+      </div>
+
+      <div class="col-span-1 bg-white p-4 sm:p-5 rounded-3xl border border-gray-100 soft-card min-w-0">
+        <p class="text-[10px] sm:text-xs text-gray-400 font-bold uppercase mb-2 leading-tight">Total Pengeluaran</p>
+        <p id="summaryExpensePeriod" class="text-[clamp(1.05rem,4.7vw,1.5rem)] leading-tight tracking-tight font-extrabold text-rose-600 break-words">Rp 0</p>
+        <p class="text-[11px] sm:text-xs text-gray-400 mt-2 leading-snug">Akumulasi uang yang masuk.</p>
       </div>
     </section>
 
-    <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
-      <h2 class="font-bold text-gray-900 mb-4">Budget Pengeluaran</h2>
-      <div id="budgetList" class="space-y-4"></div>
-    </section>
-
-    <section class="mt-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-      <h2 class="text-lg font-bold text-gray-800 mb-4">Pantauan Pemasukan</h2>
-      <div id="incomeList" class="flex flex-col"></div>
-    </section>
-
-    <section class="mt-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
-      <div class="flex justify-between items-center mb-4 gap-3">
-        <h2 class="text-lg font-bold text-gray-800">Tren Keuangan</h2>
-        <select id="filterTahunChart" onchange="ubahFilterTahun()" class="text-sm bg-gray-50 border border-gray-200 text-gray-700 rounded-lg px-3 py-1 outline-none focus:border-emerald-500 cursor-pointer shadow-sm">
-          <option value="Semua">Semua Tahun</option>
-        </select>
+    <section class="grid lg:grid-cols-3 gap-5 mb-5">
+      <div class="lg:col-span-1 bg-white p-6 rounded-3xl border border-gray-10 soft-card">
+        <div class="flex items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 class="font-extrabold text-gray-900">Catat Transaksi</h2>
+            <p class="text-xs text-gray-400 mt-1">Mulai olah keuangan kamu disini.</p>
+          </div>
+        </div>
+        <div class="space-y-4">
+          <div class="flex bg-gray-100 p-1 rounded-2xl">
+            <button type="button" id="btnMasuk" onclick="setJenis('masuk')" class="w-1/2 py-2.5 text-sm font-bold rounded-xl text-gray-500 transition cursor-pointer">Pemasukan</button>
+            <button type="button" id="btnKeluar" onclick="setJenis('keluar')" class="w-1/2 py-2.5 text-sm font-bold rounded-xl bg-white shadow text-rose-600 transition cursor-pointer">Pengeluaran</button>
+          </div>
+          <div>
+            <label for="kategori" class="block text-xs font-bold text-gray-500 mb-2">Kategori Transaksi</label>
+            <select id="kategori" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-600 transition cursor-pointer"></select>
+          </div>
+          <div>
+            <label for="amount" class="block text-xs font-bold text-gray-500 mb-2">Nominal</label>
+            <input type="number" id="amount" min="1" inputmode="numeric" placeholder="Contoh: 50000"
+              class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-600 transition"
+              onkeydown="if(event.key==='Enter') addTransaction()" />
+          </div>
+          <button type="button" onclick="addTransaction()" class="w-full py-3.5 bg-gray-700 text-white font-extrabold rounded-2xl hover:bg-gray-800 transition soft-card cursor-pointer">
+            Simpan Transaksi
+          </button>
+        </div>
       </div>
-      <div class="relative w-full h-64">
-        <canvas id="monthlyChart"></canvas>
+
+      <div class="lg:col-span-2 grid md:grid-cols-2 gap-5">
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 class="font-extrabold text-gray-900">Target Tabungan</h2>
+              <p class="text-xs text-gray-400 mt-1">Dihitung dari pemasukan - pengeluaran periode aktif.</p>
+            </div>
+            <span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold" id="targetSavingsStatus">0%</span>
+          </div>
+          <p class="text-3xl font-extrabold text-gray-900" id="targetSavingsAmount">Rp 0</p>
+          <p class="text-xs text-gray-400 mt-1">Target: Rp5.000.000 / bulan</p>
+          <div class="w-full bg-gray-200 rounded-full h-3 mt-4">
+            <div id="targetSavingsProgress" class="bg-emerald-500 h-3 rounded-full transition-all" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 class="font-extrabold text-gray-900">Insight Bulanan</h2>
+              <p class="text-xs text-gray-400 mt-1">Ringkasan sederhana yang di buat khusus buat kamu, semoga kamu suka.</p>
+            </div>
+            <span class="text-xl">💡</span>
+          </div>
+          <div id="insightList" class="space-y-3 text-sm"></div>
+        </div>
       </div>
     </section>
 
-    <section class="mt-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-      <div class="flex justify-between items-center mb-4 gap-3">
-        <h2 class="text-lg font-bold text-gray-800">Riwayat Transaksi</h2>
-        <div class="flex gap-2">
-          <select id="filterBulan" onchange="currentPage=1; updateUI()" class="text-sm bg-gray-50 border border-gray-200 text-gray-700 rounded-lg px-2 py-1 outline-none cursor-pointer">
-            <option value="Semua">Semua Bulan</option>
-            <option value="0">Jan</option>
-            <option value="1">Feb</option>
-            <option value="2">Mar</option>
-            <option value="3">Apr</option>
-            <option value="4">Mei</option>
-            <option value="5">Jun</option>
-            <option value="6">Jul</option>
-            <option value="7">Agt</option>
-            <option value="8">Sep</option>
-            <option value="9">Okt</option>
-            <option value="10">Nov</option>
-            <option value="11">Des</option>
-          </select>
-          <select id="filterTahunRiwayat" onchange="currentPage=1; updateUI()" class="text-sm bg-gray-50 border border-gray-200 text-gray-700 rounded-lg px-2 py-1 outline-none cursor-pointer">
+    <section class="grid lg:grid-cols-2 gap-5 mb-5">
+      <div class="bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="font-extrabold text-gray-900">Progress Budget</h2>
+            <p class="text-xs text-gray-400 mt-1">Menampilkan persentase pemakaian budget per kategori.</p>
+          </div>
+        </div>
+        <div id="budgetAlertList" class="mb-4"></div>
+        <div id="budgetList" class="space-y-4"></div>
+      </div>
+
+      <div class="bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="font-extrabold text-gray-900">Pantauan Pemasukan</h2>
+            <p class="text-xs text-gray-400 mt-1">Target pemasukan utama per periode.</p>
+          </div>
+        </div>
+        <div id="incomeList" class="space-y-4"></div>
+      </div>
+    </section>
+
+    <section class="grid lg:grid-cols-5 gap-5 mb-5">
+      <div class="lg:col-span-3 bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+        <div class="flex justify-between items-center mb-4 gap-3">
+          <div>
+            <h2 class="font-extrabold text-gray-900">Tren Keuangan</h2>
+            <p class="text-xs text-gray-400 mt-1">Perbandingan bulanan untuk melihat pola keuangan.</p>
+          </div>
+          <select id="filterTahunChart" onchange="ubahFilterTahun()" class="text-sm bg-gray-50 border border-gray-200 text-gray-700 rounded-xl px-3 py-2 outline-none focus:border-emerald-500 cursor-pointer shadow-sm">
             <option value="Semua">Semua Tahun</option>
           </select>
+        </div>
+        <div id="monthlyChartEmpty" class="hidden h-64 rounded-2xl bg-gray-50 border border-dashed border-gray-200 flex flex-col items-center justify-center text-center p-6">
+          <p class="text-4xl mb-3">📊</p>
+          <p class="font-bold text-gray-700">Belum ada grafik</p>
+          <p class="text-sm text-gray-400 mt-1">Tambahkan transaksi untuk melihat pemasukan vs pengeluaran.</p>
+        </div>
+        <div class="relative w-full h-72" id="monthlyChartWrap">
+          <canvas id="monthlyChart"></canvas>
+        </div>
+      </div>
+
+      <div class="lg:col-span-2 bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+        <h2 class="font-extrabold text-gray-900 mb-1">Kategori Transaksi</h2>
+        <p class="text-xs text-gray-400 mb-4">Penasaran dengan pengeluaran terbesar kamu bulan ini.</p>
+        <div id="categorySummaryList" class="space-y-3"></div>
+      </div>
+    </section>
+
+    <section class="bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+      <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-4">
+        <div>
+          <h2 class="font-extrabold text-gray-900">Riwayat Transaksi</h2>
+          <p class="text-xs text-gray-400 mt-1">Kamu bisa cek secara realtime riwayat transaksi terakhir kamu.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <select id="filterBulan" onchange="currentPage=1; updateUI()" class="text-sm bg-gray-50 border border-gray-200 text-gray-700 rounded-xl px-3 py-2 outline-none cursor-pointer">
+            <option value="Semua">Semua Bulan</option>
+            <option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option>
+            <option value="3">Apr</option><option value="4">Mei</option><option value="5">Jun</option>
+            <option value="6">Jul</option><option value="7">Agt</option><option value="8">Sep</option>
+            <option value="9">Okt</option><option value="10">Nov</option><option value="11">Des</option>
+          </select>
+          <select id="filterTahunRiwayat" onchange="syncYearFilterFromRiwayat()" class="text-sm bg-gray-50 border border-gray-200 text-gray-700 rounded-xl px-3 py-2 outline-none cursor-pointer">
+            <option value="Semua">Semua Tahun</option>
+          </select>
+          <button onclick="exportToExcel()" class="sm:hidden px-3 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl soft-card cursor-pointer">Excel</button>
         </div>
       </div>
 
@@ -112,28 +203,25 @@
         <div class="flex items-center gap-2">
           <span class="text-xs text-gray-500">Tampilkan:</span>
           <select id="itemsPerPage" onchange="changeItemsPerPage()" class="text-xs bg-gray-50 border border-gray-200 text-gray-700 rounded-md px-2 py-1 outline-none cursor-pointer">
-            <option value="10">10</option>
-            <option value="25">25</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
+            <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
           </select>
         </div>
         <div id="paginationContainer" class="flex gap-1 text-xs"></div>
       </div>
 
-      <div class="flex justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+      <div class="grid grid-cols-2 gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
         <div>
           <p class="text-sm text-gray-500 mb-1">Pemasukan:</p>
-          <p id="totalPemasukanRiwayat" class="text-emerald-600 font-bold text-lg">Rp 0</p>
+          <p id="totalPemasukanRiwayat" class="text-emerald-600 font-extrabold text-lg">Rp 0</p>
         </div>
         <div class="text-right">
           <p class="text-sm text-gray-500 mb-1">Pengeluaran:</p>
-          <p id="totalPengeluaranRiwayat" class="text-rose-600 font-bold text-lg">Rp 0</p>
+          <p id="totalPengeluaranRiwayat" class="text-rose-600 font-extrabold text-lg">Rp 0</p>
         </div>
       </div>
     </section>
   </main>
 
-  <script src="/script.js?v=20260618-v3-cachefix"></script>
+  <script src="./script.js?v=20260618-v15-mobile-summary-cards"></script>
 </body>
 </html>
