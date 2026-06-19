@@ -30,7 +30,7 @@ let profileEditEnabled = false;
 let financeEditState = { keluar: false, masuk: false };
 let activeAppView = 'beranda';
 let quickJenisAktif = 'keluar';
-const AI_INSIGHT_STYLE_VERSION = 'numbered-roast-v3-variasi';
+const AI_INSIGHT_STYLE_VERSION = 'numbered-roast-v4-no-template-broad';
 let currentInsightSummary = null;
 let currentInsightKey = '';
 let currentStaticInsights = [];
@@ -1809,6 +1809,39 @@ function buildAIInsightSummary({
     .sort((a, b) => b.nominal - a.nominal)
     .slice(0, 6);
 
+  const overBudgetCategories = topPengeluaran
+    .filter((item) => Number(item.persen_budget) >= 100)
+    .map((item) => ({
+      kategori: item.kategori,
+      nominal: Math.round(Number(item.nominal) || 0),
+      budget: Math.round(Number(item.budget) || 0),
+      persen_budget: Math.round(Number(item.persen_budget) || 0),
+      lebih_budget: Math.max(Math.round((Number(item.nominal) || 0) - (Number(item.budget) || 0)), 0)
+    }))
+    .slice(0, 5);
+
+  const nearBudgetCategories = topPengeluaran
+    .filter((item) => Number(item.persen_budget) >= 80 && Number(item.persen_budget) < 100)
+    .map((item) => ({
+      kategori: item.kategori,
+      nominal: Math.round(Number(item.nominal) || 0),
+      budget: Math.round(Number(item.budget) || 0),
+      persen_budget: Math.round(Number(item.persen_budget) || 0),
+      sisa_budget: Math.max(Math.round(Number(item.sisa_budget) || 0), 0)
+    }))
+    .slice(0, 5);
+
+  const totalMasukNumber = Number(totalMasuk) || 0;
+  const totalKeluarNumber = Number(totalKeluar) || 0;
+  const potensiTabunganNumber = totalMasukNumber - totalKeluarNumber;
+  const targetTabunganNumber = Number(targetTabunganBulanan) || 0;
+  const rasioPengeluaranPemasukan = totalMasukNumber > 0
+    ? Math.round((totalKeluarNumber / totalMasukNumber) * 100)
+    : null;
+  const targetTabunganTercapaiPersen = targetTabunganNumber > 0
+    ? Math.round((Math.max(potensiTabunganNumber, 0) / targetTabunganNumber) * 100)
+    : null;
+
   const previousKeluar = Number(previousTotals?.keluar || 0);
   const previousMasuk = Number(previousTotals?.masuk || 0);
   const pengeluaranChangePercent = previousKeluar > 0
@@ -1821,23 +1854,27 @@ function buildAIInsightSummary({
   const insightVariants = [
     {
       gaya: 'teman jahil yang peduli, sindiran halus, tetap memberi arah',
-      fokus: ['tren naik/turun', 'kategori paling boros', 'tabungan vs target']
+      fokus: ['anomali angka periode ini', 'budget yang paling perlu diawasi', 'saldo akhir periode']
     },
     {
-      gaya: 'roasting ringan seperti teman dekat, tidak kasar, banyak emotikon secukupnya',
-      fokus: ['saldo akhir periode', 'pengeluaran yang perlu direm', 'kebiasaan transaksi']
+      gaya: 'roasting ringan seperti teman dekat, tidak kasar, emotikon secukupnya',
+      fokus: ['pemasukan vs pengeluaran', 'kategori over budget', 'target tabungan']
     },
     {
       gaya: 'satir lembut, lucu, tetap solutif',
-      fokus: ['budget terlewati', 'pengeluaran tersembunyi', 'prioritas bulan depan']
+      fokus: ['kategori hampir habis', 'pola belanja yang paling mencolok', 'peluang hemat realistis']
     },
     {
       gaya: 'komentar tajam tapi hangat, ringkas, ekspresif',
-      fokus: ['perbandingan bulan lalu', 'kategori tersangka utama', 'peluang hemat']
+      fokus: ['perubahan dari periode sebelumnya', 'jumlah transaksi', 'kategori pemasukan terbesar']
     },
     {
-      gaya: 'humor receh finansial, tetap sopan dan informatif',
-      fokus: ['pemasukan vs pengeluaran', 'potensi tabungan', 'budget yang aman/berbahaya']
+      gaya: 'humor receh finansial, tetap informatif',
+      fokus: ['rasio pengeluaran terhadap pemasukan', 'sisa target tabungan', 'prioritas bulan depan']
+    },
+    {
+      gaya: 'teman realistis yang suka nyindir halus',
+      fokus: ['pengeluaran kecil yang menumpuk', 'kategori yang aman', 'peringatan ringan tanpa menggurui']
     }
   ];
   const variantKey = `${tahun}-${bulan}-${Math.round(totalMasuk || 0)}-${Math.round(totalKeluar || 0)}-${topPengeluaran.map((item) => `${item.kategori}:${item.nominal}`).join('|')}-${AI_INSIGHT_STYLE_VERSION}`;
@@ -1848,11 +1885,17 @@ function buildAIInsightSummary({
     periode: namaPeriodeRingkasan,
     bulan,
     tahun,
-    total_pemasukan: Math.round(Number(totalMasuk) || 0),
-    total_pengeluaran: Math.round(Number(totalKeluar) || 0),
-    potensi_tabungan: Math.round((Number(totalMasuk) || 0) - (Number(totalKeluar) || 0)),
-    target_tabungan: Math.round(Number(targetTabunganBulanan) || 0),
+    total_pemasukan: Math.round(totalMasukNumber),
+    total_pengeluaran: Math.round(totalKeluarNumber),
+    potensi_tabungan: Math.round(potensiTabunganNumber),
+    target_tabungan: Math.round(targetTabunganNumber),
+    sisa_target_tabungan: Math.max(Math.round(targetTabunganNumber - Math.max(potensiTabunganNumber, 0)), 0),
+    target_tabungan_tercapai_persen: targetTabunganTercapaiPersen,
+    rasio_pengeluaran_terhadap_pemasukan_persen: rasioPengeluaranPemasukan,
+    status_saldo_periode: potensiTabunganNumber >= 0 ? 'surplus' : 'defisit',
     jumlah_transaksi: Number(jumlahTransaksiPeriode) || 0,
+    jumlah_kategori_pengeluaran_aktif: topPengeluaran.length,
+    jumlah_kategori_pemasukan_aktif: topPemasukan.length,
     variasi_bahasa: selectedVariant,
     variation_seed: simpleHash(variantKey),
     perbandingan_bulan_lalu: {
@@ -1862,7 +1905,9 @@ function buildAIInsightSummary({
       pengeluaran_naik_persen: pengeluaranChangePercent
     },
     kategori_pengeluaran_terbesar: topPengeluaran,
-    kategori_pemasukan_terbesar: topPemasukan
+    kategori_pemasukan_terbesar: topPemasukan,
+    kategori_over_budget: overBudgetCategories,
+    kategori_hampir_habis: nearBudgetCategories
   };
 
   // Versi gaya insight ikut masuk hash agar cache insight lama tidak dipakai
