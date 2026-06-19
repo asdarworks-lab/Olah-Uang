@@ -11,7 +11,7 @@
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     * { font-family: 'Plus Jakarta Sans', sans-serif; }
     .soft-card { box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06); }
-    .brand-icon { box-shadow: 0 18px 34px rgba(5, 150, 105, .24); }
+    .logo-img { filter: drop-shadow(0 20px 32px rgba(5, 150, 105, .18)); }
     input:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 4px rgba(5,150,105,.12); }
     .btn-primary { background: linear-gradient(135deg, #059669, #047857); transition: transform .18s ease, box-shadow .18s ease, filter .18s ease; }
     .btn-primary:hover { filter: brightness(.98); transform: translateY(-1px); box-shadow: 0 14px 28px rgba(5, 150, 105, .22); }
@@ -46,23 +46,14 @@
       transition: color .28s ease, transform .34s cubic-bezier(.22, 1, .36, 1);
     }
     .login-tab-btn.is-active { color: #064e3b; transform: scale(1.015); }
-    .auth-form-shell { transform-origin: top center; }
-    .auth-panel { transition: none; }
-    .auth-panel.is-entering,
-    .auth-panel.is-leaving { opacity: 1; transform: none; }
-    .auth-card { transform-origin: top center; }
 
-    .account-help-backdrop {
-      background: rgba(15, 23, 42, .46);
-      backdrop-filter: blur(10px);
-    }
-    .account-help-card {
-      animation: accountHelpIn .22s cubic-bezier(.22, 1, .36, 1) both;
-    }
+    .account-help-backdrop { background: rgba(15, 23, 42, .46); backdrop-filter: blur(10px); }
+    .account-help-card { animation: accountHelpIn .22s cubic-bezier(.22, 1, .36, 1) both; }
     @keyframes accountHelpIn {
       from { opacity: 0; transform: translateY(12px) scale(.98); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
+
     .recovery-tab-track { position: relative; isolation: isolate; }
     .recovery-tab-indicator {
       position: absolute;
@@ -100,12 +91,17 @@
     .dark .text-gray-900, .dark .text-gray-800, .dark .text-gray-700 { color: #f8fafc !important; }
     .dark .text-gray-600, .dark .text-gray-500, .dark .text-gray-400 { color: #94a3b8 !important; }
     .dark .border-gray-50, .dark .border-gray-100, .dark .border-gray-200 { border-color: #1e293b !important; }
-    .dark input { background-color: #111827 !important; color: #e5e7eb !important; border-color: #334155 !important; }
-    .dark .login-tab-indicator { background: #0f172a !important; box-shadow: 0 8px 20px rgba(0, 0, 0, .22); }
-    .dark .login-tab-btn.is-active { color: #ecfdf5 !important; }
+    .dark input, .dark textarea { background-color: #111827 !important; color: #e5e7eb !important; border-color: #334155 !important; }
+    .dark .login-tab-indicator,
     .dark .recovery-tab-indicator { background: #0f172a !important; box-shadow: 0 8px 20px rgba(0, 0, 0, .22); }
+    .dark .login-tab-btn.is-active,
     .dark .recovery-tab-btn.is-active { color: #ecfdf5 !important; }
     .dark .soft-card { box-shadow: 0 8px 28px rgba(0, 0, 0, .25); }
+
+
+    .logo-dark { display: none; }
+    .dark .logo-light { display: none !important; }
+    .dark .logo-dark { display: block !important; }
 
     @media (prefers-reduced-motion: reduce) {
       .login-tab-indicator,
@@ -114,9 +110,10 @@
       .recovery-tab-indicator,
       .recovery-tab-indicator.is-moving,
       .recovery-tab-btn,
-      .auth-form-shell,
-      .auth-panel,
-      .auth-card { animation: none !important; transition: none !important; }
+      .account-help-card {
+        animation: none !important;
+        transition: none !important;
+      }
     }
   </style>
 </head>
@@ -129,15 +126,23 @@
       <div class="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-rose-100/50 blur-3xl"></div>
     </div>
 
-    <header class="mx-auto flex w-full max-w-6xl items-center gap-3 pb-6">
-      <div class="flex items-center gap-3">
-        <div class="brand-icon flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-800 text-2xl text-white">💵</div>
-        <div>
-          <p class="text-base font-extrabold leading-tight text-gray-900">Olah Uang</p>
-          <p class="text-xs text-gray-400">Catat uang masuk dan keluar</p>
-        </div>
-        <button onclick="toggleDarkMode()" id="darkModeToggle" class="ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-gray-100 bg-white text-base font-bold text-gray-700 soft-card transition hover:scale-[1.02] md:h-10 md:w-10" title="Mode gelap/terang" aria-label="Mode gelap/terang">🌕</button>
+    <header class="mx-auto flex w-full max-w-6xl items-start justify-end gap-3 pb-2 lg:justify-between lg:pb-0">
+      <div class="hidden lg:flex items-start">
+        <img
+          src="./assets/logo-olah-uang.png"
+          alt="Logo Olah Uang"
+          class="logo-img logo-light h-auto w-[260px] select-none"
+        />
+        <img
+          src="./assets/logo-olah-uang-dark.png"
+          alt="Logo Olah Uang"
+          class="logo-img logo-dark h-auto w-[260px] select-none"
+        />
       </div>
+
+      <button onclick="toggleDarkMode()" id="darkModeToggle"
+        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gray-100 bg-white/90 text-lg font-bold text-gray-700 soft-card transition hover:scale-[1.02]"
+        title="Mode gelap/terang" aria-label="Mode gelap/terang">🌕</button>
     </header>
 
     <section class="mx-auto grid min-h-[calc(100vh-120px)] w-full max-w-6xl items-center gap-6 lg:grid-cols-[1.05fr_.95fr]">
@@ -173,526 +178,254 @@
 
       <div class="mx-auto w-full max-w-md">
         <section class="mb-6 text-center lg:hidden">
-          <div class="brand-icon mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-[28px] bg-gradient-to-br from-emerald-500 to-emerald-800 text-4xl text-white">💵</div>
-          <h1 class="text-3xl font-extrabold tracking-tight text-gray-900">Olah Uang</h1>
-          <p class="mt-2 text-sm text-gray-400">Kelola pemasukan dan pengeluaran dengan mudah.</p>
+          <img
+            src="./assets/logo-olah-uang.png"
+            alt="Logo Olah Uang"
+            class="logo-img logo-light mx-auto h-auto w-[320px] max-w-[86vw] select-none sm:w-[340px] md:w-[360px]"
+          />
+          <img
+            src="./assets/logo-olah-uang-dark.png"
+            alt="Logo Olah Uang"
+            class="logo-img logo-dark mx-auto h-auto w-[320px] max-w-[86vw] select-none sm:w-[340px] md:w-[360px]"
+          />
+ 
         </section>
 
-        <section id="authCard" class="auth-card overflow-hidden rounded-[2rem] border border-gray-100 bg-white p-2 soft-card">
+        <section id="authCard" class="overflow-hidden rounded-[2rem] border border-gray-100 bg-white p-2 soft-card">
           <div id="loginTabTrack" class="login-tab-track grid grid-cols-2 gap-2 rounded-[1.45rem] bg-gray-100 p-1">
             <span id="loginTabIndicator" class="login-tab-indicator"></span>
-            <button id="tabMasuk" onclick="gantitab('masuk')" class="login-tab-btn is-active flex-1 rounded-2xl py-3 text-sm cursor-pointer" type="button">Masuk</button>
-            <button id="tabDaftar" onclick="gantitab('daftar')" class="login-tab-btn flex-1 rounded-2xl py-3 text-sm cursor-pointer" type="button">Daftar</button>
+            <button id="tabMasuk" onclick="gantitab('masuk')" class="login-tab-btn is-active rounded-2xl py-4 text-sm cursor-pointer">Masuk</button>
+            <button id="tabDaftar" onclick="gantitab('daftar')" class="login-tab-btn rounded-2xl py-4 text-sm cursor-pointer">Daftar</button>
           </div>
 
-          <div id="authFormShell" class="auth-form-shell p-5 sm:p-6">
-            <div id="formMasuk" class="auth-panel is-active">
+          <p id="registrationNotice" class="hidden mx-5 mt-5 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2"></p>
+
+          <div class="p-6">
+            <div id="formMasuk">
               <div class="mb-5">
-                <h2 class="text-xl font-extrabold text-gray-900">Masuk ke akun</h2>
+                <h2 class="text-2xl font-extrabold text-gray-900">Masuk ke akun</h2>
                 <p class="mt-1 text-sm text-gray-400">Lanjutkan pencatatan keuanganmu.</p>
               </div>
+
               <div class="space-y-4">
                 <div>
-                  <label for="loginEmail" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Email</label>
-                  <input id="loginEmail" type="email" autocomplete="email" placeholder="nama@email.com"
-                    class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
+                  <label for="loginEmail" class="block text-xs font-extrabold text-gray-500 mb-2 uppercase tracking-wide">Email</label>
+                  <input id="loginEmail" type="email" autocomplete="email" placeholder="kamu@email.com"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm text-gray-800 transition" />
                 </div>
                 <div>
-                  <label for="loginPassword" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Password</label>
+                  <label for="loginPassword" class="block text-xs font-extrabold text-gray-500 mb-2 uppercase tracking-wide">Password</label>
                   <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••"
-                    class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm text-gray-800 transition"
                     onkeydown="if(event.key==='Enter') doLogin()" />
                 </div>
               </div>
-              <div class="mt-4 flex items-center justify-end">
-                <button type="button" onclick="openAccountHelpModal()" class="text-xs font-extrabold text-emerald-600 transition hover:text-emerald-700 cursor-pointer">
-                  Lupa akun?
-                </button>
+
+              <div class="mt-4 flex justify-end">
+                <button type="button" onclick="openAccountHelpModal()" class="text-xs font-extrabold text-emerald-600 hover:text-emerald-700">Lupa akun?</button>
               </div>
-              <button onclick="doLogin()" class="btn-primary mt-5 w-full rounded-2xl py-4 text-sm font-extrabold text-white cursor-pointer">
+
+              <button onclick="doLogin()" class="btn-primary w-full mt-6 py-4 rounded-2xl text-white text-sm font-extrabold cursor-pointer">
                 Masuk Sekarang
               </button>
             </div>
 
-            <div id="formDaftar" class="auth-panel hidden">
+            <div id="formDaftar" class="hidden">
               <div class="mb-5">
-                <h2 class="text-xl font-extrabold text-gray-900">Buat akun baru</h2>
-                <p class="mt-1 text-sm text-gray-400">Siapkan nama, email, dan password.</p>
+                <h2 class="text-2xl font-extrabold text-gray-900">Buat akun baru</h2>
+                <p class="mt-1 text-sm text-gray-400">Mulai olah keuanganmu dengan akun sendiri.</p>
               </div>
+
               <div class="space-y-4">
                 <div>
-                  <label for="daftarNama" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Nama Lengkap</label>
+                  <label for="daftarNama" class="block text-xs font-extrabold text-gray-500 mb-2 uppercase tracking-wide">Nama Lengkap</label>
                   <input id="daftarNama" type="text" autocomplete="name" placeholder="Nama kamu"
-                    class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm text-gray-800 transition" />
                 </div>
                 <div>
-                  <label for="daftarEmail" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Email</label>
-                  <input id="daftarEmail" type="email" autocomplete="email" placeholder="nama@email.com"
-                    class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
+                  <label for="daftarEmail" class="block text-xs font-extrabold text-gray-500 mb-2 uppercase tracking-wide">Email</label>
+                  <input id="daftarEmail" type="email" autocomplete="email" placeholder="kamu@email.com"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm text-gray-800 transition" />
                 </div>
                 <div>
-                  <label for="daftarPassword" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Password</label>
+                  <label for="daftarPassword" class="block text-xs font-extrabold text-gray-500 mb-2 uppercase tracking-wide">Password</label>
                   <input id="daftarPassword" type="password" autocomplete="new-password" placeholder="Minimal 6 karakter"
-                    class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition"
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm text-gray-800 transition"
                     onkeydown="if(event.key==='Enter') doRegister()" />
                 </div>
               </div>
-              <button onclick="doRegister()" class="btn-primary mt-6 w-full rounded-2xl py-4 text-sm font-extrabold text-white cursor-pointer">
+
+              <button onclick="doRegister()" class="btn-primary w-full mt-6 py-4 rounded-2xl text-white text-sm font-extrabold cursor-pointer">
                 Buat Akun
               </button>
             </div>
           </div>
         </section>
 
-        <p class="mt-5 text-center text-xs leading-5 text-gray-400">
-          All rights reserved by <a href="https://asfa-tech.netlify.app/" target="_blank" rel="noopener noreferrer" class="font-extrabold text-emerald-600 hover:text-emerald-700">Asfa.Tech</a>. Copright 2026.
+        <p class="text-center text-xs text-gray-400 mt-6">
+          All rights reserved by
+          <a href="https://asfa-tech.netlify.app/" target="_blank" rel="noopener noreferrer" class="font-extrabold text-emerald-600 hover:text-emerald-700">Asfa.Tech</a>.
+          Copyright 2026.
         </p>
       </div>
     </section>
-
-
-    <section id="accountHelpModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4 py-6" aria-hidden="true">
-      <div class="account-help-backdrop absolute inset-0" onclick="closeAccountHelpModal()"></div>
-      <div class="account-help-card relative w-full max-w-md rounded-[2rem] border border-gray-100 bg-white p-5 soft-card">
-        <div class="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <h2 class="text-xl font-extrabold text-gray-900">Bantuan Akun</h2>
-            <p class="mt-1 text-sm text-gray-400">Pilih bantuan sesuai kendala login.</p>
-          </div>
-          <button type="button" onclick="closeAccountHelpModal()" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 text-gray-500 transition hover:bg-gray-100 cursor-pointer" aria-label="Tutup bantuan akun">
-            ✕
-          </button>
-        </div>
-
-        <div id="recoveryTabTrack" class="recovery-tab-track mb-5 grid grid-cols-2 gap-2 rounded-[1.35rem] bg-gray-100 p-1">
-          <span id="recoveryTabIndicator" class="recovery-tab-indicator"></span>
-          <button id="recoveryTabPassword" type="button" onclick="switchRecoveryTab('password')" class="recovery-tab-btn is-active rounded-2xl py-2.5 text-xs font-extrabold text-gray-400 cursor-pointer">Lupa Password</button>
-          <button id="recoveryTabAccount" type="button" onclick="switchRecoveryTab('account')" class="recovery-tab-btn rounded-2xl py-2.5 text-xs font-extrabold text-gray-400 cursor-pointer">Lupa Email</button>
-        </div>
-
-        <div id="recoveryPasswordPanel">
-          <p class="mb-4 text-sm leading-6 text-gray-500">Masukkan email akunmu. Kami akan mengirim link untuk membuat password baru.</p>
-          <label for="resetEmail" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Email Akun</label>
-          <input id="resetEmail" type="email" autocomplete="email" placeholder="nama@email.com"
-            class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
-          <button type="button" onclick="sendPasswordReset()" class="btn-primary mt-5 w-full rounded-2xl py-3.5 text-sm font-extrabold text-white cursor-pointer">Kirim Link Reset Password</button>
-        </div>
-
-        <div id="recoveryAccountPanel" class="hidden">
-          <p class="mb-4 text-sm leading-6 text-gray-500">Kalau lupa email akun, kirim permintaan bantuan. Admin akan mencocokkan nama dan nomor HP yang terdaftar.</p>
-          <div class="space-y-4">
-            <div>
-              <label for="recoveryNama" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Nama</label>
-              <input id="recoveryNama" type="text" autocomplete="name" placeholder="Nama yang terdaftar"
-                class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
-            </div>
-            <div>
-              <label for="recoveryNomorHp" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Nomor HP</label>
-              <input id="recoveryNomorHp" type="tel" inputmode="tel" autocomplete="tel" placeholder="08xxxxxxxxxx"
-                class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
-            </div>
-            <div>
-              <label for="recoveryCatatan" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Catatan Opsional</label>
-              <input id="recoveryCatatan" type="text" placeholder="Contoh: saya lupa email login"
-                class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
-            </div>
-          </div>
-          <button type="button" onclick="submitAccountRecoveryRequest()" class="btn-primary mt-5 w-full rounded-2xl py-3.5 text-sm font-extrabold text-white cursor-pointer">Kirim Permintaan Bantuan</button>
-        </div>
-      </div>
-    </section>
-
   </main>
 
-  <script src="./script.js?v=20260619-v39-recovery-tab-animation"></script>
+  <!-- Modal Bantuan Akun -->
+  <div id="accountHelpModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 account-help-backdrop">
+    <div class="account-help-card w-full max-w-lg rounded-[2rem] border border-gray-100 bg-white p-6 soft-card">
+      <div class="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-extrabold text-gray-900">Bantuan Akun</h2>
+          <p class="mt-1 text-sm text-gray-400">Pilih bantuan sesuai kendala login.</p>
+        </div>
+        <button type="button" onclick="closeAccountHelpModal()" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 text-gray-500 hover:bg-gray-100" aria-label="Tutup">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <div id="recoveryTabTrack" class="recovery-tab-track mb-5 grid grid-cols-2 gap-2 rounded-[1.45rem] bg-gray-100 p-1">
+        <span id="recoveryTabIndicator" class="recovery-tab-indicator"></span>
+        <button id="recoveryPasswordTab" type="button" onclick="setRecoveryTab('password')" class="recovery-tab-btn is-active rounded-2xl py-3 text-xs cursor-pointer">Lupa Password</button>
+        <button id="recoveryEmailTab" type="button" onclick="setRecoveryTab('email')" class="recovery-tab-btn rounded-2xl py-3 text-xs cursor-pointer">Lupa Email</button>
+      </div>
+
+      <div id="recoveryPasswordPanel">
+        <p class="mb-4 text-sm leading-6 text-gray-400">Masukkan email akunmu. Kami akan mengirim link untuk membuat password baru.</p>
+        <label for="recoveryEmail" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Email</label>
+        <input id="recoveryEmail" type="email" autocomplete="email" placeholder="kamu@email.com"
+          class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
+        <button type="button" onclick="sendPasswordResetLink()" class="btn-primary mt-5 w-full rounded-2xl py-4 text-sm font-extrabold text-white cursor-pointer">Kirim Link Reset Password</button>
+      </div>
+
+      <div id="recoveryEmailPanel" class="hidden">
+        <p class="mb-4 text-sm leading-6 text-gray-400">Kalau lupa email akun, isi data berikut. Admin akan mencocokkan data dan menghubungi lewat nomor HP.</p>
+        <div class="space-y-4">
+          <div>
+            <label for="recoveryNama" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Nama</label>
+            <input id="recoveryNama" type="text" autocomplete="name" placeholder="Nama yang terdaftar"
+              class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
+          </div>
+          <div>
+            <label for="recoveryPhone" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Nomor HP</label>
+            <input id="recoveryPhone" type="tel" autocomplete="tel" placeholder="Contoh: 081234567890"
+              class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
+          </div>
+          <div>
+            <label for="recoveryNote" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Catatan Opsional</label>
+            <textarea id="recoveryNote" rows="3" placeholder="Contoh: lupa email yang dipakai saat daftar"
+              class="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition"></textarea>
+          </div>
+        </div>
+        <button type="button" onclick="sendAccountRecoveryRequest()" class="btn-primary mt-5 w-full rounded-2xl py-4 text-sm font-extrabold text-white cursor-pointer">Kirim Permintaan Bantuan</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // Fallback khusus halaman login agar fitur "Lupa akun?" tetap aktif
-    // walaupun script utama yang terupload belum memuat fungsi recovery.
-    (function () {
-      function getEl(id) { return document.getElementById(id); }
-      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      let activeRecoveryTab = 'password';
-      let recoveryTabInitialized = false;
+    let activeLoginTab = 'masuk';
+    let activeRecoveryTab = 'password';
 
-      function setRecoveryIndicatorToButton(button) {
-        const track = getEl('recoveryTabTrack');
-        const indicator = getEl('recoveryTabIndicator');
-        if (!track || !indicator || !button) return;
+    function animateTabIndicator(trackId, indicatorId, activeButton) {
+      const track = document.getElementById(trackId);
+      const indicator = document.getElementById(indicatorId);
+      if (!track || !indicator || !activeButton) return;
 
-        const trackRect = track.getBoundingClientRect();
-        const btnRect = button.getBoundingClientRect();
-        const left = btnRect.left - trackRect.left;
-        const width = btnRect.width;
-        indicator.style.setProperty('--recovery-tab-left', `${left}px`);
-        indicator.style.setProperty('--recovery-tab-width', `${width}px`);
-        indicator.style.setProperty('--recovery-to-left', `${left}px`);
-        indicator.style.setProperty('--recovery-to-width', `${width}px`);
-      }
+      const trackRect = track.getBoundingClientRect();
+      const btnRect = activeButton.getBoundingClientRect();
+      const toLeft = btnRect.left - trackRect.left;
+      const toWidth = btnRect.width;
+      const fromLeft = Number(indicator.dataset.left ?? toLeft);
+      const fromWidth = Number(indicator.dataset.width ?? toWidth);
+      const midLeft = Math.min(fromLeft, toLeft);
+      const midRight = Math.max(fromLeft + fromWidth, toLeft + toWidth);
+      const midWidth = midRight - midLeft;
+      const distance = Math.abs(toLeft - fromLeft);
+      const duration = Math.min(760, Math.max(520, 520 + distance * 1.2));
 
-      function runRecoveryTabIndicator(fromButton, toButton) {
-        const track = getEl('recoveryTabTrack');
-        const indicator = getEl('recoveryTabIndicator');
-        if (!track || !indicator || !toButton) return;
-        if (!fromButton || reduceMotion) {
-          setRecoveryIndicatorToButton(toButton);
-          return;
-        }
+      const prefix = indicatorId === 'recoveryTabIndicator' ? 'recovery-' : '';
+      indicator.style.setProperty(`--${prefix}from-left`, `${fromLeft}px`);
+      indicator.style.setProperty(`--${prefix}from-width`, `${fromWidth}px`);
+      indicator.style.setProperty(`--${prefix}mid-left`, `${midLeft}px`);
+      indicator.style.setProperty(`--${prefix}mid-width`, `${midWidth}px`);
+      indicator.style.setProperty(`--${prefix}to-left`, `${toLeft}px`);
+      indicator.style.setProperty(`--${prefix}to-width`, `${toWidth}px`);
+      indicator.style.setProperty(`--${prefix}tab-duration`, `${duration}ms`);
 
-        const trackRect = track.getBoundingClientRect();
-        const fromRect = fromButton.getBoundingClientRect();
-        const toRect = toButton.getBoundingClientRect();
-        const fromLeft = fromRect.left - trackRect.left;
-        const toLeft = toRect.left - trackRect.left;
-        const fromWidth = fromRect.width;
-        const toWidth = toRect.width;
-        const fromRight = fromLeft + fromWidth;
-        const toRight = toLeft + toWidth;
-        const midLeft = Math.min(fromLeft, toLeft);
-        const midWidth = Math.max(fromRight, toRight) - midLeft;
-        const distance = Math.abs((toLeft + toWidth / 2) - (fromLeft + fromWidth / 2));
-        const duration = Math.min(760, Math.max(520, 440 + distance * 1.15));
+      indicator.classList.remove('is-moving');
+      void indicator.offsetWidth;
+      indicator.classList.add('is-moving');
 
-        indicator.style.setProperty('--recovery-from-left', `${fromLeft}px`);
-        indicator.style.setProperty('--recovery-from-width', `${fromWidth}px`);
-        indicator.style.setProperty('--recovery-mid-left', `${midLeft}px`);
-        indicator.style.setProperty('--recovery-mid-width', `${midWidth}px`);
-        indicator.style.setProperty('--recovery-to-left', `${toLeft}px`);
-        indicator.style.setProperty('--recovery-to-width', `${toWidth}px`);
+      indicator.dataset.left = String(toLeft);
+      indicator.dataset.width = String(toWidth);
+      if (indicatorId === 'recoveryTabIndicator') {
         indicator.style.setProperty('--recovery-tab-left', `${toLeft}px`);
         indicator.style.setProperty('--recovery-tab-width', `${toWidth}px`);
-        indicator.style.setProperty('--recovery-tab-duration', `${duration}ms`);
-        indicator.classList.remove('is-moving');
-        void indicator.offsetWidth;
-        indicator.classList.add('is-moving');
-        window.setTimeout(() => indicator.classList.remove('is-moving'), duration + 40);
-      }
-
-      function validEmail(email) {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
-      }
-
-      function showRecoveryError(title, message) {
-        return Swal.fire({
-          icon: 'error',
-          title,
-          text: message,
-          confirmButtonColor: '#059669'
-        });
-      }
-
-      window.openAccountHelpModal = function (tab = 'password') {
-        const modal = getEl('accountHelpModal');
-        if (!modal) return;
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        modal.setAttribute('aria-hidden', 'false');
-        window.switchRecoveryTab(tab);
-        setTimeout(() => {
-          const firstInput = tab === 'account' ? getEl('recoveryNama') : getEl('resetEmail');
-          firstInput?.focus?.();
-        }, 80);
-      };
-
-      window.closeAccountHelpModal = function () {
-        const modal = getEl('accountHelpModal');
-        if (!modal) return;
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-        modal.setAttribute('aria-hidden', 'true');
-      };
-
-      window.switchRecoveryTab = function (tab = 'password') {
-        const nextTab = tab === 'account' ? 'account' : 'password';
-        const isAccount = nextTab === 'account';
-        const fromButton = activeRecoveryTab === 'account' ? getEl('recoveryTabAccount') : getEl('recoveryTabPassword');
-        const toButton = isAccount ? getEl('recoveryTabAccount') : getEl('recoveryTabPassword');
-
-        getEl('recoveryPasswordPanel')?.classList.toggle('hidden', isAccount);
-        getEl('recoveryAccountPanel')?.classList.toggle('hidden', !isAccount);
-
-        getEl('recoveryTabPassword')?.classList.toggle('is-active', !isAccount);
-        getEl('recoveryTabAccount')?.classList.toggle('is-active', isAccount);
-
-        if (nextTab === activeRecoveryTab && recoveryTabInitialized) {
-          setRecoveryIndicatorToButton(toButton);
-          return;
-        }
-
-        runRecoveryTabIndicator(recoveryTabInitialized ? fromButton : null, toButton);
-        activeRecoveryTab = nextTab;
-        recoveryTabInitialized = true;
-      };
-
-      window.sendPasswordReset = async function () {
-        const email = getEl('resetEmail')?.value.trim();
-
-        if (!email) {
-          return Swal.fire({
-            icon: 'warning',
-            title: 'Email belum diisi',
-            text: 'Masukkan email akun terlebih dahulu.',
-            confirmButtonColor: '#059669'
-          });
-        }
-
-        if (!validEmail(email)) {
-          return Swal.fire({
-            icon: 'warning',
-            title: 'Email tidak valid',
-            text: 'Masukkan email dengan format yang benar, contoh: nama@email.com.',
-            confirmButtonColor: '#059669'
-          });
-        }
-
-        const btn = event?.target;
-        if (btn) {
-          btn.disabled = true;
-          btn.textContent = 'Mengirim link...';
-        }
-
-        try {
-          const basePath = window.location.pathname.replace(/[^/]*$/, '');
-          const redirectTo = `${window.location.origin}${basePath}reset-password.html`;
-          const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo });
-
-          if (error) {
-            console.error('[Gagal mengirim link reset password]', error);
-            return showRecoveryError(
-              'Gagal mengirim link',
-              'Link reset password belum bisa dikirim. Pastikan email sudah benar dan terdaftar. Jika masih gagal, cek pengaturan Redirect URL di Supabase.'
-            );
-          }
-
-          await Swal.fire({
-            icon: 'success',
-            title: 'Link terkirim',
-            text: 'Cek email kamu untuk membuat password baru.',
-            confirmButtonColor: '#059669'
-          });
-
-          window.closeAccountHelpModal();
-        } catch (error) {
-          console.error('[Gagal mengirim link reset password]', error);
-          return showRecoveryError(
-            'Gagal mengirim link',
-            'Terjadi gangguan saat mengirim link reset password. Periksa koneksi internet, lalu coba lagi.'
-          );
-        } finally {
-          if (btn) {
-            btn.disabled = false;
-            btn.textContent = 'Kirim Link Reset Password';
-          }
-        }
-      };
-
-      window.submitAccountRecoveryRequest = async function () {
-        const nama = getEl('recoveryNama')?.value.trim();
-        const nomorHp = getEl('recoveryNomorHp')?.value.trim();
-        const catatan = getEl('recoveryCatatan')?.value.trim() || null;
-
-        if (!nama || !nomorHp) {
-          return Swal.fire({
-            icon: 'warning',
-            title: 'Data belum lengkap',
-            text: 'Nama dan nomor HP wajib diisi agar admin bisa mencocokkan data akun.',
-            confirmButtonColor: '#059669'
-          });
-        }
-
-        const btn = event?.target;
-        if (btn) {
-          btn.disabled = true;
-          btn.textContent = 'Mengirim permintaan...';
-        }
-
-        try {
-          const { error } = await db
-            .from('account_recovery_requests')
-            .insert({ nama, nomor_hp: nomorHp, catatan });
-
-          if (error) {
-            console.error('[Gagal mengirim permintaan bantuan akun]', error);
-            const raw = [
-              error.message,
-              error.details,
-              error.hint,
-              error.code
-            ].filter(Boolean).join(' ').toLowerCase();
-
-            if (
-              raw.includes('account_recovery_requests') ||
-              raw.includes('schema cache') ||
-              raw.includes('pgrst204') ||
-              raw.includes('relation') ||
-              raw.includes('does not exist')
-            ) {
-              return showRecoveryError(
-                'Gagal mengirim permintaan',
-                'Fitur lupa akun belum aktif di database. Jalankan SQL terbaru terlebih dahulu.'
-              );
-            }
-
-            return showRecoveryError(
-              'Gagal mengirim permintaan',
-              'Permintaan bantuan belum bisa dikirim. Periksa kembali data yang dimasukkan, lalu coba lagi.'
-            );
-          }
-
-          await Swal.fire({
-            icon: 'success',
-            title: 'Permintaan terkirim',
-            text: 'Admin akan mengecek data akun dan menghubungi kamu melalui nomor HP yang diberikan.',
-            confirmButtonColor: '#059669'
-          });
-
-          ['recoveryNama', 'recoveryNomorHp', 'recoveryCatatan'].forEach((id) => {
-            const input = getEl(id);
-            if (input) input.value = '';
-          });
-
-          window.closeAccountHelpModal();
-        } catch (error) {
-          console.error('[Gagal mengirim permintaan bantuan akun]', error);
-          return showRecoveryError(
-            'Gagal mengirim permintaan',
-            'Terjadi gangguan saat mengirim permintaan bantuan akun. Periksa koneksi internet, lalu coba lagi.'
-          );
-        } finally {
-          if (btn) {
-            btn.disabled = false;
-            btn.textContent = 'Kirim Permintaan Bantuan';
-          }
-        }
-      };
-
-      document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape') window.closeAccountHelpModal();
-      });
-
-      window.addEventListener('resize', () => {
-        const activeButton = activeRecoveryTab === 'account' ? getEl('recoveryTabAccount') : getEl('recoveryTabPassword');
-        setRecoveryIndicatorToButton(activeButton);
-      });
-    })();
-  </script>
-  <script>
-    (function () {
-      let activeTab = 'masuk';
-      let initialized = false;
-      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-      function getEl(id) { return document.getElementById(id); }
-
-      function setIndicatorToButton(button) {
-        const track = getEl('loginTabTrack');
-        const indicator = getEl('loginTabIndicator');
-        if (!track || !indicator || !button) return;
-
-        const trackRect = track.getBoundingClientRect();
-        const btnRect = button.getBoundingClientRect();
-        const left = btnRect.left - trackRect.left;
-        const width = btnRect.width;
-        indicator.style.setProperty('--tab-left', `${left}px`);
-        indicator.style.setProperty('--tab-width', `${width}px`);
-        indicator.style.setProperty('--to-left', `${left}px`);
-        indicator.style.setProperty('--to-width', `${width}px`);
-      }
-
-      function runTabIndicator(fromButton, toButton) {
-        const track = getEl('loginTabTrack');
-        const indicator = getEl('loginTabIndicator');
-        if (!track || !indicator || !toButton) return;
-        if (!fromButton || reduceMotion) {
-          setIndicatorToButton(toButton);
-          return;
-        }
-
-        const trackRect = track.getBoundingClientRect();
-        const fromRect = fromButton.getBoundingClientRect();
-        const toRect = toButton.getBoundingClientRect();
-        const fromLeft = fromRect.left - trackRect.left;
-        const toLeft = toRect.left - trackRect.left;
-        const fromWidth = fromRect.width;
-        const toWidth = toRect.width;
-        const fromRight = fromLeft + fromWidth;
-        const toRight = toLeft + toWidth;
-        const midLeft = Math.min(fromLeft, toLeft);
-        const midWidth = Math.max(fromRight, toRight) - midLeft;
-        const distance = Math.abs((toLeft + toWidth / 2) - (fromLeft + fromWidth / 2));
-        const duration = Math.min(760, Math.max(520, 440 + distance * 1.15));
-
-        indicator.style.setProperty('--from-left', `${fromLeft}px`);
-        indicator.style.setProperty('--from-width', `${fromWidth}px`);
-        indicator.style.setProperty('--mid-left', `${midLeft}px`);
-        indicator.style.setProperty('--mid-width', `${midWidth}px`);
-        indicator.style.setProperty('--to-left', `${toLeft}px`);
-        indicator.style.setProperty('--to-width', `${toWidth}px`);
+      } else {
         indicator.style.setProperty('--tab-left', `${toLeft}px`);
         indicator.style.setProperty('--tab-width', `${toWidth}px`);
-        indicator.style.setProperty('--tab-duration', `${duration}ms`);
-        indicator.classList.remove('is-moving');
-        void indicator.offsetWidth;
-        indicator.classList.add('is-moving');
-        window.setTimeout(() => indicator.classList.remove('is-moving'), duration + 40);
       }
+    }
 
-      function switchPanel(tab) {
-        const isLogin = tab === 'masuk';
-        const shell = getEl('authFormShell');
-        const loginPanel = getEl('formMasuk');
-        const registerPanel = getEl('formDaftar');
-        const oldPanel = isLogin ? registerPanel : loginPanel;
-        const newPanel = isLogin ? loginPanel : registerPanel;
-        if (!shell || !oldPanel || !newPanel) return;
+    function gantitab(tab) {
+      const isLogin = tab === 'masuk';
+      const previous = activeLoginTab;
+      activeLoginTab = isLogin ? 'masuk' : 'daftar';
 
-        oldPanel.classList.add('hidden');
-        oldPanel.classList.remove('is-active', 'is-entering', 'is-leaving');
-        newPanel.classList.remove('hidden', 'is-entering', 'is-leaving');
-        newPanel.classList.add('is-active');
-        shell.style.height = '';
-        shell.style.overflow = '';
+      document.getElementById('formMasuk')?.classList.toggle('hidden', !isLogin);
+      document.getElementById('formDaftar')?.classList.toggle('hidden', isLogin);
+      document.getElementById('tabMasuk')?.classList.toggle('is-active', isLogin);
+      document.getElementById('tabDaftar')?.classList.toggle('is-active', !isLogin);
+
+      if (previous !== activeLoginTab) {
+        animateTabIndicator('loginTabTrack', 'loginTabIndicator', document.getElementById(isLogin ? 'tabMasuk' : 'tabDaftar'));
       }
+    }
 
-      function setTabButtonState(tab) {
-        const loginButton = getEl('tabMasuk');
-        const registerButton = getEl('tabDaftar');
-        loginButton?.classList.toggle('is-active', tab === 'masuk');
-        registerButton?.classList.toggle('is-active', tab === 'daftar');
+    function setRecoveryTab(tab) {
+      const isPassword = tab !== 'email';
+      const previous = activeRecoveryTab;
+      activeRecoveryTab = isPassword ? 'password' : 'email';
+
+      document.getElementById('recoveryPasswordPanel')?.classList.toggle('hidden', !isPassword);
+      document.getElementById('recoveryEmailPanel')?.classList.toggle('hidden', isPassword);
+      document.getElementById('recoveryPasswordTab')?.classList.toggle('is-active', isPassword);
+      document.getElementById('recoveryEmailTab')?.classList.toggle('is-active', !isPassword);
+
+      if (previous !== activeRecoveryTab) {
+        animateTabIndicator('recoveryTabTrack', 'recoveryTabIndicator', document.getElementById(isPassword ? 'recoveryPasswordTab' : 'recoveryEmailTab'));
       }
+    }
 
-      window.gantitab = function (tab) {
-        const nextTab = tab === 'daftar' ? 'daftar' : 'masuk';
-        const previousTab = activeTab;
-        const fromButton = previousTab === 'daftar' ? getEl('tabDaftar') : getEl('tabMasuk');
-        const toButton = nextTab === 'daftar' ? getEl('tabDaftar') : getEl('tabMasuk');
+    function openAccountHelpModal() {
+      const modal = document.getElementById('accountHelpModal');
+      if (!modal) return;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      setTimeout(() => {
+        animateTabIndicator('recoveryTabTrack', 'recoveryTabIndicator', document.getElementById(activeRecoveryTab === 'email' ? 'recoveryEmailTab' : 'recoveryPasswordTab'));
+      }, 30);
+    }
 
-        if (nextTab === activeTab && initialized) return;
-        activeTab = nextTab;
-        setTabButtonState(nextTab);
-        runTabIndicator(initialized ? fromButton : null, toButton);
-        switchPanel(nextTab, initialized);
-        initialized = true;
-      };
+    function closeAccountHelpModal() {
+      const modal = document.getElementById('accountHelpModal');
+      if (!modal) return;
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
 
-      function initLoginTabs() {
-        initialized = false;
-        activeTab = 'masuk';
-        setTabButtonState('masuk');
-        switchPanel('masuk', false);
-        window.gantitab('masuk');
-      }
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeAccountHelpModal();
+    });
 
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initLoginTabs);
-      } else {
-        initLoginTabs();
-      }
-
-      window.addEventListener('resize', () => {
-        const activeButton = activeTab === 'daftar' ? getEl('tabDaftar') : getEl('tabMasuk');
-        setIndicatorToButton(activeButton);
-      });
-    })();
+    window.addEventListener('load', () => {
+      animateTabIndicator('loginTabTrack', 'loginTabIndicator', document.getElementById(activeLoginTab === 'daftar' ? 'tabDaftar' : 'tabMasuk'));
+    });
+    window.addEventListener('resize', () => {
+      animateTabIndicator('loginTabTrack', 'loginTabIndicator', document.getElementById(activeLoginTab === 'daftar' ? 'tabDaftar' : 'tabMasuk'));
+      animateTabIndicator('recoveryTabTrack', 'recoveryTabIndicator', document.getElementById(activeRecoveryTab === 'email' ? 'recoveryEmailTab' : 'recoveryPasswordTab'));
+    });
   </script>
+  <script src="./script.js?v=20260619-v50-ai-variasi"></script>
 </body>
 </html>
