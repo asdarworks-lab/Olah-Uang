@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Olah Uang</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    * { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .soft-card { box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06); }
+    .admin-logo { box-shadow: 0 16px 32px rgba(5, 150, 105, .18); }
+    .table-shell table { border-collapse: separate; border-spacing: 0; }
+    .dark body, body.dark { background: #020617 !important; color: #e5e7eb !important; }
+    .dark .bg-white { background-color: #0f172a !important; }
+    .dark .bg-gray-50 { background-color: #020617 !important; }
+    .dark .bg-gray-100 { background-color: #1e293b !important; }
+    .dark .bg-gray-200 { background-color: #334155 !important; }
+    .dark .text-gray-900, .dark .text-gray-800, .dark .text-gray-700 { color: #f8fafc !important; }
+    .dark .text-gray-600, .dark .text-gray-500, .dark .text-gray-400 { color: #94a3b8 !important; }
+    .dark .border-gray-50, .dark .border-gray-100, .dark .border-gray-200 { border-color: #1e293b !important; }
+    .dark .hover\:bg-gray-50:hover, .dark .hover\:bg-gray-100:hover { background-color: #111827 !important; }
+    .dark .soft-card { box-shadow: 0 8px 28px rgba(0, 0, 0, .25); }
+  </style>
+</head>
+<body data-page="dashboard-admin" class="min-h-screen bg-gray-50 text-gray-800 antialiased">
+
+  <main class="mx-auto w-full max-w-6xl px-4 py-5 md:px-6 md:py-6">
+    <header class="mb-5 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="admin-logo flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-800 text-2xl text-white">🛡️</div>
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <h1 class="text-lg font-extrabold leading-tight text-gray-900">Olah Uang</h1>
+            <span class="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-700">Admin</span>
+          </div>
+          <p class="mt-0.5 text-xs text-gray-400"><span class="font-extrabold text-gray-500">Halo,</span> <span id="adminNama">Admin</span>!</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="toggleDarkMode()" id="darkModeToggle" class="soft-card rounded-2xl border border-gray-100 bg-white px-3 py-2 text-sm font-bold text-gray-700 transition hover:scale-[1.02]" title="Mode gelap/terang">🌕</button>
+        <button onclick="muatData()" class="hidden sm:inline-flex rounded-2xl border border-gray-100 bg-white px-4 py-2 text-xs font-extrabold text-gray-600 soft-card transition hover:bg-gray-50 cursor-pointer">Refresh</button>
+        <button onclick="doLogout()" class="rounded-2xl bg-rose-100 px-4 py-2 text-xs font-extrabold text-rose-700 soft-card transition hover:bg-rose-200 cursor-pointer">Keluar</button>
+      </div>
+    </header>
+
+    <section class="mb-5 overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-600 to-emerald-900 p-6 text-white soft-card md:p-8">
+      <div class="grid gap-5 md:grid-cols-[1.1fr_.9fr] md:items-end">
+        <div>
+          <p class="text-xs font-extrabold uppercase tracking-[.24em] text-emerald-100">Dashboard Admin</p>
+          <h2 class="mt-3 max-w-xl text-3xl font-extrabold leading-tight md:text-4xl">Pantau pengguna dan transaksi dalam satu tempat.</h2>
+          <p class="mt-3 max-w-lg text-sm leading-6 text-emerald-100">Kelola role pengguna, lihat aktivitas, dan pantau transaksi semua user dalam tampilan yang ringkas dan mudah dipahami.</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="rounded-3xl bg-white/12 p-4 backdrop-blur">
+            <p class="text-xs text-emerald-100">Akses</p>
+            <p class="mt-1 text-xl font-extrabold">Admin</p>
+          </div>
+          <div class="rounded-3xl bg-white/12 p-4 backdrop-blur">
+            <p class="text-xs text-emerald-100">Realtime</p>
+            <p class="mt-1 text-xl font-extrabold">Aktif</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mb-5 grid grid-cols-2 gap-3 md:grid-cols-5 md:gap-4">
+      <div class="rounded-3xl border border-gray-100 bg-white p-5 soft-card">
+        <div class="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-xl">👥</div>
+        <p class="mb-2 text-[10px] font-extrabold uppercase tracking-wide text-gray-400">Total User</p>
+        <p id="statTotalUser" class="text-2xl font-extrabold text-gray-900">—</p>
+      </div>
+      <div class="rounded-3xl border border-gray-100 bg-white p-5 soft-card">
+        <div class="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-100 text-xl">🧾</div>
+        <p class="mb-2 text-[10px] font-extrabold uppercase tracking-wide text-gray-400">Total Transaksi</p>
+        <p id="statTotalTrx" class="text-2xl font-extrabold text-gray-900">—</p>
+      </div>
+      <div class="rounded-3xl border border-gray-100 bg-white p-5 soft-card">
+        <div class="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-xl">📈</div>
+        <p class="mb-2 text-[10px] font-extrabold uppercase tracking-wide text-gray-400">Total Pemasukan</p>
+        <p id="statTotalMasuk" class="text-xl font-extrabold text-emerald-600 md:text-2xl">—</p>
+      </div>
+      <div class="rounded-3xl border border-gray-100 bg-white p-5 soft-card">
+        <div class="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-100 text-xl">📉</div>
+        <p class="mb-2 text-[10px] font-extrabold uppercase tracking-wide text-gray-400">Total Pengeluaran</p>
+        <p id="statTotalKeluar" class="text-xl font-extrabold text-rose-500 md:text-2xl">—</p>
+      </div>
+      <div class="rounded-3xl border border-gray-100 bg-white p-5 soft-card">
+        <div class="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-xl">🆘</div>
+        <p class="mb-2 text-[10px] font-extrabold uppercase tracking-wide text-gray-400">Bantuan Akun</p>
+        <p id="statRecoveryNew" class="text-2xl font-extrabold text-amber-600">—</p>
+      </div>
+    </section>
+
+    <section class="mb-5 overflow-hidden rounded-3xl border border-gray-100 bg-white soft-card">
+      <div class="flex flex-col gap-3 border-b border-gray-50 px-5 py-5 sm:flex-row sm:items-center sm:justify-between md:px-6">
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="font-extrabold text-gray-900">Permintaan Bantuan Akun</h2>
+            <span id="recoveryNewBadge" class="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-700">0 baru</span>
+          </div>
+          <p class="mt-1 text-xs text-gray-400">Data dari pengguna yang lupa email akun dan meminta bantuan admin.</p>
+        </div>
+        <button onclick="muatData()" class="inline-flex w-full items-center justify-center rounded-2xl bg-gray-100 px-4 py-2 text-xs font-extrabold text-gray-600 transition hover:bg-gray-200 sm:w-auto cursor-pointer">Refresh Bantuan</button>
+      </div>
+      <div class="table-shell overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 border-b border-gray-100">
+              <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Nama</th>
+              <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Nomor HP</th>
+              <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Catatan</th>
+              <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Kemungkinan Akun</th>
+              <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Tanggal</th>
+              <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="accountRecoveryBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="mb-5 grid gap-5 lg:grid-cols-5">
+      <div class="rounded-3xl border border-gray-100 bg-white p-6 soft-card lg:col-span-3">
+        <div class="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <h2 class="font-extrabold text-gray-900">Tren Keuangan Semua User</h2>
+            <p class="mt-1 text-xs text-gray-400">Perbandingan pemasukan dan pengeluaran seluruh pengguna.</p>
+          </div>
+          <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-700">Live</span>
+        </div>
+        <div class="h-72 rounded-3xl bg-gray-50 p-3">
+          <canvas id="adminChart"></canvas>
+        </div>
+      </div>
+      <div class="rounded-3xl border border-gray-100 bg-white p-6 soft-card lg:col-span-2">
+        <div class="mb-5">
+          <h2 class="font-extrabold text-gray-900">Aktivitas per User</h2>
+          <p class="mt-1 text-xs text-gray-400">User dengan transaksi terbanyak.</p>
+        </div>
+        <div id="userActivity" class="space-y-4 text-sm"></div>
+      </div>
+    </section>
+
+    <section class="mb-5 overflow-hidden rounded-3xl border border-gray-100 bg-white soft-card">
+      <div class="flex flex-col gap-3 border-b border-gray-50 px-5 py-5 sm:flex-row sm:items-center sm:justify-between md:px-6">
+        <div>
+          <h2 class="font-extrabold text-gray-900">Daftar Pengguna</h2>
+          <p class="mt-1 text-xs text-gray-400">Lihat akun, role, dan jumlah transaksi.</p>
+        </div>
+        <button onclick="muatData()" class="inline-flex w-full items-center justify-center rounded-2xl bg-gray-100 px-4 py-2 text-xs font-extrabold text-gray-600 transition hover:bg-gray-200 sm:w-auto cursor-pointer">Refresh Data</button>
+      </div>
+      <div class="table-shell overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 border-b border-gray-100">
+              <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Nama</th>
+              <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Email</th>
+              <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Role</th>
+              <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Bergabung</th>
+              <th class="px-6 py-3 text-center text-xs font-extrabold uppercase tracking-wide text-gray-400">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="userTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="overflow-hidden rounded-3xl border border-gray-100 bg-white soft-card">
+      <div class="border-b border-gray-50 px-5 py-5 md:px-6">
+        <h2 class="font-extrabold text-gray-900">Riwayat Transaksi Semua User</h2>
+        <p class="mt-1 text-xs text-gray-400">Transaksi terbaru dari seluruh akun.</p>
+      </div>
+      <div class="table-shell overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 border-b border-gray-100">
+              <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Tanggal</th>
+              <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">User</th>
+              <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Kategori</th>
+              <th class="px-6 py-3 text-right text-xs font-extrabold uppercase tracking-wide text-gray-400">Nominal</th>
+            </tr>
+          </thead>
+          <tbody id="allTrxBody"></tbody>
+        </table>
+      </div>
+      <div id="trxPagination" class="flex flex-wrap justify-center gap-1 px-6 py-5"></div>
+    </section>
+  </main>
+
+  <script src="./script.js?v=20260619-v40-admin-account-recovery"></script>
+</body>
+</html>

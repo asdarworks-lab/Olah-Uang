@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Olah Uang — Masuk</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    * { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .soft-card { box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06); }
+    .brand-icon { box-shadow: 0 18px 34px rgba(5, 150, 105, .24); }
+    input:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 4px rgba(5,150,105,.12); }
+    .btn-primary { background: linear-gradient(135deg, #059669, #047857); transition: transform .18s ease, box-shadow .18s ease, filter .18s ease; }
+    .btn-primary:hover { filter: brightness(.98); transform: translateY(-1px); box-shadow: 0 14px 28px rgba(5, 150, 105, .22); }
+    .btn-primary:disabled { opacity: .65; transform: none; box-shadow: none; cursor: not-allowed; }
+
+    .login-tab-track { position: relative; isolation: isolate; }
+    .login-tab-indicator {
+      position: absolute;
+      top: .25rem;
+      bottom: .25rem;
+      left: var(--tab-left, .25rem);
+      width: var(--tab-width, calc(50% - .25rem));
+      border-radius: 1rem;
+      background: #ffffff;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, .06);
+      z-index: 0;
+      pointer-events: none;
+    }
+    .login-tab-indicator.is-moving {
+      animation: loginTabFlow var(--tab-duration, 640ms) cubic-bezier(.22, 1, .36, 1) both;
+    }
+    @keyframes loginTabFlow {
+      0% { left: var(--from-left); width: var(--from-width); border-radius: 1rem; }
+      48% { left: var(--mid-left); width: var(--mid-width); border-radius: 1.2rem; }
+      100% { left: var(--to-left); width: var(--to-width); border-radius: 1rem; }
+    }
+    .login-tab-btn {
+      position: relative;
+      z-index: 1;
+      color: #94a3b8;
+      font-weight: 800;
+      transition: color .28s ease, transform .34s cubic-bezier(.22, 1, .36, 1);
+    }
+    .login-tab-btn.is-active { color: #064e3b; transform: scale(1.015); }
+    .auth-form-shell { transform-origin: top center; }
+    .auth-panel { transition: none; }
+    .auth-panel.is-entering,
+    .auth-panel.is-leaving { opacity: 1; transform: none; }
+    .auth-card { transform-origin: top center; }
+
+    .account-help-backdrop {
+      background: rgba(15, 23, 42, .46);
+      backdrop-filter: blur(10px);
+    }
+    .account-help-card {
+      animation: accountHelpIn .22s cubic-bezier(.22, 1, .36, 1) both;
+    }
+    @keyframes accountHelpIn {
+      from { opacity: 0; transform: translateY(12px) scale(.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .recovery-tab-track { position: relative; isolation: isolate; }
+    .recovery-tab-indicator {
+      position: absolute;
+      top: .25rem;
+      bottom: .25rem;
+      left: var(--recovery-tab-left, .25rem);
+      width: var(--recovery-tab-width, calc(50% - .25rem));
+      border-radius: 1rem;
+      background: #ffffff;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, .06);
+      z-index: 0;
+      pointer-events: none;
+    }
+    .recovery-tab-indicator.is-moving {
+      animation: recoveryTabFlow var(--recovery-tab-duration, 640ms) cubic-bezier(.22, 1, .36, 1) both;
+    }
+    @keyframes recoveryTabFlow {
+      0% { left: var(--recovery-from-left); width: var(--recovery-from-width); border-radius: 1rem; }
+      48% { left: var(--recovery-mid-left); width: var(--recovery-mid-width); border-radius: 1.2rem; }
+      100% { left: var(--recovery-to-left); width: var(--recovery-to-width); border-radius: 1rem; }
+    }
+    .recovery-tab-btn {
+      position: relative;
+      z-index: 1;
+      color: #94a3b8;
+      font-weight: 800;
+      transition: color .28s ease, transform .34s cubic-bezier(.22, 1, .36, 1);
+    }
+    .recovery-tab-btn.is-active { color: #064e3b; transform: scale(1.015); }
+
+    .dark body, body.dark { background: #020617 !important; color: #e5e7eb !important; }
+    .dark .bg-white { background-color: #0f172a !important; }
+    .dark .bg-gray-50 { background-color: #020617 !important; }
+    .dark .bg-gray-100 { background-color: #1e293b !important; }
+    .dark .text-gray-900, .dark .text-gray-800, .dark .text-gray-700 { color: #f8fafc !important; }
+    .dark .text-gray-600, .dark .text-gray-500, .dark .text-gray-400 { color: #94a3b8 !important; }
+    .dark .border-gray-50, .dark .border-gray-100, .dark .border-gray-200 { border-color: #1e293b !important; }
+    .dark input { background-color: #111827 !important; color: #e5e7eb !important; border-color: #334155 !important; }
+    .dark .login-tab-indicator { background: #0f172a !important; box-shadow: 0 8px 20px rgba(0, 0, 0, .22); }
+    .dark .login-tab-btn.is-active { color: #ecfdf5 !important; }
+    .dark .recovery-tab-indicator { background: #0f172a !important; box-shadow: 0 8px 20px rgba(0, 0, 0, .22); }
+    .dark .recovery-tab-btn.is-active { color: #ecfdf5 !important; }
+    .dark .soft-card { box-shadow: 0 8px 28px rgba(0, 0, 0, .25); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .login-tab-indicator,
+      .login-tab-indicator.is-moving,
+      .login-tab-btn,
+      .recovery-tab-indicator,
+      .recovery-tab-indicator.is-moving,
+      .recovery-tab-btn,
+      .auth-form-shell,
+      .auth-panel,
+      .auth-card { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body data-page="login" class="min-h-screen bg-gray-50 text-gray-800 antialiased overflow-x-hidden">
+
+  <main class="relative min-h-screen w-full px-4 py-5 md:px-6 lg:px-8">
+    <div class="absolute inset-0 -z-10 overflow-hidden">
+      <div class="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-emerald-200/50 blur-3xl"></div>
+      <div class="absolute top-24 right-0 h-80 w-80 rounded-full bg-emerald-100/70 blur-3xl"></div>
+      <div class="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-rose-100/50 blur-3xl"></div>
+    </div>
+
+    <header class="mx-auto flex w-full max-w-6xl items-center gap-3 pb-6">
+      <div class="flex items-center gap-3">
+        <div class="brand-icon flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-800 text-2xl text-white">💵</div>
+        <div>
+          <p class="text-base font-extrabold leading-tight text-gray-900">Olah Uang</p>
+          <p class="text-xs text-gray-400">Catat uang masuk dan keluar</p>
+        </div>
+        <button onclick="toggleDarkMode()" id="darkModeToggle" class="ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-gray-100 bg-white text-base font-bold text-gray-700 soft-card transition hover:scale-[1.02] md:h-10 md:w-10" title="Mode gelap/terang" aria-label="Mode gelap/terang">🌕</button>
+      </div>
+    </header>
+
+    <section class="mx-auto grid min-h-[calc(100vh-120px)] w-full max-w-6xl items-center gap-6 lg:grid-cols-[1.05fr_.95fr]">
+      <div class="hidden lg:block">
+        <div class="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/80 px-4 py-2 text-xs font-extrabold text-emerald-700 soft-card">
+          <span>✨</span>
+          <span>Dashboard keuangan sederhana untuk pengguna awam</span>
+        </div>
+        <h1 class="mt-6 max-w-xl text-5xl font-extrabold tracking-tight text-gray-900 leading-tight">
+          Kelola keuangan lebih rapi, sederhana, dan mudah dipahami.
+        </h1>
+        <p class="mt-4 max-w-lg text-base leading-7 text-gray-500">
+          Catat transaksi harian, pantau saldo, lihat budget, dan evaluasi pola pengeluaran dalam satu aplikasi yang ringan dan ramah pengguna.
+        </p>
+        <div class="mt-7 grid max-w-xl grid-cols-3 gap-3">
+          <div class="rounded-3xl border border-gray-100 bg-white p-4 soft-card">
+            <p class="text-2xl">⚡</p>
+            <p class="mt-2 text-sm font-extrabold text-gray-900">Cepat</p>
+            <p class="mt-1 text-xs text-gray-400">Catat sebelum lupa.</p>
+          </div>
+          <div class="rounded-3xl border border-gray-100 bg-white p-4 soft-card">
+            <p class="text-2xl">📊</p>
+            <p class="mt-2 text-sm font-extrabold text-gray-900">Terukur</p>
+            <p class="mt-1 text-xs text-gray-400">Grafik dan budget.</p>
+          </div>
+          <div class="rounded-3xl border border-gray-100 bg-white p-4 soft-card">
+            <p class="text-2xl">🔐</p>
+            <p class="mt-2 text-sm font-extrabold text-gray-900">Aman</p>
+            <p class="mt-1 text-xs text-gray-400">Akun per pengguna.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="mx-auto w-full max-w-md">
+        <section class="mb-6 text-center lg:hidden">
+          <div class="brand-icon mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-[28px] bg-gradient-to-br from-emerald-500 to-emerald-800 text-4xl text-white">💵</div>
+          <h1 class="text-3xl font-extrabold tracking-tight text-gray-900">Olah Uang</h1>
+          <p class="mt-2 text-sm text-gray-400">Kelola pemasukan dan pengeluaran dengan mudah.</p>
+        </section>
+
+        <section id="authCard" class="auth-card overflow-hidden rounded-[2rem] border border-gray-100 bg-white p-2 soft-card">
+          <div id="loginTabTrack" class="login-tab-track grid grid-cols-2 gap-2 rounded-[1.45rem] bg-gray-100 p-1">
+            <span id="loginTabIndicator" class="login-tab-indicator"></span>
+            <button id="tabMasuk" onclick="gantitab('masuk')" class="login-tab-btn is-active flex-1 rounded-2xl py-3 text-sm cursor-pointer" type="button">Masuk</button>
+            <button id="tabDaftar" onclick="gantitab('daftar')" class="login-tab-btn flex-1 rounded-2xl py-3 text-sm cursor-pointer" type="button">Daftar</button>
+          </div>
+
+          <div id="authFormShell" class="auth-form-shell p-5 sm:p-6">
+            <div id="formMasuk" class="auth-panel is-active">
+              <div class="mb-5">
+                <h2 class="text-xl font-extrabold text-gray-900">Masuk ke akun</h2>
+                <p class="mt-1 text-sm text-gray-400">Lanjutkan pencatatan keuanganmu.</p>
+              </div>
+              <div class="space-y-4">
+                <div>
+                  <label for="loginEmail" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Email</label>
+                  <input id="loginEmail" type="email" autocomplete="email" placeholder="nama@email.com"
+                    class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
+                </div>
+                <div>
+                  <label for="loginPassword" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Password</label>
+                  <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••"
+                    class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition"
+                    onkeydown="if(event.key==='Enter') doLogin()" />
+                </div>
+              </div>
+              <div class="mt-4 flex items-center justify-end">
+                <button type="button" onclick="openAccountHelpModal()" class="text-xs font-extrabold text-emerald-600 transition hover:text-emerald-700 cursor-pointer">
+                  Lupa akun?
+                </button>
+              </div>
+              <button onclick="doLogin()" class="btn-primary mt-5 w-full rounded-2xl py-4 text-sm font-extrabold text-white cursor-pointer">
+                Masuk Sekarang
+              </button>
+            </div>
+
+            <div id="formDaftar" class="auth-panel hidden">
+              <div class="mb-5">
+                <h2 class="text-xl font-extrabold text-gray-900">Buat akun baru</h2>
+                <p class="mt-1 text-sm text-gray-400">Siapkan nama, email, dan password.</p>
+              </div>
+              <div class="space-y-4">
+                <div>
+                  <label for="daftarNama" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Nama Lengkap</label>
+                  <input id="daftarNama" type="text" autocomplete="name" placeholder="Nama kamu"
+                    class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
+                </div>
+                <div>
+                  <label for="daftarEmail" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Email</label>
+                  <input id="daftarEmail" type="email" autocomplete="email" placeholder="nama@email.com"
+                    class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
+                </div>
+                <div>
+                  <label for="daftarPassword" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Password</label>
+                  <input id="daftarPassword" type="password" autocomplete="new-password" placeholder="Minimal 6 karakter"
+                    class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition"
+                    onkeydown="if(event.key==='Enter') doRegister()" />
+                </div>
+              </div>
+              <button onclick="doRegister()" class="btn-primary mt-6 w-full rounded-2xl py-4 text-sm font-extrabold text-white cursor-pointer">
+                Buat Akun
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <p class="mt-5 text-center text-xs leading-5 text-gray-400">
+          All rights reserved by <a href="https://asfa-tech.netlify.app/" target="_blank" rel="noopener noreferrer" class="font-extrabold text-emerald-600 hover:text-emerald-700">Asfa.Tech</a>. Copright 2026.
+        </p>
+      </div>
+    </section>
+
+
+    <section id="accountHelpModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4 py-6" aria-hidden="true">
+      <div class="account-help-backdrop absolute inset-0" onclick="closeAccountHelpModal()"></div>
+      <div class="account-help-card relative w-full max-w-md rounded-[2rem] border border-gray-100 bg-white p-5 soft-card">
+        <div class="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-xl font-extrabold text-gray-900">Bantuan Akun</h2>
+            <p class="mt-1 text-sm text-gray-400">Pilih bantuan sesuai kendala login.</p>
+          </div>
+          <button type="button" onclick="closeAccountHelpModal()" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 text-gray-500 transition hover:bg-gray-100 cursor-pointer" aria-label="Tutup bantuan akun">
+            ✕
+          </button>
+        </div>
+
+        <div id="recoveryTabTrack" class="recovery-tab-track mb-5 grid grid-cols-2 gap-2 rounded-[1.35rem] bg-gray-100 p-1">
+          <span id="recoveryTabIndicator" class="recovery-tab-indicator"></span>
+          <button id="recoveryTabPassword" type="button" onclick="switchRecoveryTab('password')" class="recovery-tab-btn is-active rounded-2xl py-2.5 text-xs font-extrabold text-gray-400 cursor-pointer">Lupa Password</button>
+          <button id="recoveryTabAccount" type="button" onclick="switchRecoveryTab('account')" class="recovery-tab-btn rounded-2xl py-2.5 text-xs font-extrabold text-gray-400 cursor-pointer">Lupa Email</button>
+        </div>
+
+        <div id="recoveryPasswordPanel">
+          <p class="mb-4 text-sm leading-6 text-gray-500">Masukkan email akunmu. Kami akan mengirim link untuk membuat password baru.</p>
+          <label for="resetEmail" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Email Akun</label>
+          <input id="resetEmail" type="email" autocomplete="email" placeholder="nama@email.com"
+            class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
+          <button type="button" onclick="sendPasswordReset()" class="btn-primary mt-5 w-full rounded-2xl py-3.5 text-sm font-extrabold text-white cursor-pointer">Kirim Link Reset Password</button>
+        </div>
+
+        <div id="recoveryAccountPanel" class="hidden">
+          <p class="mb-4 text-sm leading-6 text-gray-500">Kalau lupa email akun, kirim permintaan bantuan. Admin akan mencocokkan nama dan nomor HP yang terdaftar.</p>
+          <div class="space-y-4">
+            <div>
+              <label for="recoveryNama" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Nama</label>
+              <input id="recoveryNama" type="text" autocomplete="name" placeholder="Nama yang terdaftar"
+                class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
+            </div>
+            <div>
+              <label for="recoveryNomorHp" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Nomor HP</label>
+              <input id="recoveryNomorHp" type="tel" inputmode="tel" autocomplete="tel" placeholder="08xxxxxxxxxx"
+                class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
+            </div>
+            <div>
+              <label for="recoveryCatatan" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Catatan Opsional</label>
+              <input id="recoveryCatatan" type="text" placeholder="Contoh: saya lupa email login"
+                class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
+            </div>
+          </div>
+          <button type="button" onclick="submitAccountRecoveryRequest()" class="btn-primary mt-5 w-full rounded-2xl py-3.5 text-sm font-extrabold text-white cursor-pointer">Kirim Permintaan Bantuan</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="./script.js?v=20260619-v39-recovery-tab-animation"></script>
+  <script>
+    // Fallback khusus halaman login agar fitur "Lupa akun?" tetap aktif
+    // walaupun script utama yang terupload belum memuat fungsi recovery.
+    (function () {
+      function getEl(id) { return document.getElementById(id); }
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let activeRecoveryTab = 'password';
+      let recoveryTabInitialized = false;
+
+      function setRecoveryIndicatorToButton(button) {
+        const track = getEl('recoveryTabTrack');
+        const indicator = getEl('recoveryTabIndicator');
+        if (!track || !indicator || !button) return;
+
+        const trackRect = track.getBoundingClientRect();
+        const btnRect = button.getBoundingClientRect();
+        const left = btnRect.left - trackRect.left;
+        const width = btnRect.width;
+        indicator.style.setProperty('--recovery-tab-left', `${left}px`);
+        indicator.style.setProperty('--recovery-tab-width', `${width}px`);
+        indicator.style.setProperty('--recovery-to-left', `${left}px`);
+        indicator.style.setProperty('--recovery-to-width', `${width}px`);
+      }
+
+      function runRecoveryTabIndicator(fromButton, toButton) {
+        const track = getEl('recoveryTabTrack');
+        const indicator = getEl('recoveryTabIndicator');
+        if (!track || !indicator || !toButton) return;
+        if (!fromButton || reduceMotion) {
+          setRecoveryIndicatorToButton(toButton);
+          return;
+        }
+
+        const trackRect = track.getBoundingClientRect();
+        const fromRect = fromButton.getBoundingClientRect();
+        const toRect = toButton.getBoundingClientRect();
+        const fromLeft = fromRect.left - trackRect.left;
+        const toLeft = toRect.left - trackRect.left;
+        const fromWidth = fromRect.width;
+        const toWidth = toRect.width;
+        const fromRight = fromLeft + fromWidth;
+        const toRight = toLeft + toWidth;
+        const midLeft = Math.min(fromLeft, toLeft);
+        const midWidth = Math.max(fromRight, toRight) - midLeft;
+        const distance = Math.abs((toLeft + toWidth / 2) - (fromLeft + fromWidth / 2));
+        const duration = Math.min(760, Math.max(520, 440 + distance * 1.15));
+
+        indicator.style.setProperty('--recovery-from-left', `${fromLeft}px`);
+        indicator.style.setProperty('--recovery-from-width', `${fromWidth}px`);
+        indicator.style.setProperty('--recovery-mid-left', `${midLeft}px`);
+        indicator.style.setProperty('--recovery-mid-width', `${midWidth}px`);
+        indicator.style.setProperty('--recovery-to-left', `${toLeft}px`);
+        indicator.style.setProperty('--recovery-to-width', `${toWidth}px`);
+        indicator.style.setProperty('--recovery-tab-left', `${toLeft}px`);
+        indicator.style.setProperty('--recovery-tab-width', `${toWidth}px`);
+        indicator.style.setProperty('--recovery-tab-duration', `${duration}ms`);
+        indicator.classList.remove('is-moving');
+        void indicator.offsetWidth;
+        indicator.classList.add('is-moving');
+        window.setTimeout(() => indicator.classList.remove('is-moving'), duration + 40);
+      }
+
+      function validEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+      }
+
+      function showRecoveryError(title, message) {
+        return Swal.fire({
+          icon: 'error',
+          title,
+          text: message,
+          confirmButtonColor: '#059669'
+        });
+      }
+
+      window.openAccountHelpModal = function (tab = 'password') {
+        const modal = getEl('accountHelpModal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        modal.setAttribute('aria-hidden', 'false');
+        window.switchRecoveryTab(tab);
+        setTimeout(() => {
+          const firstInput = tab === 'account' ? getEl('recoveryNama') : getEl('resetEmail');
+          firstInput?.focus?.();
+        }, 80);
+      };
+
+      window.closeAccountHelpModal = function () {
+        const modal = getEl('accountHelpModal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        modal.setAttribute('aria-hidden', 'true');
+      };
+
+      window.switchRecoveryTab = function (tab = 'password') {
+        const nextTab = tab === 'account' ? 'account' : 'password';
+        const isAccount = nextTab === 'account';
+        const fromButton = activeRecoveryTab === 'account' ? getEl('recoveryTabAccount') : getEl('recoveryTabPassword');
+        const toButton = isAccount ? getEl('recoveryTabAccount') : getEl('recoveryTabPassword');
+
+        getEl('recoveryPasswordPanel')?.classList.toggle('hidden', isAccount);
+        getEl('recoveryAccountPanel')?.classList.toggle('hidden', !isAccount);
+
+        getEl('recoveryTabPassword')?.classList.toggle('is-active', !isAccount);
+        getEl('recoveryTabAccount')?.classList.toggle('is-active', isAccount);
+
+        if (nextTab === activeRecoveryTab && recoveryTabInitialized) {
+          setRecoveryIndicatorToButton(toButton);
+          return;
+        }
+
+        runRecoveryTabIndicator(recoveryTabInitialized ? fromButton : null, toButton);
+        activeRecoveryTab = nextTab;
+        recoveryTabInitialized = true;
+      };
+
+      window.sendPasswordReset = async function () {
+        const email = getEl('resetEmail')?.value.trim();
+
+        if (!email) {
+          return Swal.fire({
+            icon: 'warning',
+            title: 'Email belum diisi',
+            text: 'Masukkan email akun terlebih dahulu.',
+            confirmButtonColor: '#059669'
+          });
+        }
+
+        if (!validEmail(email)) {
+          return Swal.fire({
+            icon: 'warning',
+            title: 'Email tidak valid',
+            text: 'Masukkan email dengan format yang benar, contoh: nama@email.com.',
+            confirmButtonColor: '#059669'
+          });
+        }
+
+        const btn = event?.target;
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = 'Mengirim link...';
+        }
+
+        try {
+          const basePath = window.location.pathname.replace(/[^/]*$/, '');
+          const redirectTo = `${window.location.origin}${basePath}reset-password.html`;
+          const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo });
+
+          if (error) {
+            console.error('[Gagal mengirim link reset password]', error);
+            return showRecoveryError(
+              'Gagal mengirim link',
+              'Link reset password belum bisa dikirim. Pastikan email sudah benar dan terdaftar. Jika masih gagal, cek pengaturan Redirect URL di Supabase.'
+            );
+          }
+
+          await Swal.fire({
+            icon: 'success',
+            title: 'Link terkirim',
+            text: 'Cek email kamu untuk membuat password baru.',
+            confirmButtonColor: '#059669'
+          });
+
+          window.closeAccountHelpModal();
+        } catch (error) {
+          console.error('[Gagal mengirim link reset password]', error);
+          return showRecoveryError(
+            'Gagal mengirim link',
+            'Terjadi gangguan saat mengirim link reset password. Periksa koneksi internet, lalu coba lagi.'
+          );
+        } finally {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Kirim Link Reset Password';
+          }
+        }
+      };
+
+      window.submitAccountRecoveryRequest = async function () {
+        const nama = getEl('recoveryNama')?.value.trim();
+        const nomorHp = getEl('recoveryNomorHp')?.value.trim();
+        const catatan = getEl('recoveryCatatan')?.value.trim() || null;
+
+        if (!nama || !nomorHp) {
+          return Swal.fire({
+            icon: 'warning',
+            title: 'Data belum lengkap',
+            text: 'Nama dan nomor HP wajib diisi agar admin bisa mencocokkan data akun.',
+            confirmButtonColor: '#059669'
+          });
+        }
+
+        const btn = event?.target;
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = 'Mengirim permintaan...';
+        }
+
+        try {
+          const { error } = await db
+            .from('account_recovery_requests')
+            .insert({ nama, nomor_hp: nomorHp, catatan });
+
+          if (error) {
+            console.error('[Gagal mengirim permintaan bantuan akun]', error);
+            const raw = [
+              error.message,
+              error.details,
+              error.hint,
+              error.code
+            ].filter(Boolean).join(' ').toLowerCase();
+
+            if (
+              raw.includes('account_recovery_requests') ||
+              raw.includes('schema cache') ||
+              raw.includes('pgrst204') ||
+              raw.includes('relation') ||
+              raw.includes('does not exist')
+            ) {
+              return showRecoveryError(
+                'Gagal mengirim permintaan',
+                'Fitur lupa akun belum aktif di database. Jalankan SQL terbaru terlebih dahulu.'
+              );
+            }
+
+            return showRecoveryError(
+              'Gagal mengirim permintaan',
+              'Permintaan bantuan belum bisa dikirim. Periksa kembali data yang dimasukkan, lalu coba lagi.'
+            );
+          }
+
+          await Swal.fire({
+            icon: 'success',
+            title: 'Permintaan terkirim',
+            text: 'Admin akan mengecek data akun dan menghubungi kamu melalui nomor HP yang diberikan.',
+            confirmButtonColor: '#059669'
+          });
+
+          ['recoveryNama', 'recoveryNomorHp', 'recoveryCatatan'].forEach((id) => {
+            const input = getEl(id);
+            if (input) input.value = '';
+          });
+
+          window.closeAccountHelpModal();
+        } catch (error) {
+          console.error('[Gagal mengirim permintaan bantuan akun]', error);
+          return showRecoveryError(
+            'Gagal mengirim permintaan',
+            'Terjadi gangguan saat mengirim permintaan bantuan akun. Periksa koneksi internet, lalu coba lagi.'
+          );
+        } finally {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Kirim Permintaan Bantuan';
+          }
+        }
+      };
+
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') window.closeAccountHelpModal();
+      });
+
+      window.addEventListener('resize', () => {
+        const activeButton = activeRecoveryTab === 'account' ? getEl('recoveryTabAccount') : getEl('recoveryTabPassword');
+        setRecoveryIndicatorToButton(activeButton);
+      });
+    })();
+  </script>
+  <script>
+    (function () {
+      let activeTab = 'masuk';
+      let initialized = false;
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function getEl(id) { return document.getElementById(id); }
+
+      function setIndicatorToButton(button) {
+        const track = getEl('loginTabTrack');
+        const indicator = getEl('loginTabIndicator');
+        if (!track || !indicator || !button) return;
+
+        const trackRect = track.getBoundingClientRect();
+        const btnRect = button.getBoundingClientRect();
+        const left = btnRect.left - trackRect.left;
+        const width = btnRect.width;
+        indicator.style.setProperty('--tab-left', `${left}px`);
+        indicator.style.setProperty('--tab-width', `${width}px`);
+        indicator.style.setProperty('--to-left', `${left}px`);
+        indicator.style.setProperty('--to-width', `${width}px`);
+      }
+
+      function runTabIndicator(fromButton, toButton) {
+        const track = getEl('loginTabTrack');
+        const indicator = getEl('loginTabIndicator');
+        if (!track || !indicator || !toButton) return;
+        if (!fromButton || reduceMotion) {
+          setIndicatorToButton(toButton);
+          return;
+        }
+
+        const trackRect = track.getBoundingClientRect();
+        const fromRect = fromButton.getBoundingClientRect();
+        const toRect = toButton.getBoundingClientRect();
+        const fromLeft = fromRect.left - trackRect.left;
+        const toLeft = toRect.left - trackRect.left;
+        const fromWidth = fromRect.width;
+        const toWidth = toRect.width;
+        const fromRight = fromLeft + fromWidth;
+        const toRight = toLeft + toWidth;
+        const midLeft = Math.min(fromLeft, toLeft);
+        const midWidth = Math.max(fromRight, toRight) - midLeft;
+        const distance = Math.abs((toLeft + toWidth / 2) - (fromLeft + fromWidth / 2));
+        const duration = Math.min(760, Math.max(520, 440 + distance * 1.15));
+
+        indicator.style.setProperty('--from-left', `${fromLeft}px`);
+        indicator.style.setProperty('--from-width', `${fromWidth}px`);
+        indicator.style.setProperty('--mid-left', `${midLeft}px`);
+        indicator.style.setProperty('--mid-width', `${midWidth}px`);
+        indicator.style.setProperty('--to-left', `${toLeft}px`);
+        indicator.style.setProperty('--to-width', `${toWidth}px`);
+        indicator.style.setProperty('--tab-left', `${toLeft}px`);
+        indicator.style.setProperty('--tab-width', `${toWidth}px`);
+        indicator.style.setProperty('--tab-duration', `${duration}ms`);
+        indicator.classList.remove('is-moving');
+        void indicator.offsetWidth;
+        indicator.classList.add('is-moving');
+        window.setTimeout(() => indicator.classList.remove('is-moving'), duration + 40);
+      }
+
+      function switchPanel(tab) {
+        const isLogin = tab === 'masuk';
+        const shell = getEl('authFormShell');
+        const loginPanel = getEl('formMasuk');
+        const registerPanel = getEl('formDaftar');
+        const oldPanel = isLogin ? registerPanel : loginPanel;
+        const newPanel = isLogin ? loginPanel : registerPanel;
+        if (!shell || !oldPanel || !newPanel) return;
+
+        oldPanel.classList.add('hidden');
+        oldPanel.classList.remove('is-active', 'is-entering', 'is-leaving');
+        newPanel.classList.remove('hidden', 'is-entering', 'is-leaving');
+        newPanel.classList.add('is-active');
+        shell.style.height = '';
+        shell.style.overflow = '';
+      }
+
+      function setTabButtonState(tab) {
+        const loginButton = getEl('tabMasuk');
+        const registerButton = getEl('tabDaftar');
+        loginButton?.classList.toggle('is-active', tab === 'masuk');
+        registerButton?.classList.toggle('is-active', tab === 'daftar');
+      }
+
+      window.gantitab = function (tab) {
+        const nextTab = tab === 'daftar' ? 'daftar' : 'masuk';
+        const previousTab = activeTab;
+        const fromButton = previousTab === 'daftar' ? getEl('tabDaftar') : getEl('tabMasuk');
+        const toButton = nextTab === 'daftar' ? getEl('tabDaftar') : getEl('tabMasuk');
+
+        if (nextTab === activeTab && initialized) return;
+        activeTab = nextTab;
+        setTabButtonState(nextTab);
+        runTabIndicator(initialized ? fromButton : null, toButton);
+        switchPanel(nextTab, initialized);
+        initialized = true;
+      };
+
+      function initLoginTabs() {
+        initialized = false;
+        activeTab = 'masuk';
+        setTabButtonState('masuk');
+        switchPanel('masuk', false);
+        window.gantitab('masuk');
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLoginTabs);
+      } else {
+        initLoginTabs();
+      }
+
+      window.addEventListener('resize', () => {
+        const activeButton = activeTab === 'daftar' ? getEl('tabDaftar') : getEl('tabMasuk');
+        setIndicatorToButton(activeButton);
+      });
+    })();
+  </script>
+</body>
+</html>
