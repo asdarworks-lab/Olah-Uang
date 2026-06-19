@@ -93,34 +93,6 @@ function normalizeInsights(value) {
     .slice(0, 3);
 }
 
-function fallbackInsights(summary) {
-  const topExpense = summary.kategori_pengeluaran_terbesar?.[0];
-  const change = summary.perbandingan_bulan_lalu?.pengeluaran_naik_persen;
-  const results = [];
-
-  if (Number.isFinite(change)) {
-    if (change > 0) {
-      results.push(`Pengeluaran ${summary.periode} naik ${change}% dibanding periode sebelumnya. Dompetmu kerja lembur, kamu malah kasih shift tambahan 😅`);
-    } else if (change < 0) {
-      results.push(`Pengeluaran ${summary.periode} turun ${Math.abs(change)}% dibanding periode sebelumnya. Akhirnya dompet bisa napas sedikit, jangan langsung diajak marathon belanja lagi 😌`);
-    } else {
-      results.push(`Pengeluaran ${summary.periode} sama seperti periode sebelumnya. Konsisten sih, tapi dompet juga pengin lihat plot twist yang lebih hemat 😄`);
-    }
-  }
-
-  if (summary.potensi_tabungan >= 0) {
-    results.push(`Potensi tabungan periode ini ${formatRupiah(summary.potensi_tabungan)} dari target ${formatRupiah(summary.target_tabungan)}. Lumayan, tapi jangan sampai berubah jadi dana jajan dadakan ya 👀`);
-  } else {
-    results.push(`Pengeluaran lebih besar dari pemasukan sekitar ${formatRupiah(Math.abs(summary.potensi_tabungan))}. Ini bukan drama Korea, saldo juga capek kalau dibuat tegang terus 😵`);
-  }
-
-  if (topExpense?.kategori) {
-    results.push(`Kategori terbesar masih ${topExpense.kategori} sebesar ${formatRupiah(topExpense.nominal)}. Tersangkanya sudah jelas, tinggal kamu mau negosiasi atau pura-pura tidak lihat 😌`);
-  }
-
-  return results.slice(0, 3);
-}
-
 async function verifyUser(req) {
   const authHeader = req.headers.authorization || req.headers.Authorization || '';
   if (!authHeader.startsWith('Bearer ')) return null;
@@ -157,27 +129,43 @@ module.exports = async function handler(req, res) {
 
     const prompt = `Kamu adalah asisten insight keuangan untuk aplikasi Olah Uang.
 
-Buat tepat 3 insight keuangan dalam bahasa Indonesia berdasarkan data ringkas yang diberikan.
+Buat tepat 3 insight keuangan dalam bahasa Indonesia berdasarkan DATA RINGKAS KEUANGAN.
 
 GAYA WAJIB:
 - Roasting ringan + sindiran halus + emotikon + tetap informatif.
 - Gaya seperti teman jahil yang peduli, bukan orang marah.
-- Jangan memakai pola yang sama terus. Variasikan pembuka dan struktur kalimat.
-- Jangan selalu memakai urutan: tren, tabungan, kategori. Pilih angle sesuai data dan variasi.
-- Gunakan variasi gaya ini untuk periode ini: ${variasiGaya}.
+- Jangan monoton. Jangan terasa seperti template yang hanya ganti angka.
+- Gunakan variasi gaya periode ini: ${variasiGaya}.
 - Fokus variasi periode ini: ${fokus}.
 - Variation seed: ${summary.variation_seed}.
 
-ATURAN ISI:
-- Tetap berdasarkan angka yang ada, jangan mengarang data.
-- Setiap insight maksimal 2 kalimat.
+ATURAN PENTING:
+- Setiap insight harus membahas ANGLE yang berbeda.
+- DILARANG semua insight hanya muter di: tren pengeluaran, potensi tabungan, kategori terbesar.
+- Tidak wajib membahas tren, tabungan, dan kategori terbesar kalau ada angle lain yang lebih menarik.
+- Pilih 3 angle paling menarik dari daftar ini sesuai data:
+  1. pemasukan vs pengeluaran,
+  2. surplus/defisit periode,
+  3. rasio pengeluaran terhadap pemasukan,
+  4. kategori over budget,
+  5. kategori hampir habis,
+  6. kategori pengeluaran terbesar,
+  7. kategori pemasukan terbesar,
+  8. target tabungan tercapai/belum,
+  9. jumlah transaksi,
+  10. perubahan dari periode sebelumnya,
+  11. peluang hemat realistis,
+  12. prioritas yang perlu dikontrol periode berikutnya.
+- Tiap insight maksimal 2 kalimat.
 - Tiap insight wajib punya emotikon yang relevan.
-- Boleh menyindir halus, tapi jangan menghina, merendahkan, atau kasar.
+- Tetap berdasarkan angka yang ada, jangan mengarang data.
 - Jangan memberi saran investasi, pinjaman, atau keputusan finansial berisiko.
 - Jangan menyebut kamu AI, Gemini, prompt, JSON, atau sistem.
-- Jangan mengulang frasa yang sama antar insight.
-- Hindari kalimat generik seperti "ini tanda kebiasaan belanja mulai terkendali" kecuali memang sangat relevan.
-- Buat kalimat terasa fresh, ekspresif, dan tidak monoton.
+- Jangan mengulang frasa/pola pembuka antar insight.
+- Hindari kalimat generik seperti "ini tanda kebiasaan belanja mulai terkendali" kecuali datanya benar-benar mendukung.
+- Kalau ada data kategori_over_budget atau kategori_hampir_habis, prioritaskan salah satunya karena itu lebih actionable.
+- Kalau total_pengeluaran lebih besar dari total_pemasukan, bahas defisit/saldo minus dengan roasting ringan.
+- Kalau data bulan lalu kosong/null, jangan memaksakan perbandingan bulan lalu.
 
 FORMAT BALASAN:
 Kembalikan hanya JSON valid:
@@ -192,8 +180,8 @@ ${JSON.stringify(summary, null, 2)}`;
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: 0.95,
-          topP: 0.92,
+          temperature: 1.0,
+          topP: 0.96,
           maxOutputTokens: 900,
           responseMimeType: 'application/json',
           responseSchema: {
@@ -224,10 +212,12 @@ ${JSON.stringify(summary, null, 2)}`;
       .trim();
 
     const parsed = extractJson(text);
-    let insights = normalizeInsights(parsed);
+    const insights = normalizeInsights(parsed);
     if (insights.length < 3) {
-      console.warn('[Gemini invalid output, fallback used]', text);
-      insights = fallbackInsights(summary);
+      console.error('[Gemini invalid output]', text);
+      return sendJson(res, 502, {
+        message: 'Google AI belum mengembalikan 3 insight valid. Coba refresh halaman.'
+      });
     }
 
     return sendJson(res, 200, { insights });
