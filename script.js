@@ -6,7 +6,7 @@
 const SUPABASE_URL = 'https://uezjncjapumyrkjxzslw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_gMbWszjY1XIou5Cj4wDkjg_UlGiuOd5';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const APP_VERSION = '20260619-v27-natural-nav-motion';
+const APP_VERSION = '20260619-v40-admin-account-recovery';
 console.log(`Olah Uang script loaded: ${APP_VERSION}`);
 window.OLAH_UANG_VERSION = APP_VERSION;
 document.documentElement.setAttribute('data-olah-uang-version', APP_VERSION);
@@ -41,6 +41,7 @@ let adminTrxPage = 1;
 const adminTrxPerPage = 15;
 let allProfiles = [];
 let allTrxData = [];
+let allRecoveryRequests = [];
 
 // ============================================================
 // DATA DEFAULT
@@ -113,27 +114,93 @@ function formatTanggal(value, options = { day: 'numeric', month: 'short' }) {
   return date.toLocaleDateString('id-ID', options);
 }
 
-function getErrorMessage(error) {
-  if (!error) return 'Terjadi kesalahan tanpa pesan dari server.';
-  if (typeof error === 'string') return error;
+function isValidEmailFormat(email = '') {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim());
+}
 
-  const candidates = [
+function getRawErrorParts(error) {
+  if (!error) return [];
+  if (typeof error === 'string') return [error];
+
+  return [
     error.message,
     error.error_description,
     error.description,
     error.details,
     error.hint,
-    error.code ? `Kode error: ${error.code}` : ''
-  ].filter(Boolean);
+    error.code
+  ].filter(Boolean).map(String);
+}
 
-  if (candidates.length) return candidates.join(' | ');
+function translateErrorMessage(error) {
+  const parts = getRawErrorParts(error);
+  const rawText = parts.join(' | ');
+  const text = rawText.toLowerCase();
+  const code = String(error?.code || '').toLowerCase();
 
-  try {
-    const json = JSON.stringify(error, Object.getOwnPropertyNames(error), 2);
-    return json && json !== '{}' ? json : 'Server mengembalikan error kosong. Cek Console browser dan Log Supabase.';
-  } catch {
-    return String(error);
-  }
+  if (!parts.length) return 'Terjadi kesalahan tanpa pesan dari server.';
+
+  const translations = [
+    {
+      match: () => text.includes('unable to validate email address') || (code === 'validation_failed' && text.includes('email')),
+      message: 'Format email tidak valid. Periksa kembali alamat email, contoh: nama@email.com.'
+    },
+    {
+      match: () => text.includes('invalid login credentials'),
+      message: 'Email atau password salah. Periksa kembali data login kamu.'
+    },
+    {
+      match: () => text.includes('email not confirmed') || text.includes('email confirmation'),
+      message: 'Email belum diverifikasi. Silakan cek kotak masuk email kamu terlebih dahulu.'
+    },
+    {
+      match: () => text.includes('user already registered') || text.includes('already registered') || text.includes('already exists'),
+      message: 'Email ini sudah terdaftar. Silakan masuk atau gunakan email lain.'
+    },
+    {
+      match: () => text.includes('password should be at least') || text.includes('weak password'),
+      message: 'Password terlalu lemah. Gunakan minimal 6 karakter atau kombinasi yang lebih aman.'
+    },
+    {
+      match: () => text.includes('signup is disabled') || text.includes('signups not allowed'),
+      message: 'Pendaftaran akun sedang ditutup. Silakan hubungi admin untuk dibuatkan akun.'
+    },
+    {
+      match: () => text.includes('rate limit') || text.includes('too many requests'),
+      message: 'Terlalu banyak percobaan. Tunggu sebentar, lalu coba lagi.'
+    },
+    {
+      match: () => text.includes('failed to fetch') || text.includes('networkerror') || text.includes('network request failed'),
+      message: 'Gagal terhubung ke server. Periksa koneksi internet kamu, lalu coba lagi.'
+    },
+    {
+      match: () => text.includes('jwt') && text.includes('expired'),
+      message: 'Sesi login sudah berakhir. Silakan masuk kembali.'
+    },
+    {
+      match: () => text.includes('permission denied') || text.includes('row-level security') || text.includes('violates row-level security'),
+      message: 'Akses ditolak. Akun ini tidak memiliki izin untuk melakukan tindakan tersebut.'
+    },
+    {
+      match: () => text.includes('duplicate key') || code === '23505',
+      message: 'Data yang sama sudah ada. Gunakan data lain atau periksa kembali input kamu.'
+    },
+    {
+      match: () => text.includes('invalid input') || code === '22p02',
+      message: 'Data yang dimasukkan belum sesuai format. Periksa kembali isian kamu.'
+    }
+  ];
+
+  const matched = translations.find((item) => item.match());
+  if (matched) return matched.message;
+
+  // Jangan tampilkan pesan mentah dari server ke user karena sering berbahasa Inggris.
+  // Detail teknis tetap dicatat di console lewat showError.
+  return 'Terjadi kesalahan. Periksa kembali data yang dimasukkan, lalu coba lagi.';
+}
+
+function getErrorMessage(error) {
+  return translateErrorMessage(error);
 }
 
 function showError(title, error) {
@@ -163,17 +230,53 @@ function delay(ms) {
 
 
 function normalizeMoneyConfig(source, fallback) {
-  const base = source && typeof source === 'object' && !Array.isArray(source) && Object.keys(source).length
-    ? source
-    : fallback;
-
-  return Object.entries(base).reduce((acc, [kategori, nominal]) => {
-    const nama = String(kategori || '').trim();
-    if (!nama) return acc;
+  const normalizeAmount = (nominal) => {
     const angka = Number(nominal);
-    acc[nama] = Number.isFinite(angka) && angka > 0 ? Math.round(angka) : 0;
+    return Number.isFinite(angka) && angka > 0 ? Math.round(angka) : 0;
+  };
+
+  const addEntry = (acc, kategori, nominal) => {
+    const nama = String(kategori || '').trim();
+    if (!nama || Object.prototype.hasOwnProperty.call(acc, nama)) return acc;
+    acc[nama] = normalizeAmount(nominal);
     return acc;
-  }, {});
+  };
+
+  // Format baru: array agar urutan kategori tetap stabil saat disimpan ke jsonb Supabase.
+  // Format lama object tetap didukung supaya data user lama tidak rusak.
+  if (Array.isArray(source) && source.length) {
+    return source.reduce((acc, item) => {
+      if (Array.isArray(item)) return addEntry(acc, item[0], item[1]);
+      if (item && typeof item === 'object') {
+        return addEntry(
+          acc,
+          item.kategori ?? item.nama ?? item.name ?? item.label,
+          item.nominal ?? item.amount ?? item.target ?? item.value
+        );
+      }
+      return acc;
+    }, {});
+  }
+
+  if (source && typeof source === 'object' && Object.keys(source).length) {
+    const result = {};
+    const fallbackKeys = Object.keys(fallback || {});
+    const sourceKeys = Object.keys(source);
+
+    // Kategori default diposisikan sesuai urutan default agar tampilan tidak terasa acak
+    // ketika data lama masih tersimpan sebagai object jsonb.
+    fallbackKeys.forEach((key) => {
+      if (Object.prototype.hasOwnProperty.call(source, key)) addEntry(result, key, source[key]);
+    });
+
+    sourceKeys.forEach((key) => {
+      if (!Object.prototype.hasOwnProperty.call(result, key)) addEntry(result, key, source[key]);
+    });
+
+    return result;
+  }
+
+  return Object.entries(fallback || {}).reduce((acc, [kategori, nominal]) => addEntry(acc, kategori, nominal), {});
 }
 
 function applyFinanceSettingsFromProfile(profile) {
@@ -455,18 +558,35 @@ async function saveProfileSettings(options = {}) {
   });
 }
 
-function getSettingsMapFromUI(type) {
+function getSettingsListFromUI(type) {
   const rows = document.querySelectorAll(`[data-setting-type="${type}"]`);
-  const result = {};
+  const result = [];
+  const usedNames = new Set();
 
   rows.forEach((row) => {
     const name = row.querySelector('[data-field="name"]')?.value.trim();
     const amount = Number(row.querySelector('[data-field="amount"]')?.value || 0);
-    if (!name) return;
-    result[name] = Number.isFinite(amount) && amount > 0 ? Math.round(amount) : 0;
+    const lookup = name?.toLowerCase();
+    if (!name || usedNames.has(lookup)) return;
+    usedNames.add(lookup);
+    result.push({
+      kategori: name,
+      nominal: Number.isFinite(amount) && amount > 0 ? Math.round(amount) : 0
+    });
   });
 
   return result;
+}
+
+function mapFromSettingsList(list) {
+  return list.reduce((acc, item) => {
+    acc[item.kategori] = item.nominal;
+    return acc;
+  }, {});
+}
+
+function getSettingsMapFromUI(type) {
+  return mapFromSettingsList(getSettingsListFromUI(type));
 }
 
 function renderSettingsRows(containerId, map, type) {
@@ -578,12 +698,12 @@ async function saveFinanceSettings(type = 'all', options = {}) {
 
   const payload = {};
   if (type === 'keluar' || type === 'all') {
-    payload.budget_config = getSettingsMapFromUI('keluar');
+    payload.budget_config = getSettingsListFromUI('keluar');
     const targetValue = Number($('settingTargetSavings')?.value || 0);
     payload.target_tabungan_bulanan = Number.isFinite(targetValue) && targetValue >= 0 ? Math.round(targetValue) : 0;
   }
   if (type === 'masuk' || type === 'all') {
-    payload.income_target_config = getSettingsMapFromUI('masuk');
+    payload.income_target_config = getSettingsListFromUI('masuk');
   }
 
   const { data, error } = await db
@@ -670,6 +790,31 @@ async function fetchAllProfiles({ maxRows = MAX_FETCH_ROWS } = {}) {
   return allRows;
 }
 
+async function fetchAllAccountRecoveryRequests({ maxRows = 1000 } = {}) {
+  let allRows = [];
+  let from = 0;
+
+  while (from < maxRows) {
+    const to = Math.min(from + DATA_PAGE_SIZE - 1, maxRows - 1);
+
+    const { data, error } = await db
+      .from('account_recovery_requests')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) throw error;
+
+    const batch = data || [];
+    allRows = allRows.concat(batch);
+
+    if (batch.length < DATA_PAGE_SIZE) break;
+    from += DATA_PAGE_SIZE;
+  }
+
+  return allRows;
+}
+
 function csvCell(value) {
   return `"${String(value ?? '').replace(/"/g, '""')}"`;
 }
@@ -681,7 +826,7 @@ function applyDarkMode(enabled) {
   body?.classList.toggle('dark', enabled);
   localStorage.setItem('olahUangDarkMode', enabled ? '1' : '0');
   const toggle = $('darkModeToggle');
-  if (toggle) toggle.textContent = enabled ? '☀️' : '🌙';
+  if (toggle) toggle.textContent = enabled ? '☀️' : '🌕';
 
   requestAnimationFrame(() => updateMovingNavIndicators(activeAppView));
 
@@ -823,6 +968,10 @@ async function doLogin() {
     return showWarning('Lengkapi dulu', 'Email dan password wajib diisi. Database saja butuh identitas, masa manusia tidak.');
   }
 
+  if (!isValidEmailFormat(email)) {
+    return showWarning('Email tidak valid', 'Masukkan email dengan format yang benar, contoh: nama@email.com.');
+  }
+
   const btn = globalThis.event?.target;
   if (btn) btn.disabled = true;
 
@@ -845,6 +994,10 @@ async function doRegister() {
 
   if (!nama || !email || !password) {
     return showWarning('Lengkapi dulu', 'Nama, email, dan password wajib diisi. Form kosong belum bisa menjadi akun, sayangnya.');
+  }
+
+  if (!isValidEmailFormat(email)) {
+    return showWarning('Email tidak valid', 'Masukkan email dengan format yang benar, contoh: nama@email.com.');
   }
 
   if (password.length < 6) {
@@ -1842,6 +1995,7 @@ function setupAdminRealtime() {
     .channel('admin-dashboard-watch')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'transaksi' }, () => muatData(false))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => muatData(false))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'account_recovery_requests' }, () => muatData(false))
     .subscribe();
 }
 
@@ -1849,9 +2003,14 @@ async function muatData(showLoading = true) {
   if (showLoading && $('userTableBody')) {
     $('userTableBody').innerHTML = '<tr><td colspan="5" class="px-6 py-6 text-center text-gray-400">Memuat data...</td></tr>';
   }
+  if (showLoading && $('accountRecoveryBody')) {
+    $('accountRecoveryBody').innerHTML = '<tr><td colspan="7" class="px-6 py-6 text-center text-gray-400">Memuat permintaan bantuan akun...</td></tr>';
+  }
 
   let profilesData = [];
   let trxData = [];
+  let recoveryData = [];
+  let recoveryError = null;
 
   try {
     [profilesData, trxData] = await Promise.all([
@@ -1862,17 +2021,26 @@ async function muatData(showLoading = true) {
     return showError('Gagal mengambil data admin', error);
   }
 
+  try {
+    recoveryData = await fetchAllAccountRecoveryRequests();
+  } catch (error) {
+    recoveryError = error;
+    console.error('[Gagal mengambil permintaan bantuan akun]', error);
+  }
+
   allProfiles = profilesData || [];
   allTrxData = trxData || [];
+  allRecoveryRequests = recoveryData || [];
 
-  renderStatCards(allProfiles, allTrxData);
+  renderStatCards(allProfiles, allTrxData, allRecoveryRequests);
+  renderAccountRecoveryRequests(allRecoveryRequests, recoveryError);
   renderUserTable(allProfiles, allTrxData);
   renderUserActivity(allProfiles, allTrxData);
   renderAllTrx();
   renderAdminChart(allTrxData);
 }
 
-function renderStatCards(profiles, trx) {
+function renderStatCards(profiles, trx, recoveryRequests = []) {
   const totalMasuk = trx
     .filter((item) => item.jenis === 'masuk')
     .reduce((acc, item) => acc + (Number(item.nominal) || 0), 0);
@@ -1881,10 +2049,152 @@ function renderStatCards(profiles, trx) {
     .filter((item) => item.jenis === 'keluar')
     .reduce((acc, item) => acc + (Number(item.nominal) || 0), 0);
 
+  const totalRecoveryNew = recoveryRequests.filter((item) => (item.status || 'baru') === 'baru').length;
+
   if ($('statTotalUser')) $('statTotalUser').textContent = profiles.length;
   if ($('statTotalTrx')) $('statTotalTrx').textContent = trx.length;
   if ($('statTotalMasuk')) $('statTotalMasuk').textContent = formatRupiah(totalMasuk);
   if ($('statTotalKeluar')) $('statTotalKeluar').textContent = formatRupiah(totalKeluar);
+  if ($('statRecoveryNew')) $('statRecoveryNew').textContent = totalRecoveryNew;
+}
+
+function normalizeRecoveryPhone(value = '') {
+  const digits = String(value || '').replace(/[^0-9]/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('0')) return `62${digits.slice(1)}`;
+  if (digits.startsWith('62')) return digits;
+  return digits;
+}
+
+function getRecoveryStatusBadge(status = 'baru') {
+  const safeStatus = String(status || 'baru').toLowerCase();
+  const map = {
+    baru: 'bg-amber-100 text-amber-700',
+    diproses: 'bg-blue-100 text-blue-700',
+    selesai: 'bg-emerald-100 text-emerald-700',
+    ditolak: 'bg-rose-100 text-rose-700'
+  };
+  const label = {
+    baru: 'Baru',
+    diproses: 'Diproses',
+    selesai: 'Selesai',
+    ditolak: 'Ditolak'
+  }[safeStatus] || 'Baru';
+
+  return `<span class="px-2.5 py-1 rounded-full text-[11px] font-extrabold ${map[safeStatus] || map.baru}">${label}</span>`;
+}
+
+function getLikelyRecoveryMatches(request) {
+  const requestName = String(request?.nama || '').trim().toLowerCase();
+  const requestPhone = normalizeRecoveryPhone(request?.nomor_hp || '');
+
+  return allProfiles
+    .map((profile) => {
+      const profileName = String(profile.nama || '').trim().toLowerCase();
+      const profilePhone = normalizeRecoveryPhone(profile.nomor_hp || '');
+      let score = 0;
+
+      if (requestPhone && profilePhone && requestPhone === profilePhone) score += 4;
+      if (requestName && profileName && profileName === requestName) score += 3;
+      if (requestName && profileName && profileName.includes(requestName)) score += 1;
+      if (requestName && profileName && requestName.includes(profileName)) score += 1;
+
+      return { profile, score };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 2)
+    .map((item) => item.profile);
+}
+
+function renderAccountRecoveryRequests(requests, error = null) {
+  const body = $('accountRecoveryBody');
+  if (!body) return;
+
+  if (error) {
+    body.innerHTML = `
+      <tr>
+        <td colspan="7" class="px-6 py-6 text-center text-amber-600">
+          Fitur bantuan akun belum bisa dibaca. Pastikan SQL terbaru sudah dijalankan di Supabase.
+        </td>
+      </tr>`;
+    if ($('recoveryNewBadge')) $('recoveryNewBadge').textContent = 'SQL belum aktif';
+    if ($('statRecoveryNew')) $('statRecoveryNew').textContent = '—';
+    return;
+  }
+
+  const newCount = requests.filter((item) => (item.status || 'baru') === 'baru').length;
+  if ($('recoveryNewBadge')) $('recoveryNewBadge').textContent = `${newCount} baru`;
+
+  if (!requests.length) {
+    body.innerHTML = '<tr><td colspan="7" class="px-6 py-6 text-center text-gray-400">Belum ada permintaan bantuan akun.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = requests.map((request) => {
+    const status = request.status || 'baru';
+    const phone = normalizeRecoveryPhone(request.nomor_hp || '');
+    const waLink = phone ? `https://wa.me/${phone}` : '#';
+    const tanggal = formatTanggal(request.created_at, { day: 'numeric', month: 'short', year: 'numeric' });
+    const matches = getLikelyRecoveryMatches(request);
+    const matchText = matches.length
+      ? matches.map((profile) => `<div class="font-bold text-gray-700">${escapeHTML(profile.nama || profile.email || 'Pengguna')}</div><div class="text-[11px] text-gray-400">${escapeHTML(profile.email || '-')}</div>`).join('<div class="my-1 border-t border-gray-100"></div>')
+      : '<span class="text-gray-400">Belum ditemukan</span>';
+    const actions = [
+      status !== 'diproses' ? `<button onclick="updateRecoveryStatus('${escapeHTML(request.id)}','diproses')" class="rounded-xl bg-blue-50 px-3 py-1.5 text-xs font-extrabold text-blue-700 transition hover:bg-blue-100">Proses</button>` : '',
+      status !== 'selesai' ? `<button onclick="updateRecoveryStatus('${escapeHTML(request.id)}','selesai')" class="rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-extrabold text-emerald-700 transition hover:bg-emerald-100">Selesai</button>` : '',
+      status !== 'ditolak' ? `<button onclick="updateRecoveryStatus('${escapeHTML(request.id)}','ditolak')" class="rounded-xl bg-rose-50 px-3 py-1.5 text-xs font-extrabold text-rose-700 transition hover:bg-rose-100">Tolak</button>` : ''
+    ].filter(Boolean).join(' ');
+
+    return `
+      <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
+        <td class="px-6 py-4 font-bold text-gray-800">${escapeHTML(request.nama || '-')}</td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          ${phone ? `<a href="${waLink}" target="_blank" rel="noopener" class="font-bold text-emerald-600 hover:text-emerald-700">${escapeHTML(request.nomor_hp || phone)}</a>` : '<span class="text-gray-400">-</span>'}
+        </td>
+        <td class="px-6 py-4 max-w-[240px] text-gray-500">${escapeHTML(request.catatan || '-')}</td>
+        <td class="px-6 py-4 text-gray-500">${matchText}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-gray-400">${escapeHTML(tanggal)}</td>
+        <td class="px-6 py-4 whitespace-nowrap">${getRecoveryStatusBadge(status)}</td>
+        <td class="px-6 py-4">
+          <div class="flex flex-wrap gap-2">${actions || '<span class="text-xs text-gray-400">Tidak ada aksi</span>'}</div>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+async function updateRecoveryStatus(requestId, statusBaru) {
+  if (!currentUser || currentProfile?.role !== 'admin') return;
+
+  const label = { diproses: 'diproses', selesai: 'selesai', ditolak: 'ditolak' }[statusBaru] || statusBaru;
+  const result = await Swal.fire({
+    icon: 'question',
+    title: `Ubah status ke ${label}?`,
+    text: 'Status permintaan bantuan akun akan diperbarui di dashboard admin.',
+    showCancelButton: true,
+    confirmButtonText: 'Ya, ubah',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#059669',
+    cancelButtonColor: '#9ca3af'
+  });
+
+  if (!result.isConfirmed) return;
+
+  const { error } = await db
+    .from('account_recovery_requests')
+    .update({ status: statusBaru })
+    .eq('id', requestId);
+
+  if (error) return showError('Gagal memperbarui bantuan akun', error);
+
+  await Swal.fire({
+    icon: 'success',
+    title: 'Status diperbarui',
+    timer: 1100,
+    showConfirmButton: false
+  });
+
+  await muatData(false);
 }
 
 function renderUserTable(profiles, trx) {
@@ -2159,6 +2469,7 @@ window.toggleDarkMode = toggleDarkMode;
 window.muatData = muatData;
 window.toggleRole = toggleRole;
 window.changeAdminTrxPage = changeAdminTrxPage;
+window.updateRecoveryStatus = updateRecoveryStatus;
 window.showAppView = showAppView;
 window.openCatatModal = openCatatModal;
 window.handleCatatSekarang = handleCatatSekarang;
