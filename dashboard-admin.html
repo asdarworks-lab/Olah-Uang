@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Olah Uang</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+    * { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+</head>
+<body data-page="dashboard-admin" class="bg-gray-50 min-h-screen">
+
+  <header class="bg-white border-b border-gray-100 sticky top-0 z-20">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <span class="font-bold text-gray-900">Olah Uang</span>
+        <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">Admin</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="adminNama" class="text-sm text-gray-500 hidden sm:inline"></span>
+        <button onclick="doLogout()" class="px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50 transition cursor-pointer">
+          Keluar
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-8 space-y-8">
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-white rounded-2xl p-5 border border-gray-100">
+        <p class="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">Total User</p>
+        <p id="statTotalUser" class="text-2xl font-bold text-gray-900">—</p>
+      </div>
+      <div class="bg-white rounded-2xl p-5 border border-gray-100">
+        <p class="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">Total Transaksi</p>
+        <p id="statTotalTrx" class="text-2xl font-bold text-gray-900">—</p>
+      </div>
+      <div class="bg-white rounded-2xl p-5 border border-gray-100">
+        <p class="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">Total Pemasukan</p>
+        <p id="statTotalMasuk" class="text-2xl font-bold text-emerald-600">—</p>
+      </div>
+      <div class="bg-white rounded-2xl p-5 border border-gray-100">
+        <p class="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">Total Pengeluaran</p>
+        <p id="statTotalKeluar" class="text-2xl font-bold text-rose-500">—</p>
+      </div>
+    </section>
+
+    <section class="grid md:grid-cols-2 gap-6">
+      <div class="bg-white rounded-2xl border border-gray-100 p-6">
+        <h2 class="text-sm font-bold text-gray-700 mb-4">Tren Keuangan Semua User</h2>
+        <div class="h-56">
+          <canvas id="adminChart"></canvas>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-100 p-6">
+        <h2 class="text-sm font-bold text-gray-700 mb-4">Aktivitas per User</h2>
+        <div id="userActivity" class="space-y-4 text-sm"></div>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
+        <h2 class="text-sm font-bold text-gray-700">Daftar Pengguna</h2>
+        <button onclick="muatData()" class="text-xs px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-600 cursor-pointer">
+          Refresh
+        </button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 border-b border-gray-100">
+              <th class="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Nama</th>
+              <th class="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Email</th>
+              <th class="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Role</th>
+              <th class="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Bergabung</th>
+              <th class="text-center px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="userTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-50">
+        <h2 class="text-sm font-bold text-gray-700">Riwayat Transaksi Semua User</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 border-b border-gray-100">
+              <th class="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Tanggal</th>
+              <th class="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">User</th>
+              <th class="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Kategori</th>
+              <th class="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Nominal</th>
+            </tr>
+          </thead>
+          <tbody id="allTrxBody"></tbody>
+        </table>
+      </div>
+      <div id="trxPagination" class="flex gap-1 justify-center px-6 py-4"></div>
+    </section>
+  </main>
+
+  <script src="./script.js?v=20260618-v15-mobile-summary-cards"></script>
+</body>
+</html>

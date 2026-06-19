@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Olah Uang</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    * { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .soft-card { box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .app-header { background: rgba(249,250,251,.94); }
+    @media (max-width:767px) { .app-header { border-bottom:0 !important; } }
+    .desktop-nav-wrap { position:relative; isolation:isolate; }
+    .desktop-nav-indicator { position:absolute; left:0; top:0; width:0; height:0; border-radius:18px; background:#ecfdf5; box-shadow:0 10px 24px rgba(5,150,105,.12); transform:translate3d(0,0,0); transition:transform var(--nav-travel-duration,.72s) cubic-bezier(.18,.86,.22,1), width var(--nav-travel-duration,.72s) cubic-bezier(.18,.86,.22,1), height var(--nav-travel-duration,.72s) cubic-bezier(.18,.86,.22,1), background-color .22s ease, opacity .2s ease; z-index:0; opacity:0; pointer-events:none; }
+    .desktop-nav-wrap.ready .desktop-nav-indicator { opacity:1; }
+    .desktop-nav-link { color:#64748b; font-size:13px; font-weight:800; transition:color .2s ease .12s, transform .34s cubic-bezier(.22,1,.36,1) .22s; position:relative; z-index:1; padding:10px 13px; border-radius:16px; }
+    .desktop-nav-link:hover, .desktop-nav-link.active { color:#059669; }
+    .desktop-nav-link.active { transform:scale(1.05); }
+    .icon-nav-btn { width:40px; height:40px; border-radius:16px; display:flex; align-items:center; justify-content:center; color:#64748b; transition:color .2s ease .12s, transform .34s cubic-bezier(.22,1,.36,1) .22s; position:relative; z-index:1; }
+    .icon-nav-btn:hover, .icon-nav-btn.active { color:#059669; }
+    .icon-nav-btn.active { transform:scale(1.10); }
+    .mobile-nav-shell { position:relative; isolation:isolate; }
+    .mobile-nav-indicator { position:absolute; z-index:0; width:48px; height:48px; border-radius:18px; background:#059669; box-shadow:0 14px 28px rgba(5,150,105,.22); transform:translate3d(0,0,0); opacity:0; transition:transform var(--nav-travel-duration,.72s) cubic-bezier(.18,.86,.22,1), width var(--nav-travel-duration,.72s) cubic-bezier(.18,.86,.22,1), height var(--nav-travel-duration,.72s) cubic-bezier(.18,.86,.22,1), background-color .22s ease, box-shadow .22s ease, opacity .18s ease; pointer-events:none; }
+    .mobile-nav-shell.ready .mobile-nav-indicator { opacity:1; }
+    .mobile-nav-shell[data-active="catat"] .mobile-nav-indicator { background:#e11d48; box-shadow:0 14px 28px rgba(225,29,72,.24); }
+    .bottom-nav-item { color:#94a3b8; transition:transform .32s cubic-bezier(.22,1,.36,1) .22s, color .18s ease .08s; position:relative; border-radius:18px; height:44px; min-height:44px; overflow:visible; z-index:1; }
+    .bottom-nav-item .nav-bubble { width:38px; height:38px; border-radius:16px; display:flex; align-items:center; justify-content:center; margin:0 auto; transition:transform .32s cubic-bezier(.22,1,.36,1) .22s, filter .18s ease .1s, color .18s ease .08s; position:relative; z-index:2; background:transparent; box-shadow:none; }
+    .bottom-nav-item .nav-bubble svg { width:23px; height:23px; stroke-width:2.05; filter:drop-shadow(0 4px 6px rgba(15,23,42,.12)); }
+    .bottom-nav-item.active { color:#fff; transform:translateY(-8px) scale(1.06); }
+    .bottom-nav-item.active .nav-bubble { transform:scale(1.08); filter:drop-shadow(0 7px 12px rgba(5,150,105,.22)); }
+    .bottom-nav-item[data-nav="catat"] { color:#e11d48; }
+    .bottom-nav-item[data-nav="catat"].active { color:#fff; }
+    .bottom-nav-item[data-nav="catat"].active .nav-bubble { filter:drop-shadow(0 8px 13px rgba(225,29,72,.28)); }
+    .bottom-nav-item.nav-changing::after { content:""; position:absolute; left:50%; bottom:-2px; width:42px; height:10px; border-radius:999px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.48),transparent); transform:translateX(-50%) scaleX(.55); opacity:0; animation:softWaterFlow .48s cubic-bezier(.2,.8,.3,1); pointer-events:none; z-index:3; }
+    @keyframes softWaterFlow { 0%{transform:translateX(-62%) scaleX(.35); opacity:0;} 45%{transform:translateX(-50%) scaleX(.92); opacity:.48;} 100%{transform:translateX(-38%) scaleX(1.05); opacity:0;} }
+    .modal-close-btn { width:38px; height:38px; border-radius:16px; display:flex; align-items:center; justify-content:center; background:#f8fafc; color:#64748b; border:1px solid #e5e7eb; box-shadow:0 8px 18px rgba(15,23,42,.08); transition:none; transform:none; }
+    .modal-close-btn:hover { background:#f1f5f9; color:#0f172a; border-color:#cbd5e1; transform:none; }
+    #profileSettingsPanel.is-editing, #expenseSettingsPanel.is-editing, #incomeSettingsPanel.is-editing { border-color:#10b981 !important; background:linear-gradient(180deg,#ffffff 0%,#f0fdf4 100%) !important; box-shadow:0 16px 38px rgba(16,185,129,.12) !important; }
+    .setting-row { display:grid; grid-template-columns: minmax(0,1fr) 128px 42px; gap:.5rem; align-items:center; }
+    @media (max-width:640px) { .setting-row { grid-template-columns: minmax(0,1fr) 94px 40px; } }
+    .setting-row button { position:static !important; display:flex; align-items:center; justify-content:center; }
+    .setting-bottom-save { margin-top:1rem; justify-content:center; }
+    .setting-action-btn { min-height:46px; min-width:170px; display:inline-flex; align-items:center; justify-content:center; white-space:nowrap; }
+    .chart-box { min-height:320px; display:flex; align-items:center; justify-content:center; }
+    .chart-box canvas { width:100% !important; max-height:320px; }
+    .summary-period-card { min-height:86px; display:flex; flex-direction:column; justify-content:center; text-align:center; }
+    .dark body, body.dark { background:#020617 !important; color:#e5e7eb !important; }
+    .dark .app-header { background:rgba(2,6,23,.94) !important; border-color:#1e293b !important; }
+    .dark .mobile-bottom-nav { background:#0f172a !important; border-color:#1e293b !important; }
+    .dark .desktop-nav-link { color:#94a3b8 !important; }
+    .dark .desktop-nav-link:hover, .dark .desktop-nav-link.active { color:#34d399 !important; }
+    .dark .desktop-nav-indicator { background:#064e3b !important; box-shadow:0 10px 24px rgba(16,185,129,.14) !important; }
+    .dark .icon-nav-btn { color:#94a3b8 !important; }
+    .dark .icon-nav-btn:hover, .dark .icon-nav-btn.active { color:#a7f3d0 !important; }
+    .dark .bottom-nav-item { color:#64748b !important; }
+    .dark .mobile-nav-indicator { background:#059669 !important; box-shadow:0 14px 28px rgba(16,185,129,.18) !important; }
+    .dark .mobile-nav-shell[data-active="catat"] .mobile-nav-indicator { background:#e11d48 !important; box-shadow:0 14px 28px rgba(225,29,72,.22) !important; }
+    .dark .bottom-nav-item.active { color:#fff !important; }
+    .dark .bottom-nav-item[data-nav="catat"] { color:#fecdd3 !important; }
+    .dark .bottom-nav-item[data-nav="catat"].active { color:#fff !important; }
+    .dark .bg-white { background-color:#0f172a !important; }
+    .dark .bg-gray-50 { background-color:#020617 !important; }
+    .dark .bg-gray-100 { background-color:#1e293b !important; }
+    .dark .bg-gray-200 { background-color:#334155 !important; }
+    .dark .text-gray-900, .dark .text-gray-800, .dark .text-gray-700 { color:#f8fafc !important; }
+    .dark .text-gray-600, .dark .text-gray-500, .dark .text-gray-400 { color:#94a3b8 !important; }
+    .dark .border-gray-50, .dark .border-gray-100, .dark .border-gray-200 { border-color:#1e293b !important; }
+    .dark input, .dark select { background-color:#111827 !important; color:#e5e7eb !important; border-color:#334155 !important; }
+    .dark input:disabled, .dark select:disabled { background-color:#0f172a !important; color:#94a3b8 !important; }
+    .dark #profileSettingsPanel.is-editing, .dark #expenseSettingsPanel.is-editing, .dark #incomeSettingsPanel.is-editing { border-color:#34d399 !important; background:linear-gradient(180deg,#0f172a 0%,#052e2b 100%) !important; box-shadow:0 16px 38px rgba(16,185,129,.16) !important; }
+    .dark #profileSettingsPanel.is-editing h2::after, .dark #expenseSettingsPanel.is-editing h2::after, .dark #incomeSettingsPanel.is-editing h2::after { background:#064e3b; color:#a7f3d0; }
+    .dark .modal-close-btn { background:#111827; border-color:#334155; color:#cbd5e1; }
+    .dark .modal-close-btn:hover { background:#1e293b; color:#f8fafc; border-color:#475569; }
+    .dark .soft-card { box-shadow:0 8px 28px rgba(0,0,0,.25); }
+  </style>
+</head>
+<body data-page="dashboard-user" class="bg-gray-50 text-gray-800 antialiased min-h-screen pb-28 md:pb-10">
+  <header class="app-header border-b border-gray-100">
+    <div class="w-full max-w-6xl mx-auto px-4 py-4 flex items-center gap-4">
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2 min-w-0">
+          <p class="text-base md:text-lg text-gray-900 truncate"><span class="font-extrabold">Halo,</span> <span id="userNama">Pengguna</span>!</p>
+          <button onclick="toggleDarkMode()" id="darkModeToggle" class="w-9 h-9 md:w-10 md:h-10 bg-white border border-gray-100 text-gray-700 text-base font-bold rounded-2xl soft-card cursor-pointer flex items-center justify-center shrink-0" title="Dark mode" aria-label="Dark mode">🌕</button>
+        </div>
+        <p class="text-xs md:text-sm text-gray-400 mt-0.5">Ayo mulai olah keuanganmu sekarang</p>
+      </div>
+
+      <nav id="desktopNav" class="desktop-nav-wrap hidden md:flex items-center justify-end gap-2 ml-auto">
+        <span id="desktopNavIndicator" class="desktop-nav-indicator" aria-hidden="true"></span>
+        <button type="button" data-nav="beranda" aria-label="Beranda" onclick="showAppView('beranda')" class="desktop-nav-link active">Beranda</button>
+        <button type="button" data-nav="riwayat" aria-label="Riwayat" onclick="showAppView('riwayat')" class="desktop-nav-link">Riwayat</button>
+        <button type="button" data-nav="analisis" aria-label="Analisis" onclick="showAppView('analisis')" class="desktop-nav-link">Analisis</button>
+        <button type="button" data-nav="setting" aria-label="Setting" onclick="showAppView('setting')" class="icon-nav-btn" title="Pengaturan" aria-label="Pengaturan">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.607 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="w-full max-w-6xl mx-auto px-4 py-5">
+    <section data-view="beranda" class="app-view space-y-5">
+      <section class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div class="col-span-2 md:col-span-2 bg-gradient-to-br from-emerald-600 to-emerald-800 p-6 rounded-3xl soft-card text-white">
+          <p class="text-xs font-semibold uppercase tracking-wider text-emerald-100 mb-2">Total saldo saat ini</p>
+          <h1 class="text-4xl md:text-5xl font-extrabold" id="totalBalance">Rp 0</h1>
+          <p class="text-xs text-emerald-100 mt-3">Akumulasi seluruh transaksi yang sudah dicatat.</p>
+        </div>
+        <div class="col-span-1 bg-white p-4 sm:p-5 rounded-3xl border border-gray-100 soft-card min-w-0">
+          <p class="text-[10px] sm:text-xs text-gray-400 font-bold uppercase mb-2 leading-tight">Total Pemasukan</p>
+          <p id="summaryIncomePeriod" class="text-[clamp(1.05rem,4.7vw,1.5rem)] leading-tight tracking-tight font-extrabold text-emerald-600 break-words">Rp 0</p>
+          <p class="text-[11px] sm:text-xs text-gray-400 mt-2 leading-snug">Akumulasi semua uang yang masuk.</p>
+        </div>
+        <div class="col-span-1 bg-white p-4 sm:p-5 rounded-3xl border border-gray-100 soft-card min-w-0">
+          <p class="text-[10px] sm:text-xs text-gray-400 font-bold uppercase mb-2 leading-tight">Total Pengeluaran</p>
+          <p id="summaryExpensePeriod" class="text-[clamp(1.05rem,4.7vw,1.5rem)] leading-tight tracking-tight font-extrabold text-rose-600 break-words">Rp 0</p>
+          <p class="text-[11px] sm:text-xs text-gray-400 mt-2 leading-snug">Akumulasi semua uang yang keluar.</p>
+        </div>
+      </section>
+
+      <section class="grid md:grid-cols-2 gap-5">
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 class="font-extrabold text-gray-900">Target Tabungan</h2>
+              <p class="text-xs text-gray-400 mt-1">Dihitung dari pemasukan - pengeluaran periode aktif.</p>
+            </div>
+            <span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold" id="targetSavingsStatus">0%</span>
+          </div>
+          <p class="text-3xl font-extrabold text-gray-900" id="targetSavingsAmount">Rp 0</p>
+          <p id="targetSavingsLabel" class="text-xs text-gray-400 mt-1">Target: Rp5.000.000 / bulan</p>
+          <div class="w-full bg-gray-200 rounded-full h-3 mt-4">
+            <div id="targetSavingsProgress" class="bg-emerald-500 h-3 rounded-full transition-all" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 class="font-extrabold text-gray-900">Insight Bulanan</h2>
+              <p class="text-xs text-gray-400 mt-1">Ringkasan cepat agar tidak cuma merasa hemat.</p>
+            </div>
+            <span class="text-xl">💡</span>
+          </div>
+          <div id="insightList" class="space-y-3 text-sm"></div>
+        </div>
+      </section>
+
+      <section class="bg-white p-5 md:p-6 rounded-3xl border border-gray-100 soft-card flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h2 class="font-extrabold text-gray-900">Jangan tunggu lupa</h2>
+          <p class="text-sm text-gray-400 mt-1">Catat transaksi sekarang, sebelum nominalnya berubah jadi legenda.</p>
+        </div>
+        <button type="button" onclick="handleCatatSekarang()" class="w-full md:w-auto inline-flex items-center justify-center gap-2 px-5 py-4 bg-red-600 hover:bg-red-700 text-white rounded-3xl font-extrabold soft-card cursor-pointer transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M12 5v14m7-7H5"/></svg>
+          Catat Sekarang
+        </button>
+      </section>
+    </section>
+
+    <section data-view="riwayat" class="app-view hidden bg-white p-5 md:p-6 rounded-3xl border border-gray-100 soft-card">
+      <div class="flex items-start justify-between gap-3 mb-4">
+        <div class="min-w-0">
+          <h2 class="font-extrabold text-gray-900">Riwayat Transaksi</h2>
+          <p class="text-xs text-gray-400 mt-1">Lihat, filter, dan hapus transaksi.</p>
+        </div>
+        <div class="grid grid-cols-2 md:flex md:items-center md:justify-end md:flex-nowrap gap-2 shrink-0 w-[156px] md:w-auto">
+          <select id="filterBulan" onchange="currentPage=1; updateUI()" class="w-full text-xs md:text-sm bg-gray-50 border border-gray-200 text-gray-700 rounded-xl px-2 md:px-3 py-2 outline-none cursor-pointer">
+            <option value="Semua">Semua Bulan</option>
+            <option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option>
+            <option value="3">Apr</option><option value="4">Mei</option><option value="5">Jun</option>
+            <option value="6">Jul</option><option value="7">Agt</option><option value="8">Sep</option>
+            <option value="9">Okt</option><option value="10">Nov</option><option value="11">Des</option>
+          </select>
+          <select id="filterTahunRiwayat" onchange="syncYearFilterFromRiwayat()" class="w-full text-xs md:text-sm bg-gray-50 border border-gray-200 text-gray-700 rounded-xl px-2 md:px-3 py-2 outline-none cursor-pointer">
+            <option value="Semua">Semua Tahun</option>
+          </select>
+          <button onclick="exportToExcel()" class="hidden md:inline-flex items-center justify-center h-10 px-4 bg-emerald-600 text-white text-xs font-bold rounded-xl soft-card cursor-pointer whitespace-nowrap">Excel</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left mb-4"><tbody id="historyBody"></tbody></table>
+      </div>
+      <div class="flex justify-between items-center mb-6 border-t border-gray-100 pt-4">
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-gray-500">Tampilkan:</span>
+          <select id="itemsPerPage" onchange="changeItemsPerPage()" class="text-xs bg-gray-50 border border-gray-200 text-gray-700 rounded-md px-2 py-1 outline-none cursor-pointer">
+            <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+          </select>
+        </div>
+        <div id="paginationContainer" class="flex gap-1 text-xs"></div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="summary-period-card p-4 bg-gray-50 rounded-2xl border border-gray-100">
+          <p class="text-[10px] uppercase font-bold text-gray-400 mb-1">Pemasukan Bulan Ini</p>
+          <p id="totalPemasukanRiwayat" class="font-extrabold text-emerald-600">Rp 0</p>
+        </div>
+        <div class="summary-period-card p-4 bg-gray-50 rounded-2xl border border-gray-100">
+          <p class="text-[10px] uppercase font-bold text-gray-400 mb-1">Pengeluaran Bulan Ini</p>
+          <p id="totalPengeluaranRiwayat" class="font-extrabold text-rose-600">Rp 0</p>
+        </div>
+      </div>
+    </section>
+
+    <section data-view="catat" class="app-view hidden">
+      <div class="max-w-xl mx-auto bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+        <div class="mb-5">
+          <h2 class="text-2xl font-extrabold text-gray-900">Catat Transaksi</h2>
+          <p class="text-sm text-gray-400 mt-1">Pencatatan cepat agar transaksi harian tidak hilang ditelan ingatan manusia yang rapuh.</p>
+        </div>
+        <div class="space-y-4">
+          <div class="flex bg-gray-100 p-1 rounded-2xl">
+            <button type="button" id="btnMasuk" onclick="setJenis('masuk')" class="w-1/2 py-2.5 text-sm font-bold rounded-xl text-gray-500 transition cursor-pointer">Pemasukan</button>
+            <button type="button" id="btnKeluar" onclick="setJenis('keluar')" class="w-1/2 py-2.5 text-sm font-bold rounded-xl bg-white shadow text-rose-600 transition cursor-pointer">Pengeluaran</button>
+          </div>
+          <div>
+            <label for="kategori" class="block text-xs font-bold text-gray-500 mb-2">Kategori Transaksi</label>
+            <select id="kategori" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-600 transition cursor-pointer"></select>
+          </div>
+          <div>
+            <label for="amount" class="block text-xs font-bold text-gray-500 mb-2">Nominal</label>
+            <input type="number" id="amount" min="1" inputmode="numeric" placeholder="Contoh: 50000" class="w-full px-4 py-4 text-lg bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-600 transition" onkeydown="if(event.key==='Enter') addTransaction()" />
+          </div>
+          <button type="button" onclick="addTransaction()" class="w-full py-4 bg-gray-800 text-white font-extrabold rounded-2xl hover:bg-gray-900 transition soft-card cursor-pointer">Simpan Transaksi</button>
+        </div>
+      </div>
+    </section>
+
+    <section data-view="analisis" class="app-view hidden space-y-5">
+      <section class="grid lg:grid-cols-5 gap-5">
+        <div class="lg:col-span-3 bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+          <div class="flex justify-between items-center mb-4 gap-3">
+            <div>
+              <h2 class="font-extrabold text-gray-900">Tren Keuangan</h2>
+              <p class="text-xs text-gray-400 mt-1">Perbandingan pemasukan dan pengeluaran.</p>
+            </div>
+            <select id="filterTahunChart" onchange="ubahFilterTahun()" class="text-sm bg-gray-50 border border-gray-200 text-gray-700 rounded-xl px-3 py-2 outline-none focus:border-emerald-500 cursor-pointer shadow-sm"><option value="Semua">Semua Tahun</option></select>
+          </div>
+          <div id="monthlyChartEmpty" class="hidden h-64 rounded-2xl bg-gray-50 border border-dashed border-gray-200 flex flex-col items-center justify-center text-center p-6">
+            <p class="text-4xl mb-3">📊</p><p class="font-bold text-gray-700">Belum ada grafik</p><p class="text-sm text-gray-400 mt-1">Tambahkan transaksi untuk melihat grafik.</p>
+          </div>
+          <div class="chart-box relative w-full" id="monthlyChartWrap"><canvas id="monthlyChart"></canvas></div>
+        </div>
+        <div class="lg:col-span-2 bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+          <h2 class="font-extrabold text-gray-900 mb-1">Kategori Terbesar</h2>
+          <p class="text-xs text-gray-400 mb-4">Kategori pengeluaran terbesar pada periode aktif.</p>
+          <div id="categorySummaryList" class="space-y-3"></div>
+        </div>
+      </section>
+      <section class="grid lg:grid-cols-2 gap-5">
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+          <div class="flex items-center justify-between gap-3 mb-4"><div><h2 class="font-extrabold text-gray-900">Progress Budget</h2><p class="text-xs text-gray-400 mt-1">Persentase pemakaian budget per kategori.</p></div></div>
+          <div id="budgetAlertList" class="mb-4"></div><div id="budgetList" class="space-y-4"></div>
+        </div>
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+          <div class="flex items-center justify-between gap-3 mb-4"><div><h2 class="font-extrabold text-gray-900">Pantauan Pemasukan</h2><p class="text-xs text-gray-400 mt-1">Target pemasukan utama per periode.</p></div></div>
+          <div id="incomeList" class="space-y-4"></div>
+        </div>
+      </section>
+    </section>
+
+    <section data-view="setting" class="app-view hidden space-y-5">
+      <section id="profileSettingsPanel" class="setting-panel bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+        <div class="flex items-start justify-between gap-3 mb-5">
+          <div>
+            <h2 class="font-extrabold text-gray-900">Pengaturan Profil</h2>
+            <p class="text-xs text-gray-400 mt-1">Kelola identitas akun dan password.</p>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" id="profileEditBtn" onclick="toggleProfileEdit(true)" class="px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-extrabold cursor-pointer">Edit</button>
+            <button type="button" id="profileCancelBtn" onclick="toggleProfileEdit(false)" class="hidden px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-extrabold cursor-pointer">Batal</button>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div><label class="block text-xs font-bold text-gray-500 mb-2">Nama</label><input id="profileNama" disabled class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl" /></div>
+          <div><label class="block text-xs font-bold text-gray-500 mb-2">Email</label><input id="profileEmail" disabled class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl" /></div>
+          <div><label class="block text-xs font-bold text-gray-500 mb-2">Nomor HP</label><input id="profilePhone" disabled inputmode="tel" placeholder="Contoh: 08123456789" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl" /></div>
+          <div><label class="block text-xs font-bold text-gray-500 mb-2">Password Baru</label><input id="profilePassword" disabled type="password" placeholder="Kosongkan jika tidak diganti" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl" /></div>
+          <div class="md:col-span-2"><label class="block text-xs font-bold text-gray-500 mb-2">Ulangi Password Baru</label><input id="profilePasswordConfirm" disabled type="password" placeholder="Ulangi password baru" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl" /></div>
+        </div>
+        <button type="button" id="profileSaveBtn" onclick="saveProfileSettings()" class="setting-bottom-save setting-action-btn hidden w-full md:w-auto px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold cursor-pointer">Simpan Perubahan</button>
+        <button onclick="doLogout()" class="mt-3 setting-action-btn w-full md:w-auto px-4 py-3 bg-rose-600 hover:bg-rose-700 text-white text-sm font-extrabold rounded-2xl cursor-pointer">Keluar dari Akun</button>
+      </section>
+
+      <section id="financeSettingsPanel" class="space-y-5">
+        <section id="expenseSettingsPanel" class="setting-panel bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+          <div class="flex items-start justify-between gap-3 mb-5">
+            <div>
+              <h2 class="font-extrabold text-gray-900">Kategori Pengeluaran & Budget</h2>
+              <p class="text-xs text-gray-400 mt-1">Data terkunci sebelum tombol Edit diklik.</p>
+            </div>
+            <div class="flex gap-2">
+              <button type="button" id="expenseEditBtn" onclick="toggleFinanceEdit('keluar', true)" class="px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-extrabold cursor-pointer">Edit</button>
+              <button type="button" id="expenseCancelBtn" onclick="toggleFinanceEdit('keluar', false)" class="hidden px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-extrabold cursor-pointer">Batal</button>
+            </div>
+          </div>
+          <div class="rounded-2xl bg-gray-50 border border-gray-100 p-4 mb-4">
+            <label for="settingTargetSavings" class="block text-xs font-bold text-gray-500 mb-2">Target Tabungan Bulanan</label>
+            <input id="settingTargetSavings" disabled type="number" min="0" inputmode="numeric" placeholder="Contoh: 5000000" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl" />
+          </div>
+          <div id="budgetSettingList" class="space-y-2 mb-3"></div>
+          <div id="expenseAddRow" class="hidden setting-row">
+            <input id="newExpenseCategoryName" type="text" placeholder="Kategori baru" class="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm" />
+            <input id="newExpenseCategoryAmount" type="number" min="0" inputmode="numeric" placeholder="Budget" class="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-right" />
+            <button type="button" onclick="addFinanceCategory('keluar')" class="h-10 rounded-xl bg-gray-800 text-white font-bold cursor-pointer" title="Tambah kategori">+</button>
+          </div>
+          <button type="button" id="expenseSaveBtn" onclick="saveFinanceSettings('keluar')" class="setting-bottom-save setting-action-btn hidden w-full md:w-auto px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold cursor-pointer">Simpan Perubahan</button>
+        </section>
+
+        <section id="incomeSettingsPanel" class="setting-panel bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+          <div class="flex items-start justify-between gap-3 mb-5">
+            <div>
+              <h2 class="font-extrabold text-gray-900">Kategori Pemasukan & Target</h2>
+              <p class="text-xs text-gray-400 mt-1">Sumber pemasukan dan target bulanannya.</p>
+            </div>
+            <div class="flex gap-2">
+              <button type="button" id="incomeEditBtn" onclick="toggleFinanceEdit('masuk', true)" class="px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-extrabold cursor-pointer">Edit</button>
+              <button type="button" id="incomeCancelBtn" onclick="toggleFinanceEdit('masuk', false)" class="hidden px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-extrabold cursor-pointer">Batal</button>
+            </div>
+          </div>
+          <div id="incomeSettingList" class="space-y-2 mb-3"></div>
+          <div id="incomeAddRow" class="hidden setting-row">
+            <input id="newIncomeCategoryName" type="text" placeholder="Sumber pemasukan baru" class="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm" />
+            <input id="newIncomeCategoryAmount" type="number" min="0" inputmode="numeric" placeholder="Target" class="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-right" />
+            <button type="button" onclick="addFinanceCategory('masuk')" class="h-10 rounded-xl bg-gray-800 text-white font-bold cursor-pointer" title="Tambah pemasukan">+</button>
+          </div>
+          <button type="button" id="incomeSaveBtn" onclick="saveFinanceSettings('masuk')" class="setting-bottom-save setting-action-btn hidden w-full md:w-auto px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold cursor-pointer">Simpan Perubahan</button>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <div id="quickCatatModal" class="hidden fixed inset-0 z-50 bg-slate-950/55 backdrop-blur-sm px-4 py-6 flex items-end md:items-center justify-center">
+    <div class="w-full max-w-xl bg-white rounded-3xl border border-gray-100 soft-card p-6">
+      <div class="flex items-start justify-between gap-4 mb-5">
+        <div>
+          <h2 class="text-xl font-extrabold text-gray-900">Catat Transaksi</h2>
+          <p class="text-sm text-gray-400 mt-1">Input cepat tanpa keluar dari Beranda.</p>
+        </div>
+        <button type="button" onclick="closeCatatModal()" class="modal-close-btn shrink-0 cursor-pointer" aria-label="Tutup"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div class="space-y-4">
+        <div class="flex bg-gray-100 p-1 rounded-2xl">
+          <button type="button" id="quickBtnMasuk" onclick="setQuickJenis('masuk')" class="w-1/2 py-2.5 text-sm font-bold rounded-xl text-gray-500 transition cursor-pointer">Pemasukan</button>
+          <button type="button" id="quickBtnKeluar" onclick="setQuickJenis('keluar')" class="w-1/2 py-2.5 text-sm font-bold rounded-xl bg-white shadow text-rose-600 transition cursor-pointer">Pengeluaran</button>
+        </div>
+        <div>
+          <label for="quickKategori" class="block text-xs font-bold text-gray-500 mb-2">Kategori Transaksi</label>
+          <select id="quickKategori" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-600 transition cursor-pointer"></select>
+        </div>
+        <div>
+          <label for="quickAmount" class="block text-xs font-bold text-gray-500 mb-2">Nominal</label>
+          <input type="number" id="quickAmount" min="1" inputmode="numeric" placeholder="Contoh: 50000" class="w-full px-4 py-4 text-lg bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-600 transition" onkeydown="if(event.key==='Enter') submitQuickTransaction()" />
+        </div>
+        <button type="button" onclick="submitQuickTransaction()" class="w-full py-4 bg-gray-800 text-white font-extrabold rounded-2xl hover:bg-gray-900 transition soft-card cursor-pointer">Simpan Transaksi</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="mobile-bottom-nav md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-100 soft-card px-4 pt-2 pb-[calc(0.55rem+env(safe-area-inset-bottom))]">
+    <div id="mobileNavShell" class="mobile-nav-shell grid grid-cols-5 items-end gap-1 max-w-md mx-auto" data-active="beranda">
+      <span id="mobileNavIndicator" class="mobile-nav-indicator" aria-hidden="true"></span>
+      <button type="button" data-nav="beranda" aria-label="Beranda" onclick="showAppView('beranda')" class="bottom-nav-item flex items-center justify-center py-1 cursor-pointer">
+        <span class="nav-bubble"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 11.2L12 4.7l7.5 6.5"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.6 10.2v8.1c0 .8.6 1.4 1.4 1.4h8c.8 0 1.4-.6 1.4-1.4v-8.1"/><path stroke-linecap="round" stroke-linejoin="round" d="M9.7 19.7v-5h4.6v5"/></svg></span>
+      </button>
+      <button type="button" data-nav="riwayat" aria-label="Riwayat" onclick="showAppView('riwayat')" class="bottom-nav-item flex items-center justify-center py-1 cursor-pointer">
+        <span class="nav-bubble"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 4.5h10A1.5 1.5 0 0118.5 6v12a1.5 1.5 0 01-1.5 1.5H7A1.5 1.5 0 015.5 18V6A1.5 1.5 0 017 4.5z"/><path stroke-linecap="round" stroke-linejoin="round" d="M8.5 8h7M8.5 12h7M8.5 16h4.5"/></svg></span>
+      </button>
+      <button type="button" data-nav="catat" aria-label="Catat" onclick="showAppView('catat')" class="bottom-nav-item flex items-center justify-center py-1 cursor-pointer">
+        <span class="nav-bubble"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.7" d="M12 7v10M17 12H7"/><path stroke-linecap="round" stroke-linejoin="round" d="M18.2 5.8l.5-1.1.5 1.1 1.1.5-1.1.5-.5 1.1-.5-1.1-1.1-.5 1.1-.5z"/></svg></span>
+      </button>
+      <button type="button" data-nav="analisis" aria-label="Analisis" onclick="showAppView('analisis')" class="bottom-nav-item flex items-center justify-center py-1 cursor-pointer">
+        <span class="nav-bubble"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 18.5V6"/><path stroke-linecap="round" stroke-linejoin="round" d="M8.5 18.5v-5.5M12 18.5V9.5M15.5 18.5V7.5M19 18.5H5"/><path stroke-linecap="round" stroke-linejoin="round" d="M8 10.5l3.5-3 3.5 1 3-3"/></svg></span>
+      </button>
+      <button type="button" data-nav="setting" aria-label="Setting" onclick="showAppView('setting')" class="bottom-nav-item flex items-center justify-center py-1 cursor-pointer">
+        <span class="nav-bubble"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 16h10"/><path stroke-linecap="round" stroke-linejoin="round" d="M10 8a2 2 0 11-4 0 2 2 0 014 0zM18 16a2 2 0 11-4 0 2 2 0 014 0z"/></svg></span>
+      </button>
+    </div>
+  </nav>
+
+  <script src="./script.js?v=20260619-v27-menu-motion-close"></script>
+</body>
+</html>
