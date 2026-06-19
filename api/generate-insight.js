@@ -84,12 +84,79 @@ function extractJson(text = '') {
 }
 
 function normalizeInsights(value) {
-  const source = Array.isArray(value) ? value : value?.insights;
-  if (!Array.isArray(source)) return [];
-  return source
-    .map((item) => String(item || '').replace(/^[-\d.)\s]+/, '').trim())
-    .filter(Boolean)
-    .filter((text, index, arr) => arr.findIndex((item) => item.toLowerCase() === text.toLowerCase()) === index)
+  const seen = new Set();
+
+  const cleanText = (item) => String(item || '')
+    .replace(/^["'`]+|["'`]+$/g, '')
+    .replace(/^[-•*\d.)\s]+/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const pushClean = (arr, item) => {
+    const text = cleanText(item);
+    if (!text) return;
+    const key = text.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    arr.push(text);
+  };
+
+  const result = [];
+
+  const collect = (source) => {
+    if (!source) return;
+
+    if (typeof source === 'string') {
+      // Kalau Gemini membalas bukan JSON, tetap coba pecah dari baris/nomor/bullet.
+      source
+        .split(/\n+/)
+        .flatMap((line) => line.split(/(?=\b\d+[.)]\s+)/g))
+        .forEach((line) => pushClean(result, line));
+      return;
+    }
+
+    if (Array.isArray(source)) {
+      source.forEach((item) => {
+        if (typeof item === 'string') pushClean(result, item);
+        else if (item && typeof item === 'object') {
+          pushClean(
+            result,
+            item.text ?? item.insight ?? item.message ?? item.content ?? item.value ?? item.deskripsi
+          );
+        }
+      });
+      return;
+    }
+
+    if (source && typeof source === 'object') {
+      const candidates = [
+        source.insights,
+        source.insight,
+        source.data,
+        source.items,
+        source.result,
+        source.results,
+        source.output,
+        source.response
+      ];
+
+      candidates.forEach(collect);
+
+      // Kalau object-nya berisi key acak seperti insight_1, insight_2, insight_3.
+      Object.keys(source)
+        .filter((key) => /insight|point|poin|item/i.test(key))
+        .sort()
+        .forEach((key) => {
+          if (!candidates.includes(source[key])) collect(source[key]);
+        });
+    }
+  };
+
+  collect(value);
+
+  // Hindari insight yang terlalu pendek dan tidak bermakna.
+  return result
+    .filter((text) => text.length >= 24)
     .slice(0, 3);
 }
 
@@ -127,49 +194,38 @@ module.exports = async function handler(req, res) {
     const variasiGaya = summary.variasi_bahasa?.gaya || 'roasting ringan, sindiran halus, emotikon, tetap informatif';
     const fokus = summary.variasi_bahasa?.fokus?.length ? summary.variasi_bahasa.fokus.join(', ') : 'tren, budget, kategori terbesar, tabungan';
 
-    const prompt = `Kamu adalah asisten insight keuangan untuk aplikasi Olah Uang.
+    const prompt = `Kamu adalah penulis insight keuangan untuk aplikasi Olah Uang.
 
-Buat tepat 3 insight keuangan dalam bahasa Indonesia berdasarkan DATA RINGKAS KEUANGAN.
+Buat TEPAT 3 insight keuangan dalam bahasa Indonesia berdasarkan DATA RINGKAS KEUANGAN.
 
 GAYA WAJIB:
 - Roasting ringan + sindiran halus + emotikon + tetap informatif.
 - Gaya seperti teman jahil yang peduli, bukan orang marah.
-- Jangan monoton. Jangan terasa seperti template yang hanya ganti angka.
+- Jangan monoton dan jangan terasa seperti template.
 - Gunakan variasi gaya periode ini: ${variasiGaya}.
 - Fokus variasi periode ini: ${fokus}.
 - Variation seed: ${summary.variation_seed}.
 
-ATURAN PENTING:
-- Setiap insight harus membahas ANGLE yang berbeda.
-- DILARANG semua insight hanya muter di: tren pengeluaran, potensi tabungan, kategori terbesar.
-- Tidak wajib membahas tren, tabungan, dan kategori terbesar kalau ada angle lain yang lebih menarik.
-- Pilih 3 angle paling menarik dari daftar ini sesuai data:
-  1. pemasukan vs pengeluaran,
-  2. surplus/defisit periode,
-  3. rasio pengeluaran terhadap pemasukan,
-  4. kategori over budget,
-  5. kategori hampir habis,
-  6. kategori pengeluaran terbesar,
-  7. kategori pemasukan terbesar,
-  8. target tabungan tercapai/belum,
-  9. jumlah transaksi,
-  10. perubahan dari periode sebelumnya,
-  11. peluang hemat realistis,
-  12. prioritas yang perlu dikontrol periode berikutnya.
+ATURAN ISI:
+- Setiap insight harus membahas angle yang berbeda.
+- Jangan semua insight hanya muter di tren pengeluaran, potensi tabungan, dan kategori terbesar.
+- Pilih 3 angle paling menarik dari data:
+  pemasukan vs pengeluaran, surplus/defisit, rasio pengeluaran, over budget, hampir habis, kategori pemasukan, target tabungan, jumlah transaksi, perubahan periode sebelumnya, peluang hemat, atau prioritas periode berikutnya.
+- Kalau ada kategori_over_budget atau kategori_hampir_habis, prioritaskan salah satunya.
+- Kalau total_pengeluaran lebih besar dari total_pemasukan, bahas defisit/saldo minus dengan sindiran ringan.
+- Kalau data bulan lalu kosong/null, jangan memaksakan perbandingan bulan lalu.
 - Tiap insight maksimal 2 kalimat.
 - Tiap insight wajib punya emotikon yang relevan.
 - Tetap berdasarkan angka yang ada, jangan mengarang data.
 - Jangan memberi saran investasi, pinjaman, atau keputusan finansial berisiko.
-- Jangan menyebut kamu AI, Gemini, prompt, JSON, atau sistem.
-- Jangan mengulang frasa/pola pembuka antar insight.
-- Hindari kalimat generik seperti "ini tanda kebiasaan belanja mulai terkendali" kecuali datanya benar-benar mendukung.
-- Kalau ada data kategori_over_budget atau kategori_hampir_habis, prioritaskan salah satunya karena itu lebih actionable.
-- Kalau total_pengeluaran lebih besar dari total_pemasukan, bahas defisit/saldo minus dengan roasting ringan.
-- Kalau data bulan lalu kosong/null, jangan memaksakan perbandingan bulan lalu.
+- Jangan menyebut AI, Gemini, prompt, JSON, atau sistem.
+- Jangan mengulang pola pembuka antar insight.
 
-FORMAT BALASAN:
-Kembalikan hanya JSON valid:
-{"insights":["...","...","..."]}
+FORMAT WAJIB:
+Balas hanya JSON valid, tanpa markdown, tanpa penjelasan tambahan.
+
+Contoh struktur:
+{"insights":["kalimat insight 1","kalimat insight 2","kalimat insight 3"]}
 
 DATA RINGKAS KEUANGAN:
 ${JSON.stringify(summary, null, 2)}`;
@@ -180,8 +236,8 @@ ${JSON.stringify(summary, null, 2)}`;
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: 1.0,
-          topP: 0.96,
+          temperature: 0.85,
+          topP: 0.92,
           maxOutputTokens: 900,
           responseMimeType: 'application/json',
           responseSchema: {
@@ -212,15 +268,70 @@ ${JSON.stringify(summary, null, 2)}`;
       .trim();
 
     const parsed = extractJson(text);
-    const insights = normalizeInsights(parsed);
+    let insights = normalizeInsights(parsed);
+
     if (insights.length < 3) {
-      console.error('[Gemini invalid output]', text);
-      return sendJson(res, 502, {
-        message: 'Google AI belum mengembalikan 3 insight valid. Coba refresh halaman.'
+      console.warn('[Gemini invalid output, retrying]', text);
+
+      const retryPrompt = `Tulis ulang menjadi TEPAT 3 insight valid.
+
+WAJIB:
+- Bahasa Indonesia.
+- Roasting ringan + sindiran halus + emotikon.
+- Tetap informatif.
+- Jangan template.
+- Setiap insight membahas angle berbeda.
+- Balas hanya JSON valid: {"insights":["...","...","..."]}
+
+DATA:
+${JSON.stringify(summary, null, 2)}
+
+RESPONS SEBELUMNYA YANG BELUM VALID:
+${text}`;
+
+      const retryResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: retryPrompt }] }],
+          generationConfig: {
+            temperature: 0.75,
+            topP: 0.9,
+            maxOutputTokens: 900,
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: 'object',
+              properties: {
+                insights: {
+                  type: 'array',
+                  minItems: 3,
+                  maxItems: 3,
+                  items: { type: 'string' }
+                }
+              },
+              required: ['insights']
+            }
+          }
+        })
       });
+
+      const retryData = await retryResponse.json().catch(() => ({}));
+      const retryText = (retryData.candidates?.[0]?.content?.parts || [])
+        .map((part) => part.text || '')
+        .join('\n')
+        .trim();
+
+      insights = normalizeInsights(extractJson(retryText) || retryText);
+
+      if (insights.length < 3) {
+        console.error('[Gemini invalid output after retry]', { text, retryText, retryData });
+        return sendJson(res, 502, {
+          message: 'Google AI belum mengembalikan 3 insight valid. Coba refresh halaman.'
+        });
+      }
     }
 
-    return sendJson(res, 200, { insights });
+    return sendJson(res, 200, { insights: insights.slice(0, 3) });
   } catch (error) {
     console.error('[generate-insight]', error);
     return sendJson(res, 500, { message: 'Terjadi kesalahan saat membuat insight AI.' });
