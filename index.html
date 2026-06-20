@@ -12,6 +12,20 @@
     * { font-family: 'Plus Jakarta Sans', sans-serif; }
     .soft-card { box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06); }
     .logo-img { filter: drop-shadow(0 20px 32px rgba(5, 150, 105, .18)); }
+
+    /* Logo mode terang/gelap: hanya tampilkan satu logo */
+    .logo-light { display: block !important; }
+    .logo-dark { display: none !important; }
+
+    html.dark .logo-light,
+    body.dark .logo-light {
+      display: none !important;
+    }
+
+    html.dark .logo-dark,
+    body.dark .logo-dark {
+      display: block !important;
+    }
     input:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 4px rgba(5,150,105,.12); }
     .btn-primary { background: linear-gradient(135deg, #059669, #047857); transition: transform .18s ease, box-shadow .18s ease, filter .18s ease; }
     .btn-primary:hover { filter: brightness(.98); transform: translateY(-1px); box-shadow: 0 14px 28px rgba(5, 150, 105, .22); }
@@ -450,6 +464,6 @@
     // Fungsi ini dibuat khusus agar animasi tab login tidak bentrok.
     window.switchLoginTab = switchLoginTab;
   </script>
-  <script src="./script.js?v=20260619-v55-index-tab-fix"></script>
+  <script src="./script.js?v=20260620-v66-index-logo-mode-fix"></script>
 </body>
 </html>
