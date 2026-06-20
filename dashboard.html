@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard — Olah Uang</title>
+  <title>Olah Uang</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -86,10 +86,10 @@
     <div class="w-full max-w-6xl mx-auto px-4 py-4 flex items-center gap-4">
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-2 min-w-0">
-          <p class="text-base md:text-lg text-gray-900 truncate"><span class="font-extrabold">Halo,</span> <span id="userNama">Pengguna</span>!</p>
+          <p class="text-base md:text-lg text-gray-900 truncate"><span class="font-extrabold">Halo,</span> <span id="userNama">Pengguna</span></p>
           <button onclick="toggleDarkMode()" id="darkModeToggle" class="w-9 h-9 md:w-10 md:h-10 bg-white border border-gray-100 text-gray-700 text-base font-bold rounded-2xl soft-card cursor-pointer flex items-center justify-center shrink-0" title="Dark mode" aria-label="Dark mode">🌕</button>
         </div>
-        <p class="text-xs md:text-sm text-gray-400 mt-0.5">Ayo mulai olah keuanganmu sekarang</p>
+        <p class="text-xs md:text-sm text-gray-400 mt-0.5">Ayo mulai olah keuanganmu sekarang!</p>
       </div>
 
       <nav id="desktopNav" class="desktop-nav-wrap hidden md:flex items-center justify-end gap-2 ml-auto">
@@ -291,8 +291,8 @@
         <section id="expenseSettingsPanel" class="setting-panel bg-white p-6 rounded-3xl border border-gray-100 soft-card">
           <div class="flex items-start justify-between gap-3 mb-5">
             <div>
-              <h2 class="font-extrabold text-gray-900">Kategori Pengeluaran & Budget</h2>
-              <p class="text-xs text-gray-400 mt-1">Data terkunci sebelum tombol Edit diklik.</p>
+              <h2 class="font-extrabold text-gray-900">Pengaturan Kategori Pengeluaran</h2>
+              <p class="text-xs text-gray-400 mt-1">Ayo atur kategori sesuai kebutuhamu.</p>
             </div>
             <div class="flex gap-2">
               <button type="button" id="expenseEditBtn" onclick="toggleFinanceEdit('keluar', true)" class="px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-extrabold cursor-pointer">Edit</button>
@@ -315,8 +315,8 @@
         <section id="incomeSettingsPanel" class="setting-panel bg-white p-6 rounded-3xl border border-gray-100 soft-card">
           <div class="flex items-start justify-between gap-3 mb-5">
             <div>
-              <h2 class="font-extrabold text-gray-900">Kategori Pemasukan & Target</h2>
-              <p class="text-xs text-gray-400 mt-1">Sumber pemasukan dan target bulanannya.</p>
+              <h2 class="font-extrabold text-gray-900">Pengaturan Kategori Penmasukan</h2>
+              <p class="text-xs text-gray-400 mt-1">Kategorikan dari mana sumber uang kamu</p>
             </div>
             <div class="flex gap-2">
               <button type="button" id="incomeEditBtn" onclick="toggleFinanceEdit('masuk', true)" class="px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-extrabold cursor-pointer">Edit</button>
