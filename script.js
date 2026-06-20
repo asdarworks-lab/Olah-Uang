@@ -871,6 +871,9 @@ function applyDarkMode(enabled) {
 
   // Redraw chart agar warna grid/label ikut mode terbaru. Ya, chart juga butuh diajak refresh.
   if (currentUser && $('monthlyChart')) updateUI();
+  if ($('adminChart') && Array.isArray(allTrxData) && allTrxData.length) {
+    requestAnimationFrame(() => renderAdminChart(allTrxData));
+  }
 }
 
 function initDarkMode() {
@@ -2950,9 +2953,9 @@ function renderAccountRecoveryRequests(requests, error = null) {
       ? matches.map((profile) => `<div class="font-bold text-gray-700">${escapeHTML(profile.nama || profile.email || 'Pengguna')}</div><div class="text-[11px] text-gray-400">${escapeHTML(profile.email || '-')}</div>`).join('<div class="my-1 border-t border-gray-100"></div>')
       : '<span class="text-gray-400">Belum ditemukan</span>';
     const actions = [
-      status !== 'diproses' ? `<button onclick="updateRecoveryStatus('${escapeHTML(request.id)}','diproses')" class="rounded-xl bg-blue-50 px-3 py-1.5 text-xs font-extrabold text-blue-700 transition hover:bg-blue-100">Proses</button>` : '',
-      status !== 'selesai' ? `<button onclick="updateRecoveryStatus('${escapeHTML(request.id)}','selesai')" class="rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-extrabold text-emerald-700 transition hover:bg-emerald-100">Selesai</button>` : '',
-      status !== 'ditolak' ? `<button onclick="updateRecoveryStatus('${escapeHTML(request.id)}','ditolak')" class="rounded-xl bg-rose-50 px-3 py-1.5 text-xs font-extrabold text-rose-700 transition hover:bg-rose-100">Tolak</button>` : ''
+      status !== 'diproses' ? `<button onclick="updateRecoveryStatus('${escapeHTML(request.id)}','diproses')" class="inline-flex min-w-[86px] items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-extrabold text-blue-700 transition hover:bg-blue-100">Proses</button>` : '',
+      status !== 'selesai' ? `<button onclick="updateRecoveryStatus('${escapeHTML(request.id)}','selesai')" class="inline-flex min-w-[86px] items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-xs font-extrabold text-emerald-700 transition hover:bg-emerald-100">Selesai</button>` : '',
+      status !== 'ditolak' ? `<button onclick="updateRecoveryStatus('${escapeHTML(request.id)}','ditolak')" class="inline-flex min-w-[86px] items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-extrabold text-rose-700 transition hover:bg-rose-100">Tolak</button>` : ''
     ].filter(Boolean).join(' ');
 
     return `
@@ -3024,192 +3027,43 @@ function renderUserTable(profiles, trx) {
     const isDeleted = status === 'deleted';
     const isSuspended = status === 'suspended';
     const roleBadge = isAdmin
-      ? '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">Admin</span>'
-      : '<span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">User</span>';
+      ? '<span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">Admin</span>'
+      : '<span class="px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">User</span>';
 
-    const disabledText = 'opacity-40 cursor-not-allowed';
     const editDisabled = isDeleted ? 'disabled' : '';
     const suspendDisabled = (isSelf || isDeleted) ? 'disabled' : '';
     const deleteDisabled = isSelf || isDeleted ? 'disabled' : '';
 
     return `
-      <tr class="border-b border-gray-50 hover:bg-gray-50 transition ${isDeleted ? 'opacity-70' : ''}">
+      <tr class="border-b border-gray-50 transition hover:bg-gray-50 ${isDeleted ? 'opacity-70' : ''}">
         <td class="px-6 py-4 font-medium text-gray-800">
           <div class="min-w-[150px]">
-            <p>${escapeHTML(profile.nama || '—')}</p>
+            <p class="font-bold text-gray-800">${escapeHTML(profile.nama || '—')}</p>
             ${isSelf ? '<p class="mt-1 text-[10px] font-bold text-emerald-600">Akun kamu</p>' : ''}
           </div>
         </td>
-        <td class="px-6 py-4 text-gray-500">${escapeHTML(profile.email || '—')}</td>
+        <td class="px-6 py-4 text-gray-500 break-all">${escapeHTML(profile.email || '—')}</td>
         <td class="px-6 py-4">${roleBadge}</td>
         <td class="px-6 py-4">${getProfileStatusBadge(profile)}</td>
-        <td class="px-6 py-4 text-gray-400">${escapeHTML(tanggal)} <span class="text-gray-300 ml-1">(${jumlahTrx} trx)</span></td>
+        <td class="px-6 py-4 text-gray-400"><div class="min-w-[150px]">${escapeHTML(tanggal)} <span class="ml-1 text-gray-300">(${jumlahTrx} trx)</span></div></td>
         <td class="px-6 py-4">
           <div class="flex flex-wrap justify-center gap-2">
             <button onclick="editAdminUser('${escapeHTML(profile.id)}')" ${editDisabled}
-              class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 transition text-gray-600 cursor-pointer disabled:${disabledText}">
+              class="inline-flex min-w-[86px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-extrabold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40">
               Edit
             </button>
             <button onclick="setUserSuspended('${escapeHTML(profile.id)}', ${isSuspended ? 'false' : 'true'})" ${suspendDisabled}
-              class="text-xs px-3 py-1.5 rounded-lg border ${isSuspended ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50' : 'border-amber-200 text-amber-700 hover:bg-amber-50'} transition cursor-pointer disabled:${disabledText}">
+              class="inline-flex min-w-[86px] items-center justify-center rounded-2xl border px-3.5 py-2 text-xs font-extrabold transition disabled:cursor-not-allowed disabled:opacity-40 ${isSuspended ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'}">
               ${isSuspended ? 'Aktifkan' : 'Suspend'}
             </button>
             <button onclick="deleteAdminUser('${escapeHTML(profile.id)}')" ${deleteDisabled}
-              class="text-xs px-3 py-1.5 rounded-lg border border-rose-200 text-rose-700 hover:bg-rose-50 transition cursor-pointer disabled:${disabledText}">
+              class="inline-flex min-w-[86px] items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-extrabold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-40">
               Hapus
             </button>
           </div>
         </td>
       </tr>`;
   }).join('');
-}
-
-function renderUserActivity(profiles, trx) {
-  const container = $('userActivity');
-  if (!container) return;
-
-  const aktivitas = profiles.map((profile) => ({
-    nama: profile.nama || profile.email || 'Pengguna',
-    jumlah: trx.filter((item) => item.user_id === profile.id).length,
-    saldo: trx
-      .filter((item) => item.user_id === profile.id)
-      .reduce((acc, item) => item.jenis === 'masuk' ? acc + (Number(item.nominal) || 0) : acc - (Number(item.nominal) || 0), 0)
-  })).sort((a, b) => b.jumlah - a.jumlah).slice(0, 5);
-
-  if (!aktivitas.length) {
-    container.innerHTML = '<p class="text-gray-400 text-xs">Belum ada data.</p>';
-    return;
-  }
-
-  const maxJumlah = aktivitas[0]?.jumlah || 1;
-  container.innerHTML = aktivitas.map((user) => {
-    const pct = Math.min((user.jumlah / maxJumlah) * 100, 100);
-    return `
-      <div>
-        <div class="flex justify-between gap-3 mb-1">
-          <span class="text-gray-700 font-medium truncate max-w-[170px]">${escapeHTML(user.nama)}</span>
-          <span class="text-gray-400 text-xs whitespace-nowrap">${user.jumlah} transaksi</span>
-        </div>
-        <div class="flex justify-between text-[11px] text-gray-400 mb-1">
-          <span>Saldo</span><span>${formatRupiah(user.saldo)}</span>
-        </div>
-        <div class="w-full bg-gray-100 rounded-full h-1.5">
-          <div class="bg-emerald-500 h-1.5 rounded-full" style="width:${pct}%"></div>
-        </div>
-      </div>`;
-  }).join('');
-}
-
-function renderAllTrx() {
-  const body = $('allTrxBody');
-  if (!body) return;
-
-  const total = allTrxData.length;
-  const totalPages = Math.ceil(total / adminTrxPerPage) || 1;
-  adminTrxPage = Math.min(Math.max(adminTrxPage, 1), totalPages);
-  const pageData = allTrxData.slice((adminTrxPage - 1) * adminTrxPerPage, adminTrxPage * adminTrxPerPage);
-
-  if (!pageData.length) {
-    body.innerHTML = '<tr><td colspan="4" class="px-6 py-6 text-center text-gray-400">Belum ada transaksi.</td></tr>';
-  } else {
-    body.innerHTML = pageData.map((item) => {
-      const profile = allProfiles.find((p) => p.id === item.user_id);
-      const namaUser = profile ? (profile.nama || profile.email) : '(tidak diketahui)';
-      const warna = item.jenis === 'masuk' ? 'text-emerald-600' : 'text-rose-500';
-      const simbol = item.jenis === 'masuk' ? '+' : '-';
-
-      return `
-        <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
-          <td class="px-6 py-3 text-gray-400 whitespace-nowrap">${escapeHTML(formatTanggal(item.created_at))}</td>
-          <td class="px-6 py-3 text-gray-600">${escapeHTML(namaUser)}</td>
-          <td class="px-6 py-3 text-gray-700">${escapeHTML(item.kategori || '-')}</td>
-          <td class="px-6 py-3 text-right font-semibold ${warna} whitespace-nowrap">${simbol} ${formatRupiah(item.nominal)}</td>
-        </tr>`;
-    }).join('');
-  }
-
-  renderAdminPagination(totalPages);
-}
-
-function renderAdminPagination(totalPages) {
-  const pag = $('trxPagination');
-  if (!pag) return;
-
-  pag.innerHTML = '';
-  if (totalPages <= 1) return;
-
-  if (adminTrxPage > 1) {
-    pag.innerHTML += `<button onclick="changeAdminTrxPage(${adminTrxPage - 1})" class="px-2.5 py-1 rounded-lg text-xs bg-gray-100 hover:bg-gray-200 text-gray-600">&laquo;</button>`;
-  }
-
-  let startPage = Math.max(1, adminTrxPage - 3);
-  let endPage = Math.min(totalPages, startPage + 6);
-  if (endPage - startPage < 6) startPage = Math.max(1, endPage - 6);
-
-  for (let page = startPage; page <= endPage; page += 1) {
-    pag.innerHTML += `<button onclick="changeAdminTrxPage(${page})"
-      class="px-2.5 py-1 rounded-lg text-xs transition cursor-pointer ${page === adminTrxPage ? 'bg-emerald-600 text-white font-bold' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}">${page}</button>`;
-  }
-
-  if (adminTrxPage < totalPages) {
-    pag.innerHTML += `<button onclick="changeAdminTrxPage(${adminTrxPage + 1})" class="px-2.5 py-1 rounded-lg text-xs bg-gray-100 hover:bg-gray-200 text-gray-600">&raquo;</button>`;
-  }
-}
-
-function changeAdminTrxPage(page) {
-  adminTrxPage = Number(page) || 1;
-  renderAllTrx();
-}
-
-function renderAdminChart(trx) {
-  const canvas = $('adminChart');
-  if (!canvas) return;
-
-  const dataBulanan = {};
-  const sortedTrx = [...trx].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-
-  sortedTrx.forEach((item) => {
-    const tgl = new Date(item.created_at);
-    if (Number.isNaN(tgl.getTime())) return;
-
-    const label = tgl.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' });
-    if (!dataBulanan[label]) dataBulanan[label] = { masuk: 0, keluar: 0 };
-    if (item.jenis === 'masuk') dataBulanan[label].masuk += Number(item.nominal) || 0;
-    if (item.jenis === 'keluar') dataBulanan[label].keluar += Number(item.nominal) || 0;
-  });
-
-  const labels = Object.keys(dataBulanan);
-  const masukArr = labels.map((label) => dataBulanan[label].masuk);
-  const keluarArr = labels.map((label) => dataBulanan[label].keluar);
-
-  if (adminChart) adminChart.destroy();
-  adminChart = new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Pemasukan', data: masukArr, backgroundColor: '#059669', borderRadius: 5 },
-        { label: 'Pengeluaran', data: keluarArr, backgroundColor: '#e11d48', borderRadius: 5 }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { labels: { font: { size: 11 } } } },
-      scales: {
-        y: {
-          ticks: {
-            callback: (value) => `Rp ${(Number(value) / 1000000).toFixed(1)}jt`
-          }
-        }
-      }
-    }
-  });
-}
-
-
-function getAdminTargetProfile(userId) {
-  return allProfiles.find((profile) => profile.id === userId);
 }
 
 async function editAdminUser(userId) {
