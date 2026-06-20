@@ -465,6 +465,185 @@
       min-width: 8.4rem;
     }
 
+
+    .mobile-trx-card {
+      border-radius: 1.35rem;
+      border: 1px solid #e7edf4;
+      background: #f8fafc;
+      padding: .95rem;
+    }
+    .mobile-trx-main {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: .85rem;
+    }
+    .mobile-trx-category {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .mobile-trx-user {
+      display: block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: .82rem;
+      font-weight: 700;
+      color: #64748b;
+    }
+    .mobile-trx-amount {
+      white-space: nowrap;
+      text-align: right;
+      font-size: .95rem;
+      font-weight: 800;
+    }
+    .mobile-trx-meta {
+      margin-top: .75rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: .45rem;
+      font-size: .76rem;
+      font-weight: 800;
+      color: #64748b;
+    }
+    .mobile-trx-dot {
+      height: .25rem;
+      width: .25rem;
+      border-radius: 999px;
+      background: #cbd5e1;
+    }
+    .trx-type-pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: .25rem .55rem;
+      font-size: .68rem;
+      font-weight: 800;
+    }
+    .trx-type-in { background: #dcfce7; color: #047857; }
+    .trx-type-out { background: #ffe4e6; color: #be123c; }
+
+    body.dark .mobile-trx-card {
+      background: #111827 !important;
+      border-color: #1e293b !important;
+    }
+    body.dark .mobile-trx-category {
+      color: #f8fafc !important;
+    }
+    body.dark .mobile-trx-user,
+    body.dark .mobile-trx-meta {
+      color: #94a3b8 !important;
+    }
+    body.dark .mobile-trx-dot {
+      background: #475569 !important;
+    }
+    body.dark .trx-type-in {
+      background: rgba(6, 95, 70, .28) !important;
+      color: #34d399 !important;
+    }
+    body.dark .trx-type-out {
+      background: rgba(159, 18, 57, .28) !important;
+      color: #fb7185 !important;
+    }
+
+
+    /* Mobile user card hierarchy fix */
+    .mobile-user-card {
+      padding: 1rem !important;
+    }
+    .mobile-user-head {
+      display: grid;
+      grid-template-columns: 3.25rem minmax(0, 1fr);
+      gap: .85rem;
+      align-items: start;
+    }
+    .mobile-user-avatar {
+      display: flex;
+      height: 3.25rem;
+      width: 3.25rem;
+      align-items: center;
+      justify-content: center;
+      border-radius: 1.1rem;
+      background: #ecfdf5;
+      color: #047857;
+      font-size: 1rem;
+      font-weight: 800;
+    }
+    .mobile-user-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 1.05rem;
+      line-height: 1.25rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .mobile-user-email {
+      margin-top: .25rem;
+      display: block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: .86rem;
+      font-weight: 700;
+      color: #64748b;
+    }
+    .mobile-user-badges {
+      margin-top: .75rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: .45rem;
+    }
+    .mobile-user-info {
+      margin-top: .65rem;
+      display: grid;
+      gap: .28rem;
+      font-size: .82rem;
+      font-weight: 700;
+      color: #334155;
+    }
+    .mobile-user-info b {
+      font-weight: 800;
+      color: #64748b;
+    }
+    .mobile-user-actions {
+      margin-top: .95rem !important;
+      justify-content: flex-start !important;
+      gap: .55rem !important;
+    }
+    body.dark .mobile-user-name {
+      color: #f8fafc !important;
+    }
+    body.dark .mobile-user-email {
+      color: #94a3b8 !important;
+    }
+    body.dark .mobile-user-avatar {
+      background: rgba(6, 95, 70, .24) !important;
+      color: #34d399 !important;
+    }
+    body.dark .mobile-user-info {
+      color: #cbd5e1 !important;
+    }
+    body.dark .mobile-user-info b {
+      color: #94a3b8 !important;
+    }
+
+
+    /* Force mobile user action icons to align left under the text block */
+    .mobile-user-actions .admin-actions-wrap {
+      justify-content: flex-start !important;
+      width: auto !important;
+      min-width: 0 !important;
+    }
+
   </style>
 </head>
 <body data-page="dashboard-admin" class="min-h-screen antialiased">
@@ -797,14 +976,16 @@
               </div>
             </div>
 
-            <div class="table-shell">
+            <div id="allTrxCardsBody" class="space-y-3 p-4 md:hidden"></div>
+
+            <div class="table-shell hidden md:block">
               <table class="w-full min-w-[820px] text-sm">
                 <thead>
                   <tr class="border-b border-gray-100">
-                    <th class="px-5 py-3 text-left">Tanggal</th>
-                    <th class="px-5 py-3 text-left">User</th>
-                    <th class="px-5 py-3 text-left">Kategori</th>
-                    <th class="px-5 py-3 text-right">Nominal</th>
+                    <th class="px-4 py-3 text-left">Tanggal</th>
+                    <th class="px-4 py-3 text-left">User</th>
+                    <th class="px-4 py-3 text-left">Kategori</th>
+                    <th class="px-4 py-3 text-right">Nominal</th>
                   </tr>
                 </thead>
                 <tbody id="allTrxBody"></tbody>
@@ -835,6 +1016,6 @@
     window.openAdminDrawer = openAdminDrawer;
     window.closeAdminDrawer = closeAdminDrawer;
   </script>
-  <script src="./script.js?v=20260620-v71-center-action-buttons"></script>
+  <script src="./script.js?v=20260620-v75-mobile-actions-left-fix"></script>
 </body>
 </html>
