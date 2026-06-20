@@ -6,7 +6,7 @@
 const SUPABASE_URL = 'https://uezjncjapumyrkjxzslw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_gMbWszjY1XIou5Cj4wDkjg_UlGiuOd5';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const APP_VERSION = '20260620-v71-center-action-buttons';
+const APP_VERSION = '20260620-v75-mobile-actions-left-fix';
 console.log(`Olah Uang script loaded: ${APP_VERSION}`);
 window.OLAH_UANG_VERSION = APP_VERSION;
 document.documentElement.setAttribute('data-olah-uang-version', APP_VERSION);
@@ -2954,6 +2954,9 @@ async function muatData(showLoading = true) {
   if (showLoading && $('allTrxBody')) {
     $('allTrxBody').innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-gray-400"><div class="inline-flex items-center gap-2 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold">⏳ Memuat transaksi semua user...</div></td></tr>';
   }
+  if (showLoading && $('allTrxCardsBody')) {
+    $('allTrxCardsBody').innerHTML = '<div class="rounded-3xl border border-gray-100 bg-gray-50 px-5 py-6 text-center text-sm font-bold text-gray-400">⏳ Memuat transaksi...</div>';
+  }
 
   let profilesData = [];
   let trxData = [];
@@ -3313,41 +3316,41 @@ function renderUserTable(profiles, trx) {
     const isDeleted = status === 'deleted';
     const isSuspended = status === 'suspended';
     const initial = escapeHTML(String(profile.nama || profile.email || '?').slice(0, 1).toUpperCase());
+
     const roleBadge = isAdmin
       ? '<span class="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-700">Admin</span>'
       : '<span class="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-extrabold text-blue-700">User</span>';
 
+    const statusBadge = getProfileStatusBadge(profile);
+
     return `
-      <article class="rounded-3xl border border-gray-100 bg-gray-50 p-4 ${isDeleted ? 'opacity-70' : ''}">
-        <div class="flex items-start gap-3">
-          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-sm font-extrabold text-emerald-700">${initial}</div>
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-2">
-              <p class="font-extrabold text-gray-900">${escapeHTML(profile.nama || '—')}</p>
-              ${isSelf ? '<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700">Akun kamu</span>' : ''}
+      <article class="mobile-user-card ${isDeleted ? 'opacity-70' : ''}">
+        <div class="mobile-user-head">
+          <div class="mobile-user-avatar">${initial}</div>
+
+          <div class="min-w-0">
+            <div class="flex min-w-0 items-center gap-2">
+              <p class="mobile-user-name">${escapeHTML(profile.nama || '—')}</p>
+              ${isSelf ? '<span class="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700">Kamu</span>' : ''}
             </div>
-            <p class="mt-1 break-words text-sm font-semibold text-gray-500">${escapeHTML(profile.email || '—')}</p>
+
+            <span class="mobile-user-email" title="${escapeHTML(profile.email || '—')}">${escapeHTML(profile.email || '—')}</span>
+
+            <div class="mobile-user-badges">
+              ${statusBadge}
+              ${roleBadge}
+            </div>
+
+            <div class="mobile-user-info">
+              <p><b>Bergabung:</b> ${escapeHTML(tanggal)}</p>
+              <p><b>Total Transaksi:</b> ${jumlahTrx} transaksi</p>
+            </div>
+
+            <div class="mobile-user-actions">
+              ${renderUserActionButtons(profile, isSuspended, isSelf, isDeleted)}
+            </div>
           </div>
         </div>
-        <div class="mt-4 grid grid-cols-2 gap-3 text-xs">
-          <div>
-            <p class="font-extrabold uppercase tracking-wide text-gray-400">Role</p>
-            <div class="mt-1">${roleBadge}</div>
-          </div>
-          <div>
-            <p class="font-extrabold uppercase tracking-wide text-gray-400">Status</p>
-            <div class="mt-1">${getProfileStatusBadge(profile)}</div>
-          </div>
-          <div>
-            <p class="font-extrabold uppercase tracking-wide text-gray-400">Bergabung</p>
-            <p class="mt-1 font-bold text-gray-600">${escapeHTML(tanggal)}</p>
-          </div>
-          <div>
-            <p class="font-extrabold uppercase tracking-wide text-gray-400">Transaksi</p>
-            <p class="mt-1 font-bold text-gray-600">${jumlahTrx} transaksi</p>
-          </div>
-        </div>
-        <div class="mt-4 flex justify-end">${renderUserActionButtons(profile, isSuspended, isSelf, isDeleted)}</div>
       </article>`;
   }).join('');
 
@@ -3424,7 +3427,8 @@ function renderUserActivity(profiles, trx) {
 
 function renderAllTrx() {
   const body = $('allTrxBody');
-  if (!body) return;
+  const cards = $('allTrxCardsBody');
+  if (!body && !cards) return;
 
   const filteredTrx = getFilteredAdminTrx(allTrxData);
   const total = filteredTrx.length;
@@ -3434,52 +3438,82 @@ function renderAllTrx() {
   adminTrxPage = Math.min(Math.max(adminTrxPage, 1), totalPages);
   const pageData = filteredTrx.slice((adminTrxPage - 1) * adminTrxPerPage, adminTrxPage * adminTrxPerPage);
 
-  if (!allTrxData.length) {
-    body.innerHTML = `
-      <tr>
-        <td colspan="4" class="px-6 py-10 text-center">
-          <div class="mx-auto max-w-md rounded-3xl border border-gray-100 bg-gray-50 px-5 py-6">
-            <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-2xl">🧾</div>
-            <p class="font-extrabold text-gray-800">Belum ada transaksi</p>
-            <p class="mt-1 text-sm text-gray-400">Transaksi seluruh user akan muncul di sini.</p>
-          </div>
-        </td>
-      </tr>`;
-  } else if (!pageData.length) {
-    body.innerHTML = `
-      <tr>
-        <td colspan="4" class="px-6 py-10 text-center">
-          <div class="mx-auto max-w-md rounded-3xl border border-gray-100 bg-gray-50 px-5 py-6">
-            <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-2xl">🔎</div>
-            <p class="font-extrabold text-gray-800">Tidak ada transaksi yang cocok</p>
-            <p class="mt-1 text-sm text-gray-400">Coba ubah kata kunci, jenis transaksi, atau user.</p>
-          </div>
-        </td>
-      </tr>`;
-  } else {
-    body.innerHTML = pageData.map((item) => {
-      const profile = allProfiles.find((p) => p.id === item.user_id);
-      const namaUser = profile ? (profile.nama || profile.email) : '(tidak diketahui)';
-      const warna = item.jenis === 'masuk' ? 'text-emerald-600' : 'text-rose-500';
-      const simbol = item.jenis === 'masuk' ? '+' : '-';
-      const typeBadge = item.jenis === 'masuk'
-        ? '<span class="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-extrabold text-emerald-700">Masuk</span>'
-        : '<span class="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-extrabold text-rose-700">Keluar</span>';
+  const emptyState = (icon, title, desc) => `
+    <div class="mx-auto max-w-md rounded-3xl border border-gray-100 bg-gray-50 px-5 py-6 text-center">
+      <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-2xl">${icon}</div>
+      <p class="font-extrabold text-gray-800">${title}</p>
+      <p class="mt-1 text-sm text-gray-400">${desc}</p>
+    </div>`;
 
-      return `
-        <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
-          <td class="px-5 py-4 text-gray-400 whitespace-nowrap">${escapeHTML(formatTanggal(item.created_at, { day: 'numeric', month: 'short', year: 'numeric' }))}</td>
-          <td class="px-5 py-4">
-            <div class="min-w-[160px]">
-              <p class="font-extrabold text-gray-700">${escapeHTML(namaUser)}</p>
-              <p class="mt-1">${typeBadge}</p>
-            </div>
-          </td>
-          <td class="px-5 py-4 text-gray-700">${escapeHTML(item.kategori || '-')}</td>
-          <td class="px-5 py-4 text-right font-extrabold ${warna} whitespace-nowrap">${simbol} ${formatRupiah(item.nominal)}</td>
-        </tr>`;
-    }).join('');
+  if (!allTrxData.length) {
+    const empty = emptyState('🧾', 'Belum ada transaksi', 'Transaksi seluruh user akan muncul di sini.');
+    if (body) body.innerHTML = `<tr><td colspan="4" class="px-6 py-10">${empty}</td></tr>`;
+    if (cards) cards.innerHTML = empty;
+    renderAdminPagination(totalPages);
+    return;
   }
+
+  if (!pageData.length) {
+    const empty = emptyState('🔎', 'Tidak ada transaksi yang cocok', 'Coba ubah kata kunci, jenis transaksi, atau user.');
+    if (body) body.innerHTML = `<tr><td colspan="4" class="px-6 py-10">${empty}</td></tr>`;
+    if (cards) cards.innerHTML = empty;
+    renderAdminPagination(totalPages);
+    return;
+  }
+
+  const rows = pageData.map((item) => {
+    const profile = allProfiles.find((p) => p.id === item.user_id);
+    const namaUser = profile ? (profile.nama || profile.email) : '(tidak diketahui)';
+    const warna = item.jenis === 'masuk' ? 'text-emerald-600' : 'text-rose-500';
+    const simbol = item.jenis === 'masuk' ? '+' : '-';
+    const typeBadge = item.jenis === 'masuk'
+      ? '<span class="trx-type-pill trx-type-in">Masuk</span>'
+      : '<span class="trx-type-pill trx-type-out">Keluar</span>';
+
+    return `
+      <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
+        <td class="px-4 py-3 text-gray-400 whitespace-nowrap">${escapeHTML(formatTanggal(item.created_at, { day: 'numeric', month: 'short', year: 'numeric' }))}</td>
+        <td class="px-4 py-3">
+          <p class="max-w-[220px] truncate font-extrabold text-gray-700" title="${escapeHTML(namaUser)}">${escapeHTML(namaUser)}</p>
+          <p class="mt-1">${typeBadge}</p>
+        </td>
+        <td class="px-4 py-3">
+          <p class="max-w-[240px] truncate font-bold text-gray-700" title="${escapeHTML(item.kategori || '-')}">${escapeHTML(item.kategori || '-')}</p>
+        </td>
+        <td class="px-4 py-3 text-right font-extrabold ${warna} whitespace-nowrap">${simbol} ${formatRupiah(item.nominal)}</td>
+      </tr>`;
+  }).join('');
+
+  const cardItems = pageData.map((item) => {
+    const profile = allProfiles.find((p) => p.id === item.user_id);
+    const namaUser = profile ? (profile.nama || profile.email) : '(tidak diketahui)';
+    const isIn = item.jenis === 'masuk';
+    const warna = isIn ? 'text-emerald-600' : 'text-rose-500';
+    const simbol = isIn ? '+' : '-';
+    const typeBadge = isIn
+      ? '<span class="trx-type-pill trx-type-in">Masuk</span>'
+      : '<span class="trx-type-pill trx-type-out">Keluar</span>';
+    const tanggal = formatTanggal(item.created_at, { day: 'numeric', month: 'short', year: 'numeric' });
+
+    return `
+      <article class="mobile-trx-card">
+        <div class="mobile-trx-main">
+          <div class="min-w-0 flex-1">
+            <p class="mobile-trx-category" title="${escapeHTML(item.kategori || '-')}">${escapeHTML(item.kategori || '-')}</p>
+            <span class="mobile-trx-user mt-1" title="${escapeHTML(namaUser)}">${escapeHTML(namaUser)}</span>
+          </div>
+          <p class="mobile-trx-amount ${warna}">${simbol} ${formatRupiah(item.nominal)}</p>
+        </div>
+        <div class="mobile-trx-meta">
+          ${typeBadge}
+          <span class="mobile-trx-dot"></span>
+          <span>${escapeHTML(tanggal)}</span>
+        </div>
+      </article>`;
+  }).join('');
+
+  if (body) body.innerHTML = rows;
+  if (cards) cards.innerHTML = cardItems;
 
   renderAdminPagination(totalPages);
 }
@@ -3873,37 +3907,3 @@ window.updateUI = updateUI;
 window.changeItemsPerPage = changeItemsPerPage;
 window.changePage = changePage;
 window.resetUserPageAndUpdate = resetUserPageAndUpdate;
-window.ubahFilterTahun = ubahFilterTahun;
-window.hapusTransaksi = hapusTransaksi;
-window.exportToExcel = exportToExcel;
-window.toggleDarkMode = toggleDarkMode;
-window.muatData = muatData;
-window.toggleRole = toggleRole;
-window.changeAdminTrxPage = changeAdminTrxPage;
-window.updateRecoveryStatus = updateRecoveryStatus;
-window.showAdminView = showAdminView;
-window.editAdminUser = editAdminUser;
-window.setUserSuspended = setUserSuspended;
-window.deleteAdminUser = deleteAdminUser;
-window.applyAdminUserFilters = applyAdminUserFilters;
-window.resetAdminUserFilters = resetAdminUserFilters;
-window.applyAdminTrxFilters = applyAdminTrxFilters;
-window.resetAdminTrxFilters = resetAdminTrxFilters;
-window.showAppView = showAppView;
-window.openCatatModal = openCatatModal;
-window.handleCatatSekarang = handleCatatSekarang;
-window.closeCatatModal = closeCatatModal;
-window.setQuickJenis = setQuickJenis;
-window.submitQuickTransaction = submitQuickTransaction;
-window.toggleProfileEdit = toggleProfileEdit;
-window.saveProfileSettings = saveProfileSettings;
-window.toggleFinanceEdit = toggleFinanceEdit;
-window.saveFinanceSettings = saveFinanceSettings;
-window.addFinanceCategory = addFinanceCategory;
-window.removeFinanceCategoryRow = removeFinanceCategoryRow;
-
-if (document.readyState === 'loading') {
-  window.addEventListener('DOMContentLoaded', initApp);
-} else {
-  initApp();
-}
