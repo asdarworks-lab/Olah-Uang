@@ -936,6 +936,57 @@ async function ensureProfile(user, { allowFallback = true } = {}) {
   return insertedProfile;
 }
 
+
+function getAccountStatus(profile) {
+  return String(profile?.account_status || 'active').toLowerCase();
+}
+
+function isAccountBlocked(profile) {
+  return ['suspended', 'deleted'].includes(getAccountStatus(profile));
+}
+
+function getBlockedAccountMessage(profile) {
+  const status = getAccountStatus(profile);
+  if (status === 'deleted') {
+    return 'Akun ini sudah dihapus oleh admin. Hubungi admin jika menurut kamu ini keliru.';
+  }
+  if (status === 'suspended') {
+    return 'Akun ini sedang disuspend oleh admin. Hubungi admin untuk membuka akses kembali.';
+  }
+  return 'Akun ini belum bisa digunakan.';
+}
+
+async function handleBlockedAccount(profile) {
+  const message = getBlockedAccountMessage(profile);
+  await db.auth.signOut().catch(() => {});
+  await Swal.fire({
+    icon: 'warning',
+    title: 'Akses akun dibatasi',
+    text: message,
+    confirmButtonColor: '#059669'
+  });
+  window.location.replace('index.html');
+}
+
+function getProfileStatusLabel(profile) {
+  const status = getAccountStatus(profile);
+  if (status === 'suspended') return 'Suspend';
+  if (status === 'deleted') return 'Dihapus';
+  return 'Aktif';
+}
+
+function getProfileStatusBadge(profile) {
+  const status = getAccountStatus(profile);
+  if (status === 'suspended') {
+    return '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-extrabold">Suspend</span>';
+  }
+  if (status === 'deleted') {
+    return '<span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-xs font-extrabold">Dihapus</span>';
+  }
+  return '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-extrabold">Aktif</span>';
+}
+
+
 async function redirectByRole(userId) {
   let profile = null;
 
@@ -950,6 +1001,11 @@ async function redirectByRole(userId) {
       'Profile belum dibuat',
       'Akun Auth berhasil dibuat, tapi data di tabel profiles belum muncul. Jalankan SQL trigger handle_new_user atau cek RLS policy profiles.'
     );
+  }
+
+  if (isAccountBlocked(profile)) {
+    await handleBlockedAccount(profile);
+    return;
   }
 
   if (profile.role === 'admin') {
@@ -968,6 +1024,11 @@ async function requireAuth({ adminOnly = false } = {}) {
 
   currentUser = session.user;
   currentProfile = await ensureProfile(currentUser);
+
+  if (isAccountBlocked(currentProfile)) {
+    await handleBlockedAccount(currentProfile);
+    return false;
+  }
 
   if (adminOnly && currentProfile?.role !== 'admin') {
     window.location.replace('dashboard.html');
@@ -1158,13 +1219,30 @@ function setupUserRealtime() {
   if (!currentUser || userRealtimeChannel) return;
 
   userRealtimeChannel = db
-    .channel(`transaksi-user-${currentUser.id}`)
+    .channel(`user-session-${currentUser.id}`)
     .on('postgres_changes', {
       event: '*',
       schema: 'public',
       table: 'transaksi',
       filter: `user_id=eq.${currentUser.id}`
     }, () => updateUI())
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'profiles',
+      filter: `id=eq.${currentUser.id}`
+    }, async (payload) => {
+      if (payload?.new) currentProfile = payload.new;
+      if (isAccountBlocked(currentProfile)) {
+        await handleBlockedAccount(currentProfile);
+        return;
+      }
+      applyFinanceSettingsFromProfile(currentProfile);
+      fillProfileSettings();
+      renderFinanceSettings();
+      setJenis(jenisAktif);
+      updateUI();
+    })
     .subscribe();
 }
 
@@ -2386,6 +2464,11 @@ async function initUserDashboard() {
   const freshProfile = await waitForProfile(currentUser.id, 1);
   if (freshProfile) currentProfile = freshProfile;
 
+  if (isAccountBlocked(currentProfile)) {
+    await handleBlockedAccount(currentProfile);
+    return;
+  }
+
   if (currentProfile?.role === 'admin') {
     window.location.replace('dashboard-admin.html');
     return;
@@ -2521,7 +2604,7 @@ function renderActiveUsers(activity = [], error = null) {
         role: profile?.role || 'user'
       };
     })
-    .filter((item) => item.seen.online)
+    .filter((item) => item.seen.online && getAccountStatus(item.profile) === 'active')
     .sort((a, b) => new Date(b.last_seen) - new Date(a.last_seen))
     .slice(0, 10);
 
@@ -2706,7 +2789,7 @@ function renderStatCards(profiles, trx, recoveryRequests = [], userActivity = []
     return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === todayKey;
   }).length;
 
-  if ($('statTotalUser')) $('statTotalUser').textContent = profiles.length;
+  if ($('statTotalUser')) $('statTotalUser').textContent = profiles.filter((profile) => getAccountStatus(profile) !== 'deleted').length;
   if ($('statTotalTrx')) $('statTotalTrx').textContent = trx.length;
   if ($('statTotalMasuk')) $('statTotalMasuk').textContent = formatRupiah(totalMasuk);
   if ($('statTotalKeluar')) $('statTotalKeluar').textContent = formatRupiah(totalKeluar);
@@ -2859,7 +2942,7 @@ function renderUserTable(profiles, trx) {
   if (!body) return;
 
   if (!profiles.length) {
-    body.innerHTML = '<tr><td colspan="5" class="px-6 py-6 text-center text-gray-400">Belum ada pengguna.</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="px-6 py-6 text-center text-gray-400">Belum ada pengguna.</td></tr>';
     return;
   }
 
@@ -2867,21 +2950,46 @@ function renderUserTable(profiles, trx) {
     const jumlahTrx = trx.filter((item) => item.user_id === profile.id).length;
     const tanggal = formatTanggal(profile.created_at, { day: 'numeric', month: 'short', year: 'numeric' });
     const isAdmin = profile.role === 'admin';
+    const isSelf = profile.id === currentUser?.id;
+    const status = getAccountStatus(profile);
+    const isDeleted = status === 'deleted';
+    const isSuspended = status === 'suspended';
     const roleBadge = isAdmin
       ? '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">Admin</span>'
       : '<span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">User</span>';
 
+    const disabledText = 'opacity-40 cursor-not-allowed';
+    const editDisabled = isDeleted ? 'disabled' : '';
+    const suspendDisabled = (isSelf || isDeleted) ? 'disabled' : '';
+    const deleteDisabled = isSelf || isDeleted ? 'disabled' : '';
+
     return `
-      <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
-        <td class="px-6 py-4 font-medium text-gray-800">${escapeHTML(profile.nama || '—')}</td>
+      <tr class="border-b border-gray-50 hover:bg-gray-50 transition ${isDeleted ? 'opacity-70' : ''}">
+        <td class="px-6 py-4 font-medium text-gray-800">
+          <div class="min-w-[150px]">
+            <p>${escapeHTML(profile.nama || '—')}</p>
+            ${isSelf ? '<p class="mt-1 text-[10px] font-bold text-emerald-600">Akun kamu</p>' : ''}
+          </div>
+        </td>
         <td class="px-6 py-4 text-gray-500">${escapeHTML(profile.email || '—')}</td>
         <td class="px-6 py-4">${roleBadge}</td>
+        <td class="px-6 py-4">${getProfileStatusBadge(profile)}</td>
         <td class="px-6 py-4 text-gray-400">${escapeHTML(tanggal)} <span class="text-gray-300 ml-1">(${jumlahTrx} trx)</span></td>
-        <td class="px-6 py-4 text-center">
-          <button onclick="toggleRole('${escapeHTML(profile.id)}', '${escapeHTML(profile.role || 'user')}')"
-            class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 transition text-gray-600 cursor-pointer">
-            ${isAdmin ? 'Jadikan User' : 'Jadikan Admin'}
-          </button>
+        <td class="px-6 py-4">
+          <div class="flex flex-wrap justify-center gap-2">
+            <button onclick="editAdminUser('${escapeHTML(profile.id)}')" ${editDisabled}
+              class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 transition text-gray-600 cursor-pointer disabled:${disabledText}">
+              Edit
+            </button>
+            <button onclick="setUserSuspended('${escapeHTML(profile.id)}', ${isSuspended ? 'false' : 'true'})" ${suspendDisabled}
+              class="text-xs px-3 py-1.5 rounded-lg border ${isSuspended ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50' : 'border-amber-200 text-amber-700 hover:bg-amber-50'} transition cursor-pointer disabled:${disabledText}">
+              ${isSuspended ? 'Aktifkan' : 'Suspend'}
+            </button>
+            <button onclick="deleteAdminUser('${escapeHTML(profile.id)}')" ${deleteDisabled}
+              class="text-xs px-3 py-1.5 rounded-lg border border-rose-200 text-rose-700 hover:bg-rose-50 transition cursor-pointer disabled:${disabledText}">
+              Hapus
+            </button>
+          </div>
         </td>
       </tr>`;
   }).join('');
@@ -3030,6 +3138,185 @@ function renderAdminChart(trx) {
   });
 }
 
+
+function getAdminTargetProfile(userId) {
+  return allProfiles.find((profile) => profile.id === userId);
+}
+
+async function editAdminUser(userId) {
+  const profile = getAdminTargetProfile(userId);
+  if (!profile) return showWarning('User tidak ditemukan', 'Data user belum terbaca. Coba refresh data dulu.');
+
+  if (getAccountStatus(profile) === 'deleted') {
+    return showWarning('Akun sudah dihapus', 'Akun yang sudah dihapus tidak bisa diedit.');
+  }
+
+  const { value: formValue } = await Swal.fire({
+    title: 'Edit Akun User',
+    html: `
+      <div class="space-y-3 text-left">
+        <label class="block">
+          <span class="mb-1 block text-xs font-bold text-gray-500">Nama</span>
+          <input id="adminEditNama" class="swal2-input !mx-0 !w-full" value="${escapeHTML(profile.nama || '')}" placeholder="Nama user">
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-xs font-bold text-gray-500">Email profil</span>
+          <input id="adminEditEmail" class="swal2-input !mx-0 !w-full" value="${escapeHTML(profile.email || '')}" placeholder="email@domain.com">
+          <span class="mt-1 block text-[11px] text-gray-400">Catatan: ini mengubah email di profil aplikasi, bukan email login Auth Supabase.</span>
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-xs font-bold text-gray-500">Role</span>
+          <select id="adminEditRole" class="swal2-select !mx-0 !w-full">
+            <option value="user" ${profile.role !== 'admin' ? 'selected' : ''}>User</option>
+            <option value="admin" ${profile.role === 'admin' ? 'selected' : ''}>Admin</option>
+          </select>
+        </label>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: 'Simpan Perubahan',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#059669',
+    cancelButtonColor: '#9ca3af',
+    preConfirm: () => {
+      const nama = document.getElementById('adminEditNama')?.value.trim();
+      const email = document.getElementById('adminEditEmail')?.value.trim();
+      const role = document.getElementById('adminEditRole')?.value === 'admin' ? 'admin' : 'user';
+
+      if (!nama) {
+        Swal.showValidationMessage('Nama tidak boleh kosong.');
+        return false;
+      }
+
+      if (email && !isValidEmailFormat(email)) {
+        Swal.showValidationMessage('Format email tidak valid.');
+        return false;
+      }
+
+      if (profile.id === currentUser?.id && role !== 'admin') {
+        Swal.showValidationMessage('Kamu tidak bisa menurunkan role admin akun sendiri.');
+        return false;
+      }
+
+      return { nama, email, role };
+    }
+  });
+
+  if (!formValue) return;
+
+  const { error } = await db
+    .from('profiles')
+    .update({
+      nama: formValue.nama,
+      email: formValue.email,
+      role: formValue.role
+    })
+    .eq('id', userId);
+
+  if (error) return showError('Gagal mengedit user', error);
+
+  await Swal.fire({
+    icon: 'success',
+    title: 'User diperbarui',
+    timer: 1200,
+    showConfirmButton: false
+  });
+
+  await muatData(false);
+}
+
+async function setUserSuspended(userId, shouldSuspend = true) {
+  const profile = getAdminTargetProfile(userId);
+  if (!profile) return showWarning('User tidak ditemukan', 'Data user belum terbaca. Coba refresh data dulu.');
+  if (profile.id === currentUser?.id) return showWarning('Tidak bisa suspend diri sendiri', 'Admin yang mengunci dirinya sendiri itu bukan fitur, itu plot komedi.');
+  if (getAccountStatus(profile) === 'deleted') return showWarning('Akun sudah dihapus', 'Akun yang sudah dihapus tidak bisa disuspend.');
+
+  const actionText = shouldSuspend ? 'suspend' : 'aktifkan kembali';
+  const result = await Swal.fire({
+    icon: shouldSuspend ? 'warning' : 'question',
+    title: shouldSuspend ? 'Suspend akun ini?' : 'Aktifkan akun ini?',
+    text: shouldSuspend
+      ? `User ${profile.nama || profile.email || 'ini'} tidak akan bisa masuk ke aplikasi.`
+      : `User ${profile.nama || profile.email || 'ini'} akan bisa mengakses aplikasi lagi.`,
+    showCancelButton: true,
+    confirmButtonText: shouldSuspend ? 'Ya, Suspend' : 'Ya, Aktifkan',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: shouldSuspend ? '#d97706' : '#059669',
+    cancelButtonColor: '#9ca3af'
+  });
+
+  if (!result.isConfirmed) return;
+
+  const { error } = await db
+    .from('profiles')
+    .update({
+      account_status: shouldSuspend ? 'suspended' : 'active',
+      suspended_at: shouldSuspend ? new Date().toISOString() : null,
+      deleted_at: null
+    })
+    .eq('id', userId);
+
+  if (error) return showError(`Gagal ${actionText} akun`, error);
+
+  await Swal.fire({
+    icon: 'success',
+    title: shouldSuspend ? 'Akun disuspend' : 'Akun aktif kembali',
+    timer: 1200,
+    showConfirmButton: false
+  });
+
+  await muatData(false);
+}
+
+async function deleteAdminUser(userId) {
+  const profile = getAdminTargetProfile(userId);
+  if (!profile) return showWarning('User tidak ditemukan', 'Data user belum terbaca. Coba refresh data dulu.');
+  if (profile.id === currentUser?.id) return showWarning('Tidak bisa hapus diri sendiri', 'Admin yang menghapus akunnya sendiri itu bukan admin, itu pesulap gagal.');
+  if (getAccountStatus(profile) === 'deleted') return showWarning('Akun sudah dihapus', 'Status akun ini sudah dihapus.');
+
+  const result = await Swal.fire({
+    icon: 'warning',
+    title: 'Hapus akun user?',
+    html: `
+      <p class="text-sm text-gray-500">
+        Akun <b>${escapeHTML(profile.nama || profile.email || 'user ini')}</b> akan ditandai sebagai dihapus dan tidak bisa login.
+      </p>
+      <p class="mt-2 text-xs text-gray-400">
+        Ini soft delete. Data Auth Supabase tidak dihapus permanen dari frontend karena butuh service role server.
+      </p>
+    `,
+    showCancelButton: true,
+    confirmButtonText: 'Ya, Hapus',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#e11d48',
+    cancelButtonColor: '#9ca3af'
+  });
+
+  if (!result.isConfirmed) return;
+
+  const { error } = await db
+    .from('profiles')
+    .update({
+      account_status: 'deleted',
+      deleted_at: new Date().toISOString(),
+      suspended_at: null
+    })
+    .eq('id', userId);
+
+  if (error) return showError('Gagal menghapus akun', error);
+
+  await Swal.fire({
+    icon: 'success',
+    title: 'Akun dihapus',
+    text: 'Akses user sudah diblokir dari aplikasi.',
+    timer: 1300,
+    showConfirmButton: false
+  });
+
+  await muatData(false);
+}
+
+
 async function toggleRole(userId, roleSekarang) {
   if (!currentUser || currentProfile?.role !== 'admin') return;
 
@@ -3128,6 +3415,9 @@ window.muatData = muatData;
 window.toggleRole = toggleRole;
 window.changeAdminTrxPage = changeAdminTrxPage;
 window.updateRecoveryStatus = updateRecoveryStatus;
+window.editAdminUser = editAdminUser;
+window.setUserSuspended = setUserSuspended;
+window.deleteAdminUser = deleteAdminUser;
 window.showAppView = showAppView;
 window.openCatatModal = openCatatModal;
 window.handleCatatSekarang = handleCatatSekarang;
