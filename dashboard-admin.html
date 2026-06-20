@@ -652,6 +652,174 @@
       min-width: 0 !important;
     }
 
+
+    /* v77: mobile user card hierarchy + dark mode polish */
+    .mobile-user-card {
+      padding: 1rem !important;
+      border-radius: 1.45rem;
+      border: 1px solid #e7edf4;
+      background: #f8fafc;
+    }
+    .mobile-user-head {
+      display: grid;
+      grid-template-columns: 3.25rem minmax(0, 1fr);
+      gap: .85rem;
+      align-items: start;
+    }
+    .mobile-user-avatar {
+      display: flex;
+      height: 3.25rem;
+      width: 3.25rem;
+      align-items: center;
+      justify-content: center;
+      border-radius: 1.1rem;
+      background: #ecfdf5;
+      color: #047857;
+      font-size: 1rem;
+      font-weight: 800;
+    }
+    .mobile-user-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 1.05rem;
+      line-height: 1.25rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .mobile-user-email {
+      margin-top: .25rem;
+      display: block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: .86rem;
+      font-weight: 700;
+      color: #64748b;
+    }
+    .mobile-user-badges {
+      margin-top: .75rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: .45rem;
+    }
+    .mobile-user-info {
+      margin-top: .65rem;
+      display: grid;
+      gap: .28rem;
+      font-size: .82rem;
+      font-weight: 700;
+      color: #334155;
+    }
+    .mobile-user-info b {
+      font-weight: 800;
+      color: #64748b;
+    }
+    .mobile-user-actions {
+      margin-top: .95rem !important;
+      justify-content: flex-start !important;
+      gap: .55rem !important;
+    }
+    .mobile-user-actions .admin-actions-wrap {
+      justify-content: flex-start !important;
+      width: auto !important;
+      min-width: 0 !important;
+    }
+
+    .admin-active-card {
+      border-color: #d1fae5 !important;
+      background: #ecfdf5 !important;
+    }
+    .admin-active-card-title {
+      color: #064e3b !important;
+    }
+    .admin-active-card-email {
+      color: #64748b !important;
+    }
+    .admin-active-card-page {
+      color: #047857 !important;
+    }
+
+    body.dark .mobile-user-card {
+      background: #111827 !important;
+      border-color: #1e293b !important;
+    }
+    body.dark .mobile-user-name {
+      color: #f8fafc !important;
+    }
+    body.dark .mobile-user-email {
+      color: #94a3b8 !important;
+    }
+    body.dark .mobile-user-avatar {
+      background: rgba(6, 95, 70, .24) !important;
+      color: #34d399 !important;
+    }
+    body.dark .mobile-user-info {
+      color: #cbd5e1 !important;
+    }
+    body.dark .mobile-user-info b {
+      color: #94a3b8 !important;
+    }
+
+    body.dark .admin-active-card {
+      background: #111827 !important;
+      border-color: #1e293b !important;
+    }
+    body.dark .admin-active-card-title {
+      color: #f8fafc !important;
+    }
+    body.dark .admin-active-card-email {
+      color: #94a3b8 !important;
+    }
+    body.dark .admin-active-card-page {
+      color: #34d399 !important;
+    }
+
+
+    /* v78: Aktivitas page dark mode polish */
+    .admin-activity-list-card {
+      border: 1px solid #e7edf4;
+      background: #f8fafc;
+    }
+    .admin-activity-name { color: #0f172a; }
+    .admin-activity-email { color: #64748b; }
+    .admin-activity-page { color: #047857; }
+    .admin-activity-time { color: #047857; }
+    .admin-activity-dot {
+      background: #10b981;
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, .14);
+    }
+    body.dark .admin-activity-list-card {
+      background: #111827 !important;
+      border-color: #1e293b !important;
+    }
+    body.dark .admin-activity-name { color: #f8fafc !important; }
+    body.dark .admin-activity-email { color: #94a3b8 !important; }
+    body.dark .admin-activity-page { color: #34d399 !important; }
+    body.dark .admin-activity-time { color: #34d399 !important; }
+    body.dark .admin-activity-dot {
+      background: #34d399 !important;
+      box-shadow: 0 0 0 4px rgba(52, 211, 153, .12) !important;
+    }
+    body.dark #activeUsersBody .bg-emerald-50,
+    body.dark #newUsersBody .bg-gray-50 {
+      background: #111827 !important;
+      border-color: #1e293b !important;
+    }
+    body.dark #activeUsersBody .text-gray-900,
+    body.dark #newUsersBody .text-gray-900 {
+      color: #f8fafc !important;
+    }
+    body.dark #activeUsersBody .text-gray-500,
+    body.dark #newUsersBody .text-gray-500 {
+      color: #94a3b8 !important;
+    }
+    body.dark #activeUsersBody .text-emerald-700 {
+      color: #34d399 !important;
+    }
+
   </style>
 </head>
 <body data-page="dashboard-admin" class="min-h-screen antialiased">
@@ -1024,6 +1192,6 @@
     window.openAdminDrawer = openAdminDrawer;
     window.closeAdminDrawer = closeAdminDrawer;
   </script>
-  <script src="./script.js?v=20260620-v76-restore-user-safe"></script>
+  <script src="./script.js?v=20260620-v78-activity-dark-polish"></script>
 </body>
 </html>
