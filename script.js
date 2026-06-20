@@ -55,6 +55,14 @@ let allUserActivity = [];
 let userPresenceTimer = null;
 let allRecoveryRequests = [];
 
+let adminUserSearchTerm = '';
+let adminUserRoleFilter = 'all';
+let adminUserStatusFilter = 'all';
+
+let adminTrxSearchTerm = '';
+let adminTrxTypeFilter = 'all';
+let adminTrxUserFilter = 'all';
+
 // ============================================================
 // DATA DEFAULT
 // Catatan: versi berikut masih hardcoded. Tahap berikutnya bisa
@@ -2559,6 +2567,7 @@ function showAdminView(view = 'overview') {
   }
 
   if (targetView === 'users') {
+    updateAdminUserFilterStateFromUI();
     renderUserTable(allProfiles, allTrxData);
   }
 
@@ -2567,6 +2576,7 @@ function showAdminView(view = 'overview') {
   }
 
   if (targetView === 'transactions') {
+    updateAdminTrxFilterStateFromUI();
     renderAllTrx();
   }
 }
@@ -2579,6 +2589,128 @@ function getInitialAdminView() {
   if (available.includes(hash)) return hash;
   if (available.includes(stored)) return stored;
   return 'overview';
+}
+
+
+
+// ============================================================
+// ADMIN FILTER / SEARCH
+// ============================================================
+function normalizeAdminSearch(value = '') {
+  return String(value || '').trim().toLowerCase();
+}
+
+function setTextIfExists(id, value) {
+  const el = $(id);
+  if (el) el.textContent = value;
+}
+
+function updateAdminUserFilterStateFromUI() {
+  adminUserSearchTerm = normalizeAdminSearch($('adminUserSearch')?.value || '');
+  adminUserRoleFilter = $('adminUserRoleFilter')?.value || 'all';
+  adminUserStatusFilter = $('adminUserStatusFilter')?.value || 'all';
+}
+
+function updateAdminTrxFilterStateFromUI() {
+  adminTrxSearchTerm = normalizeAdminSearch($('adminTrxSearch')?.value || '');
+  adminTrxTypeFilter = $('adminTrxTypeFilter')?.value || 'all';
+  adminTrxUserFilter = $('adminTrxUserFilter')?.value || 'all';
+}
+
+function getFilteredAdminProfiles(profiles = allProfiles) {
+  const q = adminUserSearchTerm;
+  return [...(profiles || [])].filter((profile) => {
+    const status = getAccountStatus(profile);
+    const role = profile.role || 'user';
+    const searchText = [
+      profile.nama,
+      profile.email,
+      profile.nomor_hp,
+      role,
+      status
+    ].map((item) => String(item || '').toLowerCase()).join(' ');
+
+    const matchSearch = !q || searchText.includes(q);
+    const matchRole = adminUserRoleFilter === 'all' || role === adminUserRoleFilter;
+    const matchStatus = adminUserStatusFilter === 'all' || status === adminUserStatusFilter;
+
+    return matchSearch && matchRole && matchStatus;
+  });
+}
+
+function getFilteredAdminTrx(trx = allTrxData) {
+  const q = adminTrxSearchTerm;
+  return [...(trx || [])].filter((item) => {
+    const profile = allProfiles.find((p) => p.id === item.user_id);
+    const userText = [
+      profile?.nama,
+      profile?.email,
+      item.kategori,
+      item.jenis,
+      formatTanggal(item.created_at, { day: 'numeric', month: 'short', year: 'numeric' }),
+      Number(item.nominal) || 0
+    ].map((value) => String(value || '').toLowerCase()).join(' ');
+
+    const matchSearch = !q || userText.includes(q);
+    const matchType = adminTrxTypeFilter === 'all' || item.jenis === adminTrxTypeFilter;
+    const matchUser = adminTrxUserFilter === 'all' || item.user_id === adminTrxUserFilter;
+
+    return matchSearch && matchType && matchUser;
+  });
+}
+
+function populateAdminTrxUserFilter() {
+  const select = $('adminTrxUserFilter');
+  if (!select) return;
+
+  const previous = select.value || adminTrxUserFilter || 'all';
+  const profiles = [...(allProfiles || [])]
+    .filter((profile) => getAccountStatus(profile) !== 'deleted')
+    .sort((a, b) => String(a.nama || a.email || '').localeCompare(String(b.nama || b.email || ''), 'id-ID'));
+
+  select.innerHTML = [
+    '<option value="all">Semua user</option>',
+    ...profiles.map((profile) => `<option value="${escapeHTML(profile.id)}">${escapeHTML(profile.nama || profile.email || 'Pengguna')}</option>`)
+  ].join('');
+
+  select.value = profiles.some((profile) => profile.id === previous) ? previous : 'all';
+  adminTrxUserFilter = select.value;
+}
+
+function updateAdminUserFilterSummary(filteredCount, totalCount) {
+  setTextIfExists('adminUserFilterCount', `${filteredCount} dari ${totalCount} akun`);
+}
+
+function updateAdminTrxFilterSummary(filteredCount, totalCount) {
+  setTextIfExists('adminTrxFilterCount', `${filteredCount} dari ${totalCount} transaksi`);
+}
+
+function applyAdminUserFilters() {
+  updateAdminUserFilterStateFromUI();
+  renderUserTable(allProfiles, allTrxData);
+}
+
+function resetAdminUserFilters() {
+  if ($('adminUserSearch')) $('adminUserSearch').value = '';
+  if ($('adminUserRoleFilter')) $('adminUserRoleFilter').value = 'all';
+  if ($('adminUserStatusFilter')) $('adminUserStatusFilter').value = 'all';
+  updateAdminUserFilterStateFromUI();
+  renderUserTable(allProfiles, allTrxData);
+}
+
+function applyAdminTrxFilters() {
+  updateAdminTrxFilterStateFromUI();
+  adminTrxPage = 1;
+  renderAllTrx();
+}
+
+function resetAdminTrxFilters() {
+  if ($('adminTrxSearch')) $('adminTrxSearch').value = '';
+  if ($('adminTrxTypeFilter')) $('adminTrxTypeFilter').value = 'all';
+  if ($('adminTrxUserFilter')) $('adminTrxUserFilter').value = 'all';
+  updateAdminTrxFilterStateFromUI();
+  adminTrxPage = 1;
+  renderAllTrx();
 }
 
 
@@ -2808,7 +2940,7 @@ function setupAdminRealtime() {
 
 async function muatData(showLoading = true) {
   if (showLoading && $('userTableBody')) {
-    $('userTableBody').innerHTML = '<tr><td colspan="6" class="px-6 py-6 text-center text-gray-400">Memuat data...</td></tr>';
+    $('userTableBody').innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-400"><div class="inline-flex items-center gap-2 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold">⏳ Memuat data pengguna...</div></td></tr>';
   }
   if (showLoading && $('accountRecoveryBody')) {
     $('accountRecoveryBody').innerHTML = '<tr><td colspan="7" class="px-6 py-6 text-center text-gray-400">Memuat permintaan bantuan akun...</td></tr>';
@@ -2818,6 +2950,9 @@ async function muatData(showLoading = true) {
   }
   if (showLoading && $('newUsersBody')) {
     $('newUsersBody').innerHTML = '<div class="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-5 text-center text-sm text-gray-400">Memuat pengguna baru...</div>';
+  }
+  if (showLoading && $('allTrxBody')) {
+    $('allTrxBody').innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-gray-400"><div class="inline-flex items-center gap-2 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold">⏳ Memuat transaksi semua user...</div></td></tr>';
   }
 
   let profilesData = [];
@@ -2854,6 +2989,8 @@ async function muatData(showLoading = true) {
   allTrxData = trxData || [];
   allRecoveryRequests = recoveryData || [];
   allUserActivity = activityData || [];
+
+  populateAdminTrxUserFilter();
 
   renderStatCards(allProfiles, allTrxData, allRecoveryRequests, allUserActivity);
   renderAccountRecoveryRequests(allRecoveryRequests, recoveryError);
@@ -3034,12 +3171,39 @@ function renderUserTable(profiles, trx) {
   const body = $('userTableBody');
   if (!body) return;
 
-  if (!profiles.length) {
-    body.innerHTML = '<tr><td colspan="6" class="px-6 py-6 text-center text-gray-400">Belum ada pengguna.</td></tr>';
+  const all = [...(profiles || [])];
+  const filteredProfiles = getFilteredAdminProfiles(all);
+  updateAdminUserFilterSummary(filteredProfiles.length, all.length);
+
+  if (!all.length) {
+    body.innerHTML = `
+      <tr>
+        <td colspan="6" class="px-6 py-10 text-center">
+          <div class="mx-auto max-w-md rounded-3xl border border-gray-100 bg-gray-50 px-5 py-6">
+            <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-2xl">👥</div>
+            <p class="font-extrabold text-gray-800">Belum ada pengguna</p>
+            <p class="mt-1 text-sm text-gray-400">Data akun akan muncul setelah user berhasil daftar.</p>
+          </div>
+        </td>
+      </tr>`;
     return;
   }
 
-  body.innerHTML = profiles.map((profile) => {
+  if (!filteredProfiles.length) {
+    body.innerHTML = `
+      <tr>
+        <td colspan="6" class="px-6 py-10 text-center">
+          <div class="mx-auto max-w-md rounded-3xl border border-gray-100 bg-gray-50 px-5 py-6">
+            <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-2xl">🔎</div>
+            <p class="font-extrabold text-gray-800">Tidak ada user yang cocok</p>
+            <p class="mt-1 text-sm text-gray-400">Coba ubah kata kunci, role, atau status filter.</p>
+          </div>
+        </td>
+      </tr>`;
+    return;
+  }
+
+  body.innerHTML = filteredProfiles.map((profile) => {
     const jumlahTrx = trx.filter((item) => item.user_id === profile.id).length;
     const tanggal = formatTanggal(profile.created_at, { day: 'numeric', month: 'short', year: 'numeric' });
     const isAdmin = profile.role === 'admin';
@@ -3048,8 +3212,8 @@ function renderUserTable(profiles, trx) {
     const isDeleted = status === 'deleted';
     const isSuspended = status === 'suspended';
     const roleBadge = isAdmin
-      ? '<span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">Admin</span>'
-      : '<span class="px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">User</span>';
+      ? '<span class="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-700">Admin</span>'
+      : '<span class="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-extrabold text-blue-700">User</span>';
 
     const editDisabled = isDeleted ? 'disabled' : '';
     const suspendDisabled = (isSelf || isDeleted) ? 'disabled' : '';
@@ -3057,28 +3221,38 @@ function renderUserTable(profiles, trx) {
 
     return `
       <tr class="border-b border-gray-50 transition hover:bg-gray-50 ${isDeleted ? 'opacity-70' : ''}">
-        <td class="px-6 py-4 font-medium text-gray-800">
-          <div class="min-w-[150px]">
-            <p class="font-bold text-gray-800">${escapeHTML(profile.nama || '—')}</p>
-            ${isSelf ? '<p class="mt-1 text-[10px] font-bold text-emerald-600">Akun kamu</p>' : ''}
+        <td class="px-5 py-4 font-medium text-gray-800">
+          <div class="flex min-w-[180px] items-center gap-3">
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-sm font-extrabold text-emerald-700">${escapeHTML(String(profile.nama || profile.email || '?').slice(0, 1).toUpperCase())}</div>
+            <div class="min-w-0">
+              <p class="truncate font-extrabold text-gray-900">${escapeHTML(profile.nama || '—')}</p>
+              ${isSelf ? '<p class="mt-1 text-[10px] font-bold text-emerald-600">Akun kamu</p>' : ''}
+            </div>
           </div>
         </td>
-        <td class="px-6 py-4 text-gray-500 break-all">${escapeHTML(profile.email || '—')}</td>
-        <td class="px-6 py-4">${roleBadge}</td>
-        <td class="px-6 py-4">${getProfileStatusBadge(profile)}</td>
-        <td class="px-6 py-4 text-gray-400"><div class="min-w-[150px]">${escapeHTML(tanggal)} <span class="ml-1 text-gray-300">(${jumlahTrx} trx)</span></div></td>
-        <td class="px-6 py-4">
-          <div class="flex flex-wrap justify-center gap-2">
+        <td class="px-5 py-4 text-gray-500">
+          <div class="max-w-[260px] break-all text-sm">${escapeHTML(profile.email || '—')}</div>
+        </td>
+        <td class="px-5 py-4">${roleBadge}</td>
+        <td class="px-5 py-4">${getProfileStatusBadge(profile)}</td>
+        <td class="px-5 py-4 text-gray-400">
+          <div class="min-w-[135px]">
+            <p class="font-bold text-gray-500">${escapeHTML(tanggal)}</p>
+            <p class="mt-1 text-[11px] text-gray-400">${jumlahTrx} transaksi</p>
+          </div>
+        </td>
+        <td class="px-5 py-4">
+          <div class="flex min-w-[280px] flex-wrap justify-center gap-2">
             <button onclick="editAdminUser('${escapeHTML(profile.id)}')" ${editDisabled}
-              class="inline-flex min-w-[86px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-extrabold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40">
+              class="admin-action-btn admin-action-neutral">
               Edit
             </button>
             <button onclick="setUserSuspended('${escapeHTML(profile.id)}', ${isSuspended ? 'false' : 'true'})" ${suspendDisabled}
-              class="inline-flex min-w-[86px] items-center justify-center rounded-2xl border px-3.5 py-2 text-xs font-extrabold transition disabled:cursor-not-allowed disabled:opacity-40 ${isSuspended ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'}">
+              class="admin-action-btn ${isSuspended ? 'admin-action-success' : 'admin-action-warning'}">
               ${isSuspended ? 'Aktifkan' : 'Suspend'}
             </button>
             <button onclick="deleteAdminUser('${escapeHTML(profile.id)}')" ${deleteDisabled}
-              class="inline-flex min-w-[86px] items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-extrabold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-40">
+              class="admin-action-btn admin-action-danger">
               Hapus
             </button>
           </div>
@@ -3158,26 +3332,57 @@ function renderAllTrx() {
   const body = $('allTrxBody');
   if (!body) return;
 
-  const total = allTrxData.length;
+  const filteredTrx = getFilteredAdminTrx(allTrxData);
+  const total = filteredTrx.length;
+  updateAdminTrxFilterSummary(total, allTrxData.length);
+
   const totalPages = Math.ceil(total / adminTrxPerPage) || 1;
   adminTrxPage = Math.min(Math.max(adminTrxPage, 1), totalPages);
-  const pageData = allTrxData.slice((adminTrxPage - 1) * adminTrxPerPage, adminTrxPage * adminTrxPerPage);
+  const pageData = filteredTrx.slice((adminTrxPage - 1) * adminTrxPerPage, adminTrxPage * adminTrxPerPage);
 
-  if (!pageData.length) {
-    body.innerHTML = '<tr><td colspan="4" class="px-6 py-6 text-center text-gray-400">Belum ada transaksi.</td></tr>';
+  if (!allTrxData.length) {
+    body.innerHTML = `
+      <tr>
+        <td colspan="4" class="px-6 py-10 text-center">
+          <div class="mx-auto max-w-md rounded-3xl border border-gray-100 bg-gray-50 px-5 py-6">
+            <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-2xl">🧾</div>
+            <p class="font-extrabold text-gray-800">Belum ada transaksi</p>
+            <p class="mt-1 text-sm text-gray-400">Transaksi seluruh user akan muncul di sini.</p>
+          </div>
+        </td>
+      </tr>`;
+  } else if (!pageData.length) {
+    body.innerHTML = `
+      <tr>
+        <td colspan="4" class="px-6 py-10 text-center">
+          <div class="mx-auto max-w-md rounded-3xl border border-gray-100 bg-gray-50 px-5 py-6">
+            <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-2xl">🔎</div>
+            <p class="font-extrabold text-gray-800">Tidak ada transaksi yang cocok</p>
+            <p class="mt-1 text-sm text-gray-400">Coba ubah kata kunci, jenis transaksi, atau user.</p>
+          </div>
+        </td>
+      </tr>`;
   } else {
     body.innerHTML = pageData.map((item) => {
       const profile = allProfiles.find((p) => p.id === item.user_id);
       const namaUser = profile ? (profile.nama || profile.email) : '(tidak diketahui)';
       const warna = item.jenis === 'masuk' ? 'text-emerald-600' : 'text-rose-500';
       const simbol = item.jenis === 'masuk' ? '+' : '-';
+      const typeBadge = item.jenis === 'masuk'
+        ? '<span class="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-extrabold text-emerald-700">Masuk</span>'
+        : '<span class="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-extrabold text-rose-700">Keluar</span>';
 
       return `
         <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
-          <td class="px-6 py-3 text-gray-400 whitespace-nowrap">${escapeHTML(formatTanggal(item.created_at))}</td>
-          <td class="px-6 py-3 text-gray-600">${escapeHTML(namaUser)}</td>
-          <td class="px-6 py-3 text-gray-700">${escapeHTML(item.kategori || '-')}</td>
-          <td class="px-6 py-3 text-right font-semibold ${warna} whitespace-nowrap">${simbol} ${formatRupiah(item.nominal)}</td>
+          <td class="px-5 py-4 text-gray-400 whitespace-nowrap">${escapeHTML(formatTanggal(item.created_at, { day: 'numeric', month: 'short', year: 'numeric' }))}</td>
+          <td class="px-5 py-4">
+            <div class="min-w-[160px]">
+              <p class="font-extrabold text-gray-700">${escapeHTML(namaUser)}</p>
+              <p class="mt-1">${typeBadge}</p>
+            </div>
+          </td>
+          <td class="px-5 py-4 text-gray-700">${escapeHTML(item.kategori || '-')}</td>
+          <td class="px-5 py-4 text-right font-extrabold ${warna} whitespace-nowrap">${simbol} ${formatRupiah(item.nominal)}</td>
         </tr>`;
     }).join('');
   }
@@ -3193,7 +3398,7 @@ function renderAdminPagination(totalPages) {
   if (totalPages <= 1) return;
 
   if (adminTrxPage > 1) {
-    pag.innerHTML += `<button onclick="changeAdminTrxPage(${adminTrxPage - 1})" class="px-2.5 py-1 rounded-lg text-xs bg-gray-100 hover:bg-gray-200 text-gray-600">&laquo;</button>`;
+    pag.innerHTML += `<button onclick="changeAdminTrxPage(${adminTrxPage - 1})" class="admin-page-btn">&laquo;</button>`;
   }
 
   let startPage = Math.max(1, adminTrxPage - 3);
@@ -3202,11 +3407,11 @@ function renderAdminPagination(totalPages) {
 
   for (let page = startPage; page <= endPage; page += 1) {
     pag.innerHTML += `<button onclick="changeAdminTrxPage(${page})"
-      class="px-2.5 py-1 rounded-lg text-xs transition cursor-pointer ${page === adminTrxPage ? 'bg-emerald-600 text-white font-bold' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}">${page}</button>`;
+      class="admin-page-btn ${page === adminTrxPage ? 'is-active' : ''}">${page}</button>`;
   }
 
   if (adminTrxPage < totalPages) {
-    pag.innerHTML += `<button onclick="changeAdminTrxPage(${adminTrxPage + 1})" class="px-2.5 py-1 rounded-lg text-xs bg-gray-100 hover:bg-gray-200 text-gray-600">&raquo;</button>`;
+    pag.innerHTML += `<button onclick="changeAdminTrxPage(${adminTrxPage + 1})" class="admin-page-btn">&raquo;</button>`;
   }
 }
 
@@ -3586,6 +3791,10 @@ window.showAdminView = showAdminView;
 window.editAdminUser = editAdminUser;
 window.setUserSuspended = setUserSuspended;
 window.deleteAdminUser = deleteAdminUser;
+window.applyAdminUserFilters = applyAdminUserFilters;
+window.resetAdminUserFilters = resetAdminUserFilters;
+window.applyAdminTrxFilters = applyAdminTrxFilters;
+window.resetAdminTrxFilters = resetAdminTrxFilters;
 window.showAppView = showAppView;
 window.openCatatModal = openCatatModal;
 window.handleCatatSekarang = handleCatatSekarang;
