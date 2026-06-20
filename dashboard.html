@@ -2,8 +2,25 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Olah Uang</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta id="themeColorMeta" name="theme-color" content="#f7fbf9">
+  <meta id="navButtonColorMeta" name="msapplication-navbutton-color" content="#f7fbf9">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var isDark = localStorage.getItem('olahUangDarkMode') === '1';
+        var color = isDark ? '#020617' : '#f7fbf9';
+        document.documentElement.classList.toggle('dark', isDark);
+        document.documentElement.style.backgroundColor = color;
+        var themeMeta = document.getElementById('themeColorMeta');
+        var navMeta = document.getElementById('navButtonColorMeta');
+        if (themeMeta) themeMeta.setAttribute('content', color);
+        if (navMeta) navMeta.setAttribute('content', color);
+      } catch (error) {}
+    })();
+  </script>
+  <title>Dashboard — Olah Uang</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -79,6 +96,63 @@
     .dark .modal-close-btn { background:#111827; border-color:#334155; color:#cbd5e1; }
     .dark .modal-close-btn:hover { background:#1e293b; color:#f8fafc; border-color:#475569; }
     .dark .soft-card { box-shadow:0 8px 28px rgba(0,0,0,.25); }
+
+    /* v83: Android PWA top/status area mengikuti dark mode dashboard pengguna */
+    html,
+    body {
+      min-height: 100%;
+      background-color: #f7fbf9 !important;
+    }
+
+    html.dark,
+    html.dark body,
+    body.dark {
+      background-color: #020617 !important;
+    }
+
+    html.dark body[data-page="dashboard-user"],
+    body.dark[data-page="dashboard-user"] {
+      background: #020617 !important;
+    }
+
+    body[data-page="dashboard-user"]:not(.dark) {
+      background: #f7fbf9 !important;
+    }
+
+    body.dark .app-header,
+    html.dark body .app-header {
+      background: #020617 !important;
+      border-color: #1e293b !important;
+    }
+
+    body:not(.dark) .app-header,
+    html:not(.dark) body .app-header {
+      background: #f7fbf9 !important;
+    }
+
+    @supports (padding-top: env(safe-area-inset-top)) {
+      body[data-page="dashboard-user"] .app-header {
+        padding-top: calc(1rem + env(safe-area-inset-top));
+      }
+
+      body[data-page="dashboard-user"]::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: env(safe-area-inset-top);
+        background: #f7fbf9;
+        z-index: 2147483647;
+        pointer-events: none;
+      }
+
+      body.dark[data-page="dashboard-user"]::before,
+      html.dark body[data-page="dashboard-user"]::before {
+        background: #020617 !important;
+      }
+    }
+
   </style>
 </head>
 <body data-page="dashboard-user" class="bg-gray-50 text-gray-800 antialiased min-h-screen pb-28 md:pb-10">
@@ -86,10 +160,10 @@
     <div class="w-full max-w-6xl mx-auto px-4 py-4 flex items-center gap-4">
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-2 min-w-0">
-          <p class="text-base md:text-lg text-gray-900 truncate"><span class="font-extrabold">Halo,</span> <span id="userNama">Pengguna</span></p>
+          <p class="text-base md:text-lg text-gray-900 truncate"><span class="font-extrabold">Halo,</span> <span id="userNama">Pengguna</span>!</p>
           <button onclick="toggleDarkMode()" id="darkModeToggle" class="w-9 h-9 md:w-10 md:h-10 bg-white border border-gray-100 text-gray-700 text-base font-bold rounded-2xl soft-card cursor-pointer flex items-center justify-center shrink-0" title="Dark mode" aria-label="Dark mode">🌕</button>
         </div>
-        <p class="text-xs md:text-sm text-gray-400 mt-0.5">Ayo mulai olah keuanganmu sekarang!</p>
+        <p class="text-xs md:text-sm text-gray-400 mt-0.5">Ayo mulai olah keuanganmu sekarang</p>
       </div>
 
       <nav id="desktopNav" class="desktop-nav-wrap hidden md:flex items-center justify-end gap-2 ml-auto">
@@ -291,8 +365,8 @@
         <section id="expenseSettingsPanel" class="setting-panel bg-white p-6 rounded-3xl border border-gray-100 soft-card">
           <div class="flex items-start justify-between gap-3 mb-5">
             <div>
-              <h2 class="font-extrabold text-gray-900">Pengaturan Kategori Pengeluaran</h2>
-              <p class="text-xs text-gray-400 mt-1">Ayo atur kategori sesuai kebutuhamu.</p>
+              <h2 class="font-extrabold text-gray-900">Kategori Pengeluaran & Budget</h2>
+              <p class="text-xs text-gray-400 mt-1">Data terkunci sebelum tombol Edit diklik.</p>
             </div>
             <div class="flex gap-2">
               <button type="button" id="expenseEditBtn" onclick="toggleFinanceEdit('keluar', true)" class="px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-extrabold cursor-pointer">Edit</button>
@@ -315,8 +389,8 @@
         <section id="incomeSettingsPanel" class="setting-panel bg-white p-6 rounded-3xl border border-gray-100 soft-card">
           <div class="flex items-start justify-between gap-3 mb-5">
             <div>
-              <h2 class="font-extrabold text-gray-900">Pengaturan Kategori Penmasukan</h2>
-              <p class="text-xs text-gray-400 mt-1">Kategorikan dari mana sumber uang kamu</p>
+              <h2 class="font-extrabold text-gray-900">Kategori Pemasukan & Target</h2>
+              <p class="text-xs text-gray-400 mt-1">Sumber pemasukan dan target bulanannya.</p>
             </div>
             <div class="flex gap-2">
               <button type="button" id="incomeEditBtn" onclick="toggleFinanceEdit('masuk', true)" class="px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-extrabold cursor-pointer">Edit</button>
@@ -383,6 +457,47 @@
     </div>
   </nav>
 
-  <script src="./script.js?v=20260619-v27-menu-motion-close"></script>
+  <script src="./script.js?v=20260620-v83-android-pwa-top-dark-fix"></script>
+
+  <script>
+    function updateDashboardPwaTopColor() {
+      var isDark = document.documentElement.classList.contains('dark') || document.body.classList.contains('dark');
+      var color = isDark ? '#020617' : '#f7fbf9';
+
+      var themeMeta = document.querySelector('meta[name="theme-color"]');
+      var navMeta = document.querySelector('meta[name="msapplication-navbutton-color"]');
+
+      if (!themeMeta) {
+        themeMeta = document.createElement('meta');
+        themeMeta.setAttribute('name', 'theme-color');
+        document.head.appendChild(themeMeta);
+      }
+
+      if (!navMeta) {
+        navMeta = document.createElement('meta');
+        navMeta.setAttribute('name', 'msapplication-navbutton-color');
+        document.head.appendChild(navMeta);
+      }
+
+      themeMeta.setAttribute('content', color);
+      navMeta.setAttribute('content', color);
+      document.documentElement.style.backgroundColor = color;
+      document.body.style.backgroundColor = color;
+    }
+
+    window.addEventListener('DOMContentLoaded', function () {
+      updateDashboardPwaTopColor();
+      var observer = new MutationObserver(updateDashboardPwaTopColor);
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+      observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      setTimeout(updateDashboardPwaTopColor, 80);
+      setTimeout(updateDashboardPwaTopColor, 350);
+      setTimeout(updateDashboardPwaTopColor, 1000);
+    });
+
+    window.addEventListener('load', updateDashboardPwaTopColor);
+    window.addEventListener('pageshow', updateDashboardPwaTopColor);
+  </script>
+
 </body>
 </html>
