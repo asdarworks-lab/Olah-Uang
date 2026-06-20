@@ -2545,8 +2545,29 @@ function showAdminView(view = 'overview') {
 
   updateUserPresence(`Dashboard Admin - ${getAdminViewLabel(targetView)}`).catch((error) => console.warn('[Presence admin view]', error));
 
-  if (targetView === 'overview' && allTrxData.length) {
-    setTimeout(() => renderAdminChart(allTrxData), 120);
+  if (targetView === 'overview') {
+    setTimeout(() => {
+      renderStatCards(allProfiles, allTrxData, allRecoveryRequests, allUserActivity);
+      renderUserActivity(allProfiles, allTrxData);
+      renderAdminChart(allTrxData);
+    }, 120);
+  }
+
+  if (targetView === 'activity') {
+    renderActiveUsers(allUserActivity);
+    renderNewUsers(allProfiles);
+  }
+
+  if (targetView === 'users') {
+    renderUserTable(allProfiles, allTrxData);
+  }
+
+  if (targetView === 'recovery') {
+    renderAccountRecoveryRequests(allRecoveryRequests);
+  }
+
+  if (targetView === 'transactions') {
+    renderAllTrx();
   }
 }
 
@@ -2787,7 +2808,7 @@ function setupAdminRealtime() {
 
 async function muatData(showLoading = true) {
   if (showLoading && $('userTableBody')) {
-    $('userTableBody').innerHTML = '<tr><td colspan="5" class="px-6 py-6 text-center text-gray-400">Memuat data...</td></tr>';
+    $('userTableBody').innerHTML = '<tr><td colspan="6" class="px-6 py-6 text-center text-gray-400">Memuat data...</td></tr>';
   }
   if (showLoading && $('accountRecoveryBody')) {
     $('accountRecoveryBody').innerHTML = '<tr><td colspan="7" class="px-6 py-6 text-center text-gray-400">Memuat permintaan bantuan akun...</td></tr>';
@@ -3064,6 +3085,227 @@ function renderUserTable(profiles, trx) {
         </td>
       </tr>`;
   }).join('');
+}
+
+function renderUserActivity(profiles, trx) {
+  const container = $('userActivity');
+  if (!container) return;
+
+  const activeProfiles = (profiles || []).filter((profile) => getAccountStatus(profile) !== 'deleted');
+
+  const aktivitas = activeProfiles
+    .map((profile) => {
+      const userTrx = (trx || []).filter((item) => item.user_id === profile.id);
+      const jumlah = userTrx.length;
+      const saldo = userTrx.reduce((acc, item) => {
+        const nominal = Number(item.nominal) || 0;
+        return item.jenis === 'masuk' ? acc + nominal : acc - nominal;
+      }, 0);
+
+      return {
+        nama: profile.nama || profile.email || 'Pengguna',
+        email: profile.email || '-',
+        jumlah,
+        saldo,
+        status: getAccountStatus(profile)
+      };
+    })
+    .sort((a, b) => b.jumlah - a.jumlah || b.saldo - a.saldo)
+    .slice(0, 6);
+
+  if (!aktivitas.length) {
+    container.innerHTML = `
+      <div class="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-5 text-center text-sm text-gray-400">
+        Belum ada data aktivitas user.
+      </div>`;
+    return;
+  }
+
+  const maxJumlah = Math.max(...aktivitas.map((user) => user.jumlah), 1);
+
+  container.innerHTML = aktivitas.map((user, index) => {
+    const pct = user.jumlah > 0 ? Math.max((user.jumlah / maxJumlah) * 100, 3) : 0;
+    const barClass = user.jumlah > 0 ? 'bg-emerald-500' : 'bg-gray-200';
+    const statusBadge = user.status === 'suspended'
+      ? '<span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-700">Suspend</span>'
+      : '<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700">Aktif</span>';
+
+    return `
+      <div class="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+        <div class="mb-2 flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-[11px] font-extrabold text-gray-500">${index + 1}</span>
+              <p class="truncate font-extrabold text-gray-900">${escapeHTML(user.nama)}</p>
+              ${statusBadge}
+            </div>
+            <p class="mt-1 truncate text-xs text-gray-400">${escapeHTML(user.email)}</p>
+          </div>
+          <p class="shrink-0 text-right text-xs font-bold text-gray-400">${user.jumlah} transaksi</p>
+        </div>
+        <div class="mb-2 flex items-center justify-between gap-3 text-xs">
+          <span class="font-bold text-gray-400">Saldo</span>
+          <span class="font-extrabold ${user.saldo >= 0 ? 'text-emerald-600' : 'text-rose-500'}">${formatRupiah(user.saldo)}</span>
+        </div>
+        <div class="h-2 overflow-hidden rounded-full bg-gray-200">
+          <div class="${barClass} h-full rounded-full transition-all" style="width:${pct}%"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderAllTrx() {
+  const body = $('allTrxBody');
+  if (!body) return;
+
+  const total = allTrxData.length;
+  const totalPages = Math.ceil(total / adminTrxPerPage) || 1;
+  adminTrxPage = Math.min(Math.max(adminTrxPage, 1), totalPages);
+  const pageData = allTrxData.slice((adminTrxPage - 1) * adminTrxPerPage, adminTrxPage * adminTrxPerPage);
+
+  if (!pageData.length) {
+    body.innerHTML = '<tr><td colspan="4" class="px-6 py-6 text-center text-gray-400">Belum ada transaksi.</td></tr>';
+  } else {
+    body.innerHTML = pageData.map((item) => {
+      const profile = allProfiles.find((p) => p.id === item.user_id);
+      const namaUser = profile ? (profile.nama || profile.email) : '(tidak diketahui)';
+      const warna = item.jenis === 'masuk' ? 'text-emerald-600' : 'text-rose-500';
+      const simbol = item.jenis === 'masuk' ? '+' : '-';
+
+      return `
+        <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
+          <td class="px-6 py-3 text-gray-400 whitespace-nowrap">${escapeHTML(formatTanggal(item.created_at))}</td>
+          <td class="px-6 py-3 text-gray-600">${escapeHTML(namaUser)}</td>
+          <td class="px-6 py-3 text-gray-700">${escapeHTML(item.kategori || '-')}</td>
+          <td class="px-6 py-3 text-right font-semibold ${warna} whitespace-nowrap">${simbol} ${formatRupiah(item.nominal)}</td>
+        </tr>`;
+    }).join('');
+  }
+
+  renderAdminPagination(totalPages);
+}
+
+function renderAdminPagination(totalPages) {
+  const pag = $('trxPagination');
+  if (!pag) return;
+
+  pag.innerHTML = '';
+  if (totalPages <= 1) return;
+
+  if (adminTrxPage > 1) {
+    pag.innerHTML += `<button onclick="changeAdminTrxPage(${adminTrxPage - 1})" class="px-2.5 py-1 rounded-lg text-xs bg-gray-100 hover:bg-gray-200 text-gray-600">&laquo;</button>`;
+  }
+
+  let startPage = Math.max(1, adminTrxPage - 3);
+  let endPage = Math.min(totalPages, startPage + 6);
+  if (endPage - startPage < 6) startPage = Math.max(1, endPage - 6);
+
+  for (let page = startPage; page <= endPage; page += 1) {
+    pag.innerHTML += `<button onclick="changeAdminTrxPage(${page})"
+      class="px-2.5 py-1 rounded-lg text-xs transition cursor-pointer ${page === adminTrxPage ? 'bg-emerald-600 text-white font-bold' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}">${page}</button>`;
+  }
+
+  if (adminTrxPage < totalPages) {
+    pag.innerHTML += `<button onclick="changeAdminTrxPage(${adminTrxPage + 1})" class="px-2.5 py-1 rounded-lg text-xs bg-gray-100 hover:bg-gray-200 text-gray-600">&raquo;</button>`;
+  }
+}
+
+function changeAdminTrxPage(page) {
+  adminTrxPage = Number(page) || 1;
+  renderAllTrx();
+}
+
+function renderAdminChart(trx) {
+  const canvas = $('adminChart');
+  if (!canvas) return;
+
+  const dataBulanan = {};
+  const sortedTrx = [...(trx || [])].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+  sortedTrx.forEach((item) => {
+    const tgl = new Date(item.created_at);
+    if (Number.isNaN(tgl.getTime())) return;
+
+    const label = tgl.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' });
+    if (!dataBulanan[label]) dataBulanan[label] = { masuk: 0, keluar: 0 };
+    if (item.jenis === 'masuk') dataBulanan[label].masuk += Number(item.nominal) || 0;
+    if (item.jenis === 'keluar') dataBulanan[label].keluar += Number(item.nominal) || 0;
+  });
+
+  const labels = Object.keys(dataBulanan).slice(-12);
+  const masukArr = labels.map((label) => dataBulanan[label].masuk);
+  const keluarArr = labels.map((label) => dataBulanan[label].keluar);
+
+  if (adminChart) {
+    adminChart.destroy();
+    adminChart = null;
+  }
+
+  const dark = isDarkMode();
+  const textColor = dark ? '#cbd5e1' : '#64748b';
+  const gridColor = dark ? 'rgba(148, 163, 184, .14)' : 'rgba(148, 163, 184, .22)';
+
+  adminChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Pemasukan',
+          data: masukArr,
+          backgroundColor: '#059669',
+          borderRadius: 8,
+          maxBarThickness: 34
+        },
+        {
+          label: 'Pengeluaran',
+          data: keluarArr,
+          backgroundColor: '#e11d48',
+          borderRadius: 8,
+          maxBarThickness: 34
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 450 },
+      plugins: {
+        legend: {
+          labels: {
+            color: textColor,
+            font: { size: 11, weight: '700' },
+            boxWidth: 28,
+            boxHeight: 10
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: (context) => `${context.dataset.label}: ${formatRupiah(context.raw)}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: textColor, font: { size: 11, weight: '700' } },
+          grid: { display: false }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: textColor,
+            font: { size: 11, weight: '700' },
+            callback: (value) => `Rp ${(Number(value) / 1000000).toFixed(1)}jt`
+          },
+          grid: { color: gridColor }
+        }
+      }
+    }
+  });
+}
+
+function getAdminTargetProfile(userId) {
+  return allProfiles.find((profile) => profile.id === userId);
 }
 
 async function editAdminUser(userId) {
