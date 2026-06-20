@@ -6,7 +6,7 @@
 const SUPABASE_URL = 'https://uezjncjapumyrkjxzslw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_gMbWszjY1XIou5Cj4wDkjg_UlGiuOd5';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const APP_VERSION = '20260620-v78-activity-dark-polish';
+const APP_VERSION = '20260620-v83-android-pwa-top-dark-fix';
 console.log(`Olah Uang script loaded: ${APP_VERSION}`);
 window.OLAH_UANG_VERSION = APP_VERSION;
 document.documentElement.setAttribute('data-olah-uang-version', APP_VERSION);
@@ -866,6 +866,32 @@ function csvCell(value) {
   return `"${String(value ?? '').replace(/"/g, '""')}"`;
 }
 
+
+function updateAppPwaThemeColor(enabled = isDarkMode()) {
+  const color = enabled ? '#020617' : '#f7fbf9';
+
+  let themeMeta = document.querySelector('meta[name="theme-color"]');
+  let navMeta = document.querySelector('meta[name="msapplication-navbutton-color"]');
+
+  if (!themeMeta) {
+    themeMeta = document.createElement('meta');
+    themeMeta.setAttribute('name', 'theme-color');
+    document.head.appendChild(themeMeta);
+  }
+
+  if (!navMeta) {
+    navMeta = document.createElement('meta');
+    navMeta.setAttribute('name', 'msapplication-navbutton-color');
+    document.head.appendChild(navMeta);
+  }
+
+  themeMeta.setAttribute('content', color);
+  navMeta.setAttribute('content', color);
+  document.documentElement.style.backgroundColor = color;
+  if (document.body) document.body.style.backgroundColor = color;
+}
+
+
 function applyDarkMode(enabled) {
   const root = document.documentElement;
   const body = document.body;
@@ -874,6 +900,7 @@ function applyDarkMode(enabled) {
   localStorage.setItem('olahUangDarkMode', enabled ? '1' : '0');
   const toggle = $('darkModeToggle');
   if (toggle) toggle.textContent = enabled ? '☀️' : '🌕';
+  updateAppPwaThemeColor(enabled);
 
   requestAnimationFrame(() => updateMovingNavIndicators(activeAppView));
 
