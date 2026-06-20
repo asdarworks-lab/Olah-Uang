@@ -6,7 +6,7 @@
 const SUPABASE_URL = 'https://uezjncjapumyrkjxzslw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_gMbWszjY1XIou5Cj4wDkjg_UlGiuOd5';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const APP_VERSION = '20260620-v76-restore-user-safe';
+const APP_VERSION = '20260620-v78-activity-dark-polish';
 console.log(`Olah Uang script loaded: ${APP_VERSION}`);
 window.OLAH_UANG_VERSION = APP_VERSION;
 document.documentElement.setAttribute('data-olah-uang-version', APP_VERSION);
@@ -2849,17 +2849,17 @@ function renderActiveUsers(activity = [], error = null) {
       : '<span class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-extrabold text-blue-700">User</span>';
 
     return `
-      <div class="flex items-start justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+      <div class="admin-activity-list-card flex items-start justify-between gap-3 rounded-2xl px-4 py-3">
         <div class="min-w-0">
           <div class="flex flex-wrap items-center gap-2">
-            <span class="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,.16)]"></span>
-            <p class="truncate font-extrabold text-gray-900">${escapeHTML(item.nama)}</p>
+            <span class="admin-activity-dot h-2.5 w-2.5 rounded-full"></span>
+            <p class="admin-activity-name truncate font-extrabold">${escapeHTML(item.nama)}</p>
             ${roleBadge}
           </div>
-          <p class="mt-1 truncate text-xs text-gray-500">${escapeHTML(item.email)}</p>
-          <p class="mt-1 text-xs font-bold text-emerald-700">${escapeHTML(item.current_page || 'Website')}</p>
+          <p class="admin-activity-email mt-1 truncate text-xs">${escapeHTML(item.email)}</p>
+          <p class="admin-activity-page mt-1 text-xs font-bold">${escapeHTML(item.current_page || 'Website')}</p>
         </div>
-        <p class="shrink-0 text-right text-[11px] font-bold text-emerald-700">${escapeHTML(item.seen.label)}</p>
+        <p class="admin-activity-time shrink-0 text-right text-[11px] font-bold">${escapeHTML(item.seen.label)}</p>
       </div>`;
   }).join('');
 }
@@ -2872,7 +2872,7 @@ function renderNewUsers(profiles = []) {
   const todayKey = now.toISOString().slice(0, 10);
 
   const sorted = [...(profiles || [])]
-    .filter((profile) => profile.created_at)
+    .filter((profile) => profile.created_at && getAccountStatus(profile) !== 'deleted')
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   const todayCount = sorted.filter((profile) => {
@@ -2909,15 +2909,16 @@ function renderNewUsers(profiles = []) {
       : '<span class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-extrabold text-blue-700">User</span>';
 
     return `
-      <div class="flex items-start justify-between gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
+      <div class="admin-activity-list-card flex items-start justify-between gap-3 rounded-2xl px-4 py-3">
         <div class="min-w-0">
           <div class="flex flex-wrap items-center gap-2">
-            <p class="truncate font-extrabold text-gray-900">${escapeHTML(profile.nama || profile.email || 'Pengguna')}</p>
+            <p class="admin-activity-name truncate font-extrabold">${escapeHTML(profile.nama || profile.email || 'Pengguna')}</p>
             ${roleBadge}
           </div>
-          <p class="mt-1 truncate text-xs text-gray-500">${escapeHTML(profile.email || '-')}</p>
+          <p class="admin-activity-email mt-1 truncate text-xs">${escapeHTML(profile.email || '-')}</p>
+          <p class="admin-activity-page mt-1 text-xs font-bold">${escapeHTML(tanggal)}</p>
         </div>
-        <p class="shrink-0 text-right text-[11px] font-bold text-gray-400">${escapeHTML(tanggal)}</p>
+        ${new Date(profile.created_at).toISOString().slice(0, 10) === todayKey ? '<span class="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-extrabold text-violet-700">Hari ini</span>' : ''}
       </div>`;
   }).join('');
 }
@@ -3316,36 +3317,40 @@ function renderUserTable(profiles, trx) {
     const isDeleted = status === 'deleted';
     const isSuspended = status === 'suspended';
     const initial = escapeHTML(String(profile.nama || profile.email || '?').slice(0, 1).toUpperCase());
-    const roleLabel = isAdmin ? 'Admin' : 'User';
-    const statusLabel = getProfileStatusLabel(profile);
+
+    const roleBadge = isAdmin
+      ? '<span class="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-700">Admin</span>'
+      : '<span class="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-extrabold text-blue-700">User</span>';
+
+    const statusBadge = getProfileStatusBadge(profile);
 
     return `
       <article class="mobile-user-card ${isDeleted ? 'opacity-70' : ''}">
-        <div class="flex items-start gap-3">
-          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-base font-extrabold text-emerald-700">${initial}</div>
-          <div class="min-w-0 flex-1">
+        <div class="mobile-user-head">
+          <div class="mobile-user-avatar">${initial}</div>
+
+          <div class="min-w-0">
             <div class="flex min-w-0 items-center gap-2">
-              <p class="truncate text-lg font-extrabold leading-tight text-gray-900">${escapeHTML(profile.nama || '—')}</p>
+              <p class="mobile-user-name">${escapeHTML(profile.nama || '—')}</p>
               ${isSelf ? '<span class="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700">Kamu</span>' : ''}
             </div>
-            <span class="mobile-user-email mt-1 text-sm font-semibold text-gray-500" title="${escapeHTML(profile.email || '—')}">${escapeHTML(profile.email || '—')}</span>
 
-            <div class="mobile-user-meta mt-3">
-              <span class="${status === 'active' ? 'text-emerald-600' : status === 'suspended' ? 'text-amber-600' : 'text-rose-600'}">${escapeHTML(statusLabel)}</span>
-              <span class="mobile-user-dot"></span>
-              <span>${escapeHTML(roleLabel)}</span>
+            <span class="mobile-user-email" title="${escapeHTML(profile.email || '—')}">${escapeHTML(profile.email || '—')}</span>
+
+            <div class="mobile-user-badges">
+              ${statusBadge}
+              ${roleBadge}
             </div>
 
-            <div class="mobile-user-meta mt-2">
-              <span>Bergabung: ${escapeHTML(tanggal)}</span>
-              <span class="mobile-user-dot"></span>
-              <span>${jumlahTrx} transaksi</span>
+            <div class="mobile-user-info">
+              <p><b>Bergabung:</b> ${escapeHTML(tanggal)}</p>
+              <p><b>Total Transaksi:</b> ${jumlahTrx} transaksi</p>
+            </div>
+
+            <div class="mobile-user-actions">
+              ${renderUserActionButtons(profile, isSuspended, isSelf, isDeleted)}
             </div>
           </div>
-        </div>
-
-        <div class="mobile-user-actions mt-4">
-          ${renderUserActionButtons(profile, isSuspended, isSelf, isDeleted)}
         </div>
       </article>`;
   }).join('');
