@@ -310,6 +310,64 @@
       display: none !important;
     }
 
+
+    /* v87: recovery modal restore */
+    #accountHelpModal {
+      z-index: 80;
+    }
+
+    #accountHelpModal.hidden {
+      display: none !important;
+    }
+
+    #accountHelpModal.flex {
+      display: flex !important;
+    }
+
+    #accountHelpModal .account-help-card,
+    #accountHelpModal .account-help-backdrop {
+      pointer-events: auto;
+    }
+
+
+    /* v99: Restore animasi tab Masuk/Daftar */
+    .login-tab-indicator {
+      will-change: left, width;
+      transition:
+        left .32s cubic-bezier(.2, .85, .2, 1),
+        width .32s cubic-bezier(.2, .85, .2, 1),
+        background-color .18s ease,
+        box-shadow .18s ease !important;
+    }
+
+    .login-tab-indicator.is-stretching {
+      transition:
+        left .18s cubic-bezier(.2, .85, .2, 1),
+        width .18s cubic-bezier(.2, .85, .2, 1) !important;
+    }
+
+    .login-tab-btn {
+      position: relative;
+      z-index: 2;
+      transition: color .18s ease, transform .18s ease !important;
+    }
+
+    .login-tab-btn.is-active {
+      transform: translateY(-1px);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .login-tab-indicator,
+      .login-tab-indicator.is-stretching,
+      .login-tab-btn {
+        transition: none !important;
+      }
+
+      .login-tab-btn.is-active {
+        transform: none !important;
+      }
+    }
+
   </style>
 
   <!-- PWA / Installable App -->
@@ -431,7 +489,7 @@
               </div>
 
               <div class="mt-4 flex justify-end">
-                <button type="button" onclick="openAccountHelpModal()" class="text-xs font-extrabold text-emerald-600 hover:text-emerald-700">Lupa akun?</button>
+                <button type="button" onclick="openAccountHelpModal('password')" class="text-xs font-extrabold text-emerald-600 hover:text-emerald-700">Lupa akun?</button>
               </div>
 
               <button onclick="doLogin()" class="btn-primary w-full mt-6 py-4 rounded-2xl text-white text-sm font-extrabold cursor-pointer">
@@ -478,168 +536,331 @@
         </p>
       </div>
     </section>
+
+    <section id="accountHelpModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4 py-6" aria-hidden="true">
+      <div class="account-help-backdrop absolute inset-0" onclick="closeAccountHelpModal()"></div>
+      <div class="account-help-card relative w-full max-w-md rounded-[2rem] border border-gray-100 bg-white p-5 soft-card">
+        <div class="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-xl font-extrabold text-gray-900">Bantuan Akun</h2>
+            <p class="mt-1 text-sm text-gray-400">Pilih bantuan sesuai kendala login.</p>
+          </div>
+          <button type="button" onclick="closeAccountHelpModal()" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 text-gray-500 transition hover:bg-gray-100 cursor-pointer" aria-label="Tutup bantuan akun">
+            ✕
+          </button>
+        </div>
+
+        <div id="recoveryTabTrack" class="recovery-tab-track mb-5 grid grid-cols-2 gap-2 rounded-[1.35rem] bg-gray-100 p-1">
+          <span id="recoveryTabIndicator" class="recovery-tab-indicator"></span>
+          <button id="recoveryTabPassword" type="button" onclick="switchRecoveryTab('password')" class="recovery-tab-btn is-active rounded-2xl py-2.5 text-xs font-extrabold text-gray-400 cursor-pointer">Lupa Password</button>
+          <button id="recoveryTabAccount" type="button" onclick="switchRecoveryTab('account')" class="recovery-tab-btn rounded-2xl py-2.5 text-xs font-extrabold text-gray-400 cursor-pointer">Lupa Email</button>
+        </div>
+
+        <div id="recoveryPasswordPanel">
+          <p class="mb-4 text-sm leading-6 text-gray-500">Masukkan email akunmu. Kami akan mengirim link untuk membuat password baru.</p>
+          <label for="resetEmail" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Email Akun</label>
+          <input id="resetEmail" type="email" autocomplete="email" placeholder="nama@email.com"
+            class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
+          <button type="button" onclick="sendPasswordReset(event)" class="btn-primary mt-5 w-full rounded-2xl py-3.5 text-sm font-extrabold text-white cursor-pointer">Kirim Link Reset Password</button>
+        </div>
+
+        <div id="recoveryAccountPanel" class="hidden">
+          <p class="mb-4 text-sm leading-6 text-gray-500">Kalau lupa email akun, kirim permintaan bantuan. Admin akan mencocokkan nama dan nomor HP yang terdaftar.</p>
+          <div class="space-y-4">
+            <div>
+              <label for="recoveryNama" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Nama</label>
+              <input id="recoveryNama" type="text" autocomplete="name" placeholder="Nama yang terdaftar"
+                class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
+            </div>
+            <div>
+              <label for="recoveryNomorHp" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Nomor HP</label>
+              <input id="recoveryNomorHp" type="tel" inputmode="tel" autocomplete="tel" placeholder="08xxxxxxxxxx"
+                class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
+            </div>
+            <div>
+              <label for="recoveryCatatan" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Catatan Opsional</label>
+              <input id="recoveryCatatan" type="text" placeholder="Contoh: saya lupa email login"
+                class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
+            </div>
+          </div>
+          <button type="button" onclick="submitAccountRecoveryRequest(event)" class="btn-primary mt-5 w-full rounded-2xl py-3.5 text-sm font-extrabold text-white cursor-pointer">Kirim Permintaan Bantuan</button>
+        </div>
+      </div>
+    </section>
+
   </main>
 
-  <!-- Modal Bantuan Akun -->
-  <div id="accountHelpModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 account-help-backdrop">
-    <div class="account-help-card w-full max-w-lg rounded-[2rem] border border-gray-100 bg-white p-6 soft-card">
-      <div class="mb-5 flex items-start justify-between gap-4">
-        <div>
-          <h2 class="text-2xl font-extrabold text-gray-900">Bantuan Akun</h2>
-          <p class="mt-1 text-sm text-gray-400">Pilih bantuan sesuai kendala login.</p>
-        </div>
-        <button type="button" onclick="closeAccountHelpModal()" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 text-gray-500 hover:bg-gray-100" aria-label="Tutup">
-          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </div>
-
-      <div id="recoveryTabTrack" class="recovery-tab-track mb-5 grid grid-cols-2 gap-2 rounded-[1.45rem] bg-gray-100 p-1">
-        <span id="recoveryTabIndicator" class="recovery-tab-indicator"></span>
-        <button id="recoveryPasswordTab" type="button" onclick="setRecoveryTab('password')" class="recovery-tab-btn is-active rounded-2xl py-3 text-xs cursor-pointer">Lupa Password</button>
-        <button id="recoveryEmailTab" type="button" onclick="setRecoveryTab('email')" class="recovery-tab-btn rounded-2xl py-3 text-xs cursor-pointer">Lupa Email</button>
-      </div>
-
-      <div id="recoveryPasswordPanel">
-        <p class="mb-4 text-sm leading-6 text-gray-400">Masukkan email akunmu. Kami akan mengirim link untuk membuat password baru.</p>
-        <label for="recoveryEmail" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Email</label>
-        <input id="recoveryEmail" type="email" autocomplete="email" placeholder="kamu@email.com"
-          class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
-        <button type="button" onclick="sendPasswordResetLink()" class="btn-primary mt-5 w-full rounded-2xl py-4 text-sm font-extrabold text-white cursor-pointer">Kirim Link Reset Password</button>
-      </div>
-
-      <div id="recoveryEmailPanel" class="hidden">
-        <p class="mb-4 text-sm leading-6 text-gray-400">Kalau lupa email akun, isi data berikut. Admin akan mencocokkan data dan menghubungi lewat nomor HP.</p>
-        <div class="space-y-4">
-          <div>
-            <label for="recoveryNama" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Nama</label>
-            <input id="recoveryNama" type="text" autocomplete="name" placeholder="Nama yang terdaftar"
-              class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
-          </div>
-          <div>
-            <label for="recoveryPhone" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Nomor HP</label>
-            <input id="recoveryPhone" type="tel" autocomplete="tel" placeholder="Contoh: 081234567890"
-              class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
-          </div>
-          <div>
-            <label for="recoveryNote" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Catatan Opsional</label>
-            <textarea id="recoveryNote" rows="3" placeholder="Contoh: lupa email yang dipakai saat daftar"
-              class="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition"></textarea>
-          </div>
-        </div>
-        <button type="button" onclick="sendAccountRecoveryRequest()" class="btn-primary mt-5 w-full rounded-2xl py-4 text-sm font-extrabold text-white cursor-pointer">Kirim Permintaan Bantuan</button>
-      </div>
-    </div>
-  </div>
-
+  <script src="./script.js?v=20260620-v99-login-tab-animation-restore"></script>
   <script>
-    let activeLoginTab = 'masuk';
-    let activeRecoveryTab = 'password';
+    // Fallback khusus halaman login agar fitur "Lupa akun?" tetap aktif
+    // walaupun script utama yang terupload belum memuat fungsi recovery.
+    (function () {
+      function getEl(id) { return document.getElementById(id); }
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let activeRecoveryTab = 'password';
+      let recoveryTabInitialized = false;
 
-    function animateTabIndicator(trackId, indicatorId, activeButton) {
-      const track = document.getElementById(trackId);
-      const indicator = document.getElementById(indicatorId);
-      if (!track || !indicator || !activeButton) return;
+      function setRecoveryIndicatorToButton(button) {
+        const track = getEl('recoveryTabTrack');
+        const indicator = getEl('recoveryTabIndicator');
+        if (!track || !indicator || !button) return;
 
-      const trackRect = track.getBoundingClientRect();
-      const btnRect = activeButton.getBoundingClientRect();
-      const toLeft = btnRect.left - trackRect.left;
-      const toWidth = btnRect.width;
-      const fromLeft = Number(indicator.dataset.left ?? toLeft);
-      const fromWidth = Number(indicator.dataset.width ?? toWidth);
-      const midLeft = Math.min(fromLeft, toLeft);
-      const midRight = Math.max(fromLeft + fromWidth, toLeft + toWidth);
-      const midWidth = midRight - midLeft;
-      const distance = Math.abs(toLeft - fromLeft);
-      const duration = Math.min(760, Math.max(520, 520 + distance * 1.2));
+        const trackRect = track.getBoundingClientRect();
+        const btnRect = button.getBoundingClientRect();
+        const left = btnRect.left - trackRect.left;
+        const width = btnRect.width;
+        indicator.style.setProperty('--recovery-tab-left', `${left}px`);
+        indicator.style.setProperty('--recovery-tab-width', `${width}px`);
+        indicator.style.setProperty('--recovery-to-left', `${left}px`);
+        indicator.style.setProperty('--recovery-to-width', `${width}px`);
+      }
 
-      const prefix = indicatorId === 'recoveryTabIndicator' ? 'recovery-' : '';
-      indicator.style.setProperty(`--${prefix}from-left`, `${fromLeft}px`);
-      indicator.style.setProperty(`--${prefix}from-width`, `${fromWidth}px`);
-      indicator.style.setProperty(`--${prefix}mid-left`, `${midLeft}px`);
-      indicator.style.setProperty(`--${prefix}mid-width`, `${midWidth}px`);
-      indicator.style.setProperty(`--${prefix}to-left`, `${toLeft}px`);
-      indicator.style.setProperty(`--${prefix}to-width`, `${toWidth}px`);
-      indicator.style.setProperty(`--${prefix}tab-duration`, `${duration}ms`);
+      function runRecoveryTabIndicator(fromButton, toButton) {
+        const track = getEl('recoveryTabTrack');
+        const indicator = getEl('recoveryTabIndicator');
+        if (!track || !indicator || !toButton) return;
+        if (!fromButton || reduceMotion) {
+          setRecoveryIndicatorToButton(toButton);
+          return;
+        }
 
-      indicator.classList.remove('is-moving');
-      void indicator.offsetWidth;
-      indicator.classList.add('is-moving');
+        const trackRect = track.getBoundingClientRect();
+        const fromRect = fromButton.getBoundingClientRect();
+        const toRect = toButton.getBoundingClientRect();
+        const fromLeft = fromRect.left - trackRect.left;
+        const toLeft = toRect.left - trackRect.left;
+        const fromWidth = fromRect.width;
+        const toWidth = toRect.width;
+        const fromRight = fromLeft + fromWidth;
+        const toRight = toLeft + toWidth;
+        const midLeft = Math.min(fromLeft, toLeft);
+        const midWidth = Math.max(fromRight, toRight) - midLeft;
+        const distance = Math.abs((toLeft + toWidth / 2) - (fromLeft + fromWidth / 2));
+        const duration = Math.min(760, Math.max(520, 440 + distance * 1.15));
 
-      indicator.dataset.left = String(toLeft);
-      indicator.dataset.width = String(toWidth);
-      if (indicatorId === 'recoveryTabIndicator') {
+        indicator.style.setProperty('--recovery-from-left', `${fromLeft}px`);
+        indicator.style.setProperty('--recovery-from-width', `${fromWidth}px`);
+        indicator.style.setProperty('--recovery-mid-left', `${midLeft}px`);
+        indicator.style.setProperty('--recovery-mid-width', `${midWidth}px`);
+        indicator.style.setProperty('--recovery-to-left', `${toLeft}px`);
+        indicator.style.setProperty('--recovery-to-width', `${toWidth}px`);
         indicator.style.setProperty('--recovery-tab-left', `${toLeft}px`);
         indicator.style.setProperty('--recovery-tab-width', `${toWidth}px`);
-      } else {
-        indicator.style.setProperty('--tab-left', `${toLeft}px`);
-        indicator.style.setProperty('--tab-width', `${toWidth}px`);
+        indicator.style.setProperty('--recovery-tab-duration', `${duration}ms`);
+        indicator.classList.remove('is-moving');
+        void indicator.offsetWidth;
+        indicator.classList.add('is-moving');
+        window.setTimeout(() => indicator.classList.remove('is-moving'), duration + 40);
       }
-    }
 
-    function switchLoginTab(tab) {
-      const isLogin = tab === 'masuk';
-      const previous = activeLoginTab;
-      activeLoginTab = isLogin ? 'masuk' : 'daftar';
-
-      document.getElementById('formMasuk')?.classList.toggle('hidden', !isLogin);
-      document.getElementById('formDaftar')?.classList.toggle('hidden', isLogin);
-      document.getElementById('tabMasuk')?.classList.toggle('is-active', isLogin);
-      document.getElementById('tabDaftar')?.classList.toggle('is-active', !isLogin);
-
-      if (previous !== activeLoginTab) {
-        animateTabIndicator('loginTabTrack', 'loginTabIndicator', document.getElementById(isLogin ? 'tabMasuk' : 'tabDaftar'));
+      function validEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
       }
-    }
 
-    function setRecoveryTab(tab) {
-      const isPassword = tab !== 'email';
-      const previous = activeRecoveryTab;
-      activeRecoveryTab = isPassword ? 'password' : 'email';
-
-      document.getElementById('recoveryPasswordPanel')?.classList.toggle('hidden', !isPassword);
-      document.getElementById('recoveryEmailPanel')?.classList.toggle('hidden', isPassword);
-      document.getElementById('recoveryPasswordTab')?.classList.toggle('is-active', isPassword);
-      document.getElementById('recoveryEmailTab')?.classList.toggle('is-active', !isPassword);
-
-      if (previous !== activeRecoveryTab) {
-        animateTabIndicator('recoveryTabTrack', 'recoveryTabIndicator', document.getElementById(isPassword ? 'recoveryPasswordTab' : 'recoveryEmailTab'));
+      function showRecoveryError(title, message) {
+        return Swal.fire({
+          icon: 'error',
+          title,
+          text: message,
+          confirmButtonColor: '#059669'
+        });
       }
-    }
 
-    function openAccountHelpModal() {
-      const modal = document.getElementById('accountHelpModal');
-      if (!modal) return;
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-      setTimeout(() => {
-        animateTabIndicator('recoveryTabTrack', 'recoveryTabIndicator', document.getElementById(activeRecoveryTab === 'email' ? 'recoveryEmailTab' : 'recoveryPasswordTab'));
-      }, 30);
-    }
+      window.openAccountHelpModal = function (tab = 'password') {
+        const modal = getEl('accountHelpModal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        modal.setAttribute('aria-hidden', 'false');
+        window.switchRecoveryTab(tab);
+        setTimeout(() => {
+          const firstInput = tab === 'account' ? getEl('recoveryNama') : getEl('resetEmail');
+          firstInput?.focus?.();
+        }, 80);
+      };
 
-    function closeAccountHelpModal() {
-      const modal = document.getElementById('accountHelpModal');
-      if (!modal) return;
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-    }
+      window.closeAccountHelpModal = function () {
+        const modal = getEl('accountHelpModal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        modal.setAttribute('aria-hidden', 'true');
+      };
 
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') closeAccountHelpModal();
-    });
+      window.switchRecoveryTab = function (tab = 'password') {
+        const nextTab = tab === 'account' ? 'account' : 'password';
+        const isAccount = nextTab === 'account';
+        const fromButton = activeRecoveryTab === 'account' ? getEl('recoveryTabAccount') : getEl('recoveryTabPassword');
+        const toButton = isAccount ? getEl('recoveryTabAccount') : getEl('recoveryTabPassword');
 
-    window.addEventListener('load', () => {
-      animateTabIndicator('loginTabTrack', 'loginTabIndicator', document.getElementById(activeLoginTab === 'daftar' ? 'tabDaftar' : 'tabMasuk'));
-    });
-    window.addEventListener('resize', () => {
-      animateTabIndicator('loginTabTrack', 'loginTabIndicator', document.getElementById(activeLoginTab === 'daftar' ? 'tabDaftar' : 'tabMasuk'));
-      animateTabIndicator('recoveryTabTrack', 'recoveryTabIndicator', document.getElementById(activeRecoveryTab === 'email' ? 'recoveryEmailTab' : 'recoveryPasswordTab'));
-    });
+        getEl('recoveryPasswordPanel')?.classList.toggle('hidden', isAccount);
+        getEl('recoveryAccountPanel')?.classList.toggle('hidden', !isAccount);
 
-    // Jangan pakai nama fungsi generik dari script.js untuk tab login.
-    // Fungsi ini dibuat khusus agar animasi tab login tidak bentrok.
-    window.switchLoginTab = switchLoginTab;
+        getEl('recoveryTabPassword')?.classList.toggle('is-active', !isAccount);
+        getEl('recoveryTabAccount')?.classList.toggle('is-active', isAccount);
+
+        if (nextTab === activeRecoveryTab && recoveryTabInitialized) {
+          setRecoveryIndicatorToButton(toButton);
+          return;
+        }
+
+        runRecoveryTabIndicator(recoveryTabInitialized ? fromButton : null, toButton);
+        activeRecoveryTab = nextTab;
+        recoveryTabInitialized = true;
+      };
+
+      window.sendPasswordReset = async function (ev) {
+        const email = getEl('resetEmail')?.value.trim();
+
+        if (!email) {
+          return Swal.fire({
+            icon: 'warning',
+            title: 'Email belum diisi',
+            text: 'Masukkan email akun terlebih dahulu.',
+            confirmButtonColor: '#059669'
+          });
+        }
+
+        if (!validEmail(email)) {
+          return Swal.fire({
+            icon: 'warning',
+            title: 'Email tidak valid',
+            text: 'Masukkan email dengan format yang benar, contoh: nama@email.com.',
+            confirmButtonColor: '#059669'
+          });
+        }
+
+        const btn = ev?.currentTarget || ev?.target || null;
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = 'Mengirim link...';
+        }
+
+        try {
+          const basePath = window.location.pathname.replace(/[^/]*$/, '');
+          const redirectTo = `${window.location.origin}${basePath}reset-password.html`;
+          const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo });
+
+          if (error) {
+            console.error('[Gagal mengirim link reset password]', error);
+            return showRecoveryError(
+              'Gagal mengirim link',
+              'Link reset password belum bisa dikirim. Pastikan email sudah benar dan terdaftar. Jika masih gagal, cek pengaturan Redirect URL di Supabase.'
+            );
+          }
+
+          await Swal.fire({
+            icon: 'success',
+            title: 'Link terkirim',
+            text: 'Cek email kamu untuk membuat password baru.',
+            confirmButtonColor: '#059669'
+          });
+
+          window.closeAccountHelpModal();
+        } catch (error) {
+          console.error('[Gagal mengirim link reset password]', error);
+          return showRecoveryError(
+            'Gagal mengirim link',
+            'Terjadi gangguan saat mengirim link reset password. Periksa koneksi internet, lalu coba lagi.'
+          );
+        } finally {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Kirim Link Reset Password';
+          }
+        }
+      };
+
+      window.submitAccountRecoveryRequest = async function (ev) {
+        const nama = getEl('recoveryNama')?.value.trim();
+        const nomorHp = getEl('recoveryNomorHp')?.value.trim();
+        const catatan = getEl('recoveryCatatan')?.value.trim() || null;
+
+        if (!nama || !nomorHp) {
+          return Swal.fire({
+            icon: 'warning',
+            title: 'Data belum lengkap',
+            text: 'Nama dan nomor HP wajib diisi agar admin bisa mencocokkan data akun.',
+            confirmButtonColor: '#059669'
+          });
+        }
+
+        const btn = ev?.currentTarget || ev?.target || null;
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = 'Mengirim permintaan...';
+        }
+
+        try {
+          const { error } = await db
+            .from('account_recovery_requests')
+            .insert({ nama, nomor_hp: nomorHp, catatan });
+
+          if (error) {
+            console.error('[Gagal mengirim permintaan bantuan akun]', error);
+            const raw = [
+              error.message,
+              error.details,
+              error.hint,
+              error.code
+            ].filter(Boolean).join(' ').toLowerCase();
+
+            if (
+              raw.includes('account_recovery_requests') ||
+              raw.includes('schema cache') ||
+              raw.includes('pgrst204') ||
+              raw.includes('relation') ||
+              raw.includes('does not exist')
+            ) {
+              return showRecoveryError(
+                'Gagal mengirim permintaan',
+                'Fitur lupa akun belum aktif di database. Jalankan SQL terbaru terlebih dahulu.'
+              );
+            }
+
+            return showRecoveryError(
+              'Gagal mengirim permintaan',
+              'Permintaan bantuan belum bisa dikirim. Periksa kembali data yang dimasukkan, lalu coba lagi.'
+            );
+          }
+
+          await Swal.fire({
+            icon: 'success',
+            title: 'Permintaan terkirim',
+            text: 'Admin akan mengecek data akun dan menghubungi kamu melalui nomor HP yang diberikan.',
+            confirmButtonColor: '#059669'
+          });
+
+          ['recoveryNama', 'recoveryNomorHp', 'recoveryCatatan'].forEach((id) => {
+            const input = getEl(id);
+            if (input) input.value = '';
+          });
+
+          window.closeAccountHelpModal();
+        } catch (error) {
+          console.error('[Gagal mengirim permintaan bantuan akun]', error);
+          return showRecoveryError(
+            'Gagal mengirim permintaan',
+            'Terjadi gangguan saat mengirim permintaan bantuan akun. Periksa koneksi internet, lalu coba lagi.'
+          );
+        } finally {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Kirim Permintaan Bantuan';
+          }
+        }
+      };
+
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') window.closeAccountHelpModal();
+      });
+
+      window.addEventListener('resize', () => {
+        const activeButton = activeRecoveryTab === 'account' ? getEl('recoveryTabAccount') : getEl('recoveryTabPassword');
+        setRecoveryIndicatorToButton(activeButton);
+      });
+    })();
   </script>
-  <script src="./script.js?v=20260620-v81-login-dark-full-fix"></script>
 
 
   <script>
@@ -675,6 +896,308 @@
           .catch((error) => console.warn('Service Worker gagal:', error));
       });
     }
+  </script>
+
+
+
+  <script>
+    // v99: Animasi tab Masuk/Daftar dikembalikan ke efek memanjang lalu memendek.
+    (function () {
+      let activeLoginTab = 'masuk';
+      let loginTabReady = false;
+      let tabTimer = null;
+
+      function getEl(id) {
+        return document.getElementById(id);
+      }
+
+      function getTabMetrics(button) {
+        const track = getEl('loginTabTrack');
+        if (!track || !button) return null;
+
+        const trackRect = track.getBoundingClientRect();
+        const btnRect = button.getBoundingClientRect();
+
+        return {
+          left: btnRect.left - trackRect.left,
+          width: btnRect.width
+        };
+      }
+
+      function setIndicator(left, width, stretching = false) {
+        const indicator = getEl('loginTabIndicator');
+        if (!indicator) return;
+
+        indicator.classList.toggle('is-stretching', stretching);
+        indicator.style.setProperty('--tab-left', `${left}px`);
+        indicator.style.setProperty('--tab-width', `${width}px`);
+      }
+
+      function animateLoginIndicator(targetButton, instant = false) {
+        const indicator = getEl('loginTabIndicator');
+        if (!indicator || !targetButton) return;
+
+        const target = getTabMetrics(targetButton);
+        if (!target) return;
+
+        window.clearTimeout(tabTimer);
+
+        if (instant || !loginTabReady) {
+          setIndicator(target.left, target.width, false);
+          loginTabReady = true;
+          return;
+        }
+
+        const currentLeft = parseFloat(getComputedStyle(indicator).getPropertyValue('left')) || target.left;
+        const currentWidth = indicator.getBoundingClientRect().width || target.width;
+        const currentRight = currentLeft + currentWidth;
+        const targetRight = target.left + target.width;
+
+        const stretchLeft = Math.min(currentLeft, target.left);
+        const stretchRight = Math.max(currentRight, targetRight);
+        const stretchWidth = Math.max(target.width, stretchRight - stretchLeft);
+
+        setIndicator(stretchLeft, stretchWidth, true);
+
+        tabTimer = window.setTimeout(() => {
+          setIndicator(target.left, target.width, false);
+        }, 170);
+      }
+
+      window.switchLoginTab = function (tab) {
+        const isLogin = tab !== 'daftar';
+        activeLoginTab = isLogin ? 'masuk' : 'daftar';
+
+        const formMasuk = getEl('formMasuk');
+        const formDaftar = getEl('formDaftar');
+        const tabMasuk = getEl('tabMasuk');
+        const tabDaftar = getEl('tabDaftar');
+
+        if (formMasuk) formMasuk.classList.toggle('hidden', !isLogin);
+        if (formDaftar) formDaftar.classList.toggle('hidden', isLogin);
+
+        if (tabMasuk) tabMasuk.classList.toggle('is-active', isLogin);
+        if (tabDaftar) tabDaftar.classList.toggle('is-active', !isLogin);
+
+        animateLoginIndicator(isLogin ? tabMasuk : tabDaftar, false);
+      };
+
+      function initLoginTab() {
+        const tabMasuk = getEl('tabMasuk');
+        const tabDaftar = getEl('tabDaftar');
+        const formDaftar = getEl('formDaftar');
+
+        const shouldShowRegister =
+          tabDaftar?.classList.contains('is-active') ||
+          (formDaftar && !formDaftar.classList.contains('hidden'));
+
+        activeLoginTab = shouldShowRegister ? 'daftar' : 'masuk';
+
+        const isLogin = activeLoginTab === 'masuk';
+        const formMasuk = getEl('formMasuk');
+
+        if (formMasuk) formMasuk.classList.toggle('hidden', !isLogin);
+        if (formDaftar) formDaftar.classList.toggle('hidden', isLogin);
+        if (tabMasuk) tabMasuk.classList.toggle('is-active', isLogin);
+        if (tabDaftar) tabDaftar.classList.toggle('is-active', !isLogin);
+
+        animateLoginIndicator(isLogin ? tabMasuk : tabDaftar, true);
+      }
+
+      window.addEventListener('DOMContentLoaded', () => {
+        initLoginTab();
+        setTimeout(initLoginTab, 80);
+      });
+
+      window.addEventListener('load', initLoginTab);
+
+      window.addEventListener('resize', () => {
+        const activeButton = activeLoginTab === 'daftar' ? getEl('tabDaftar') : getEl('tabMasuk');
+        animateLoginIndicator(activeButton, true);
+      });
+    })();
+  </script>
+
+  <script>
+    // v98: Recovery final fix. Dibuat eksplisit agar tombol reset/bantuan tidak bergantung ke script lama.
+    (function () {
+      const SUPABASE_URL_FOR_RECOVERY = "https://uezjncjapumyrkjxzslw.supabase.co";
+      const SUPABASE_KEY_FOR_RECOVERY = "sb_publishable_gMbWszjY1XIou5Cj4wDkjg_UlGiuOd5";
+
+      function getEl(id) {
+        return document.getElementById(id);
+      }
+
+      function getRecoveryDb() {
+        if (window.db && typeof window.db.from === 'function') return window.db;
+        if (window.supabase && typeof window.supabase.createClient === 'function') {
+          return window.supabase.createClient(SUPABASE_URL_FOR_RECOVERY, SUPABASE_KEY_FOR_RECOVERY);
+        }
+        return null;
+      }
+
+      function swalFire(config) {
+        if (window.Swal && typeof window.Swal.fire === 'function') {
+          return window.Swal.fire(config);
+        }
+        alert(config?.text || config?.title || 'Terjadi kesalahan.');
+      }
+
+      function showRecoveryLoading(btn, text) {
+        if (!btn) return '';
+        const oldText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = text;
+        return oldText;
+      }
+
+      function restoreRecoveryButton(btn, oldText) {
+        if (!btn) return;
+        btn.disabled = false;
+        if (oldText) btn.textContent = oldText;
+      }
+
+      window.sendPasswordReset = async function (ev) {
+        ev?.preventDefault?.();
+
+        const emailInput = getEl('resetEmail') || getEl('recoveryEmail');
+        const email = (emailInput?.value || '').trim();
+        const btn = ev?.currentTarget || ev?.target || null;
+
+        if (!email) {
+          return swalFire({
+            icon: 'warning',
+            title: 'Email belum diisi',
+            text: 'Masukkan email akun terlebih dahulu.',
+            confirmButtonColor: '#059669'
+          });
+        }
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          return swalFire({
+            icon: 'warning',
+            title: 'Format email salah',
+            text: 'Masukkan email dengan format yang benar, contoh: kamu@email.com.',
+            confirmButtonColor: '#059669'
+          });
+        }
+
+        const dbRecovery = getRecoveryDb();
+        if (!dbRecovery?.auth?.resetPasswordForEmail) {
+          return swalFire({
+            icon: 'error',
+            title: 'Fitur reset belum siap',
+            text: 'Supabase belum terbaca di halaman ini. Refresh halaman lalu coba lagi.',
+            confirmButtonColor: '#059669'
+          });
+        }
+
+        const oldText = showRecoveryLoading(btn, 'Mengirim...');
+
+        try {
+          const redirectTo = `${window.location.origin}/reset-password.html`;
+          const { error } = await dbRecovery.auth.resetPasswordForEmail(email, {
+            redirectTo
+          });
+
+          if (error) throw error;
+
+          return swalFire({
+            icon: 'success',
+            title: 'Link reset dikirim',
+            text: 'Cek email kamu untuk membuat password baru. Jika belum ada, periksa folder spam/promosi.',
+            confirmButtonColor: '#059669'
+          });
+        } catch (error) {
+          console.error('[Reset password]', error);
+          return swalFire({
+            icon: 'error',
+            title: 'Gagal mengirim link',
+            text: error?.message || 'Terjadi gangguan saat mengirim link reset password.',
+            confirmButtonColor: '#059669'
+          });
+        } finally {
+          restoreRecoveryButton(btn, oldText);
+        }
+      };
+
+      window.submitAccountRecoveryRequest = async function (ev) {
+        ev?.preventDefault?.();
+
+        const nama = (getEl('recoveryNama')?.value || '').trim();
+        const nomorHp = (getEl('recoveryNomorHp')?.value || '').trim();
+        const catatan = (getEl('recoveryCatatan')?.value || '').trim();
+        const btn = ev?.currentTarget || ev?.target || null;
+
+        if (!nama || !nomorHp) {
+          return swalFire({
+            icon: 'warning',
+            title: 'Data belum lengkap',
+            text: 'Nama dan nomor HP wajib diisi agar admin bisa mencocokkan data akun.',
+            confirmButtonColor: '#059669'
+          });
+        }
+
+        const dbRecovery = getRecoveryDb();
+        if (!dbRecovery?.from) {
+          return swalFire({
+            icon: 'error',
+            title: 'Fitur bantuan belum siap',
+            text: 'Supabase belum terbaca di halaman ini. Refresh halaman lalu coba lagi.',
+            confirmButtonColor: '#059669'
+          });
+        }
+
+        const oldText = showRecoveryLoading(btn, 'Mengirim...');
+
+        try {
+          const { error } = await dbRecovery
+            .from('account_recovery_requests')
+            .insert({
+              nama,
+              nomor_hp: nomorHp,
+              catatan: catatan || null,
+              status: 'baru'
+            });
+
+          if (error) throw error;
+
+          if (getEl('recoveryNama')) getEl('recoveryNama').value = '';
+          if (getEl('recoveryNomorHp')) getEl('recoveryNomorHp').value = '';
+          if (getEl('recoveryCatatan')) getEl('recoveryCatatan').value = '';
+
+          return swalFire({
+            icon: 'success',
+            title: 'Permintaan terkirim',
+            text: 'Admin akan mengecek data akun dan menghubungi nomor HP yang kamu isi.',
+            confirmButtonColor: '#059669'
+          });
+        } catch (error) {
+          console.error('[Account recovery]', error);
+          const message = String(error?.message || '').toLowerCase();
+          const text = message.includes('account_recovery_requests')
+            ? 'Tabel account_recovery_requests belum tersedia atau policy Supabase belum benar.'
+            : (error?.message || 'Terjadi gangguan saat mengirim permintaan bantuan.');
+
+          return swalFire({
+            icon: 'error',
+            title: 'Gagal mengirim permintaan',
+            text,
+            confirmButtonColor: '#059669'
+          });
+        } finally {
+          restoreRecoveryButton(btn, oldText);
+        }
+      };
+
+      window.addEventListener('DOMContentLoaded', function () {
+        const resetBtn = document.querySelector('[onclick*="sendPasswordReset"]');
+        const helpBtn = document.querySelector('[onclick*="submitAccountRecoveryRequest"]');
+
+        if (resetBtn) resetBtn.setAttribute('onclick', 'sendPasswordReset(event)');
+        if (helpBtn) helpBtn.setAttribute('onclick', 'submitAccountRecoveryRequest(event)');
+      });
+    })();
   </script>
 
 </body>
