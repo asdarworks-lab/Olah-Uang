@@ -3,453 +3,377 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Olah Uang</title>
+  <title>Admin — Olah Uang</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
     * { font-family: 'Plus Jakarta Sans', sans-serif; }
-    .soft-card { box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06); }
-    .logo-img { filter: drop-shadow(0 20px 32px rgba(5, 150, 105, .18)); }
-    input:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 4px rgba(5,150,105,.12); }
-    .btn-primary { background: linear-gradient(135deg, #059669, #047857); transition: transform .18s ease, box-shadow .18s ease, filter .18s ease; }
-    .btn-primary:hover { filter: brightness(.98); transform: translateY(-1px); box-shadow: 0 14px 28px rgba(5, 150, 105, .22); }
-    .btn-primary:disabled { opacity: .65; transform: none; box-shadow: none; cursor: not-allowed; }
+    html { scroll-behavior: smooth; }
+    body { background: #f8fafc; color: #1e293b; }
 
-    .login-tab-track { position: relative; isolation: isolate; }
-    .login-tab-indicator {
-      position: absolute;
-      top: .25rem;
-      bottom: .25rem;
-      left: var(--tab-left, .25rem);
-      width: var(--tab-width, calc(50% - .25rem));
-      border-radius: 1rem;
-      background: #ffffff;
-      box-shadow: 0 8px 18px rgba(15, 23, 42, .06);
-      z-index: 0;
-      pointer-events: none;
-    }
-    .login-tab-indicator.is-moving {
-      animation: loginTabFlow var(--tab-duration, 640ms) cubic-bezier(.22, 1, .36, 1) both;
-    }
-    @keyframes loginTabFlow {
-      0% { left: var(--from-left); width: var(--from-width); border-radius: 1rem; }
-      48% { left: var(--mid-left); width: var(--mid-width); border-radius: 1.2rem; }
-      100% { left: var(--to-left); width: var(--to-width); border-radius: 1rem; }
-    }
-    .login-tab-btn {
-      position: relative;
-      z-index: 1;
-      color: #94a3b8;
-      font-weight: 800;
-      transition: color .28s ease, transform .34s cubic-bezier(.22, 1, .36, 1);
-    }
-    .login-tab-btn.is-active { color: #064e3b; transform: scale(1.015); }
+    .soft-card { box-shadow: 0 12px 34px rgba(15, 23, 42, 0.06); }
+    .admin-logo { box-shadow: 0 16px 34px rgba(5, 150, 105, .18); }
+    .table-shell table { border-collapse: separate; border-spacing: 0; }
+    .table-shell th { white-space: nowrap; }
+    .content-panel { animation: adminFade .22s ease-out; }
+    .metric-value { overflow-wrap: anywhere; word-break: break-word; }
+    .metric-card { min-height: 188px; }
+    .surface-card { background: #ffffff; border: 1px solid #e5e7eb; }
+    .surface-soft { background: #f8fafc; border: 1px solid #e5e7eb; }
 
-    .account-help-backdrop { background: rgba(15, 23, 42, .46); backdrop-filter: blur(10px); }
-    .account-help-card { animation: accountHelpIn .22s cubic-bezier(.22, 1, .36, 1) both; }
-    @keyframes accountHelpIn {
-      from { opacity: 0; transform: translateY(12px) scale(.98); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
+    .admin-nav-active {
+      background: linear-gradient(135deg, #10b981, #059669) !important;
+      color: #ffffff !important;
+      box-shadow: 0 16px 28px rgba(5, 150, 105, .22);
+    }
+    .admin-nav-idle {
+      background: transparent;
+      color: #64748b;
+    }
+    .admin-nav-idle:hover {
+      background: #f1f5f9;
+      color: #0f172a;
     }
 
-    .recovery-tab-track { position: relative; isolation: isolate; }
-    .recovery-tab-indicator {
-      position: absolute;
-      top: .25rem;
-      bottom: .25rem;
-      left: var(--recovery-tab-left, .25rem);
-      width: var(--recovery-tab-width, calc(50% - .25rem));
-      border-radius: 1rem;
-      background: #ffffff;
-      box-shadow: 0 8px 18px rgba(15, 23, 42, .06);
-      z-index: 0;
-      pointer-events: none;
+    .mobile-bottom-nav button {
+      min-width: 0;
+      flex: 1 1 0;
     }
-    .recovery-tab-indicator.is-moving {
-      animation: recoveryTabFlow var(--recovery-tab-duration, 640ms) cubic-bezier(.22, 1, .36, 1) both;
-    }
-    @keyframes recoveryTabFlow {
-      0% { left: var(--recovery-from-left); width: var(--recovery-from-width); border-radius: 1rem; }
-      48% { left: var(--recovery-mid-left); width: var(--recovery-mid-width); border-radius: 1.2rem; }
-      100% { left: var(--recovery-to-left); width: var(--recovery-to-width); border-radius: 1rem; }
-    }
-    .recovery-tab-btn {
-      position: relative;
-      z-index: 1;
-      color: #94a3b8;
-      font-weight: 800;
-      transition: color .28s ease, transform .34s cubic-bezier(.22, 1, .36, 1);
-    }
-    .recovery-tab-btn.is-active { color: #064e3b; transform: scale(1.015); }
 
-    .dark body, body.dark { background: #020617 !important; color: #e5e7eb !important; }
-    .dark .bg-white { background-color: #0f172a !important; }
-    .dark .bg-gray-50 { background-color: #020617 !important; }
-    .dark .bg-gray-100 { background-color: #1e293b !important; }
-    .dark .text-gray-900, .dark .text-gray-800, .dark .text-gray-700 { color: #f8fafc !important; }
-    .dark .text-gray-600, .dark .text-gray-500, .dark .text-gray-400 { color: #94a3b8 !important; }
-    .dark .border-gray-50, .dark .border-gray-100, .dark .border-gray-200 { border-color: #1e293b !important; }
-    .dark input, .dark textarea { background-color: #111827 !important; color: #e5e7eb !important; border-color: #334155 !important; }
-    .dark .login-tab-indicator,
-    .dark .recovery-tab-indicator { background: #0f172a !important; box-shadow: 0 8px 20px rgba(0, 0, 0, .22); }
-    .dark .login-tab-btn.is-active,
-    .dark .recovery-tab-btn.is-active { color: #ecfdf5 !important; }
-    .dark .soft-card { box-shadow: 0 8px 28px rgba(0, 0, 0, .25); }
+    @keyframes adminFade {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
-    .dark #darkModeToggle {
+    body.dark {
+      background: #020617 !important;
+      color: #e2e8f0 !important;
+    }
+    body.dark .surface-card,
+    body.dark .surface-soft,
+    body.dark .admin-sidebar,
+    body.dark .admin-topbar,
+    body.dark .mobile-bottom-nav {
       background: #0f172a !important;
       border-color: #1e293b !important;
+      color: #e2e8f0 !important;
+    }
+    body.dark .surface-soft { background: #111c33 !important; }
+    body.dark .bg-white { background-color: #0f172a !important; }
+    body.dark .bg-gray-50 { background-color: #111827 !important; }
+    body.dark .bg-gray-100 { background-color: #1e293b !important; }
+    body.dark .bg-gray-200 { background-color: #334155 !important; }
+    body.dark .text-gray-950,
+    body.dark .text-gray-900,
+    body.dark .text-gray-800,
+    body.dark .text-gray-700 { color: #f8fafc !important; }
+    body.dark .text-gray-600,
+    body.dark .text-gray-500,
+    body.dark .text-gray-400,
+    body.dark .text-slate-700,
+    body.dark .text-slate-600 { color: #94a3b8 !important; }
+    body.dark .border-gray-50,
+    body.dark .border-gray-100,
+    body.dark .border-gray-200,
+    body.dark .border-slate-200 { border-color: #1e293b !important; }
+    body.dark .hover\:bg-gray-50:hover,
+    body.dark .hover\:bg-gray-100:hover,
+    body.dark .hover\:bg-slate-100:hover { background-color: #162338 !important; }
+    body.dark .soft-card { box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28); }
+    body.dark .admin-nav-idle { color: #94a3b8; }
+    body.dark .admin-nav-idle:hover { background: #162338; color: #f8fafc; }
+    body.dark .admin-topbar-title,
+    body.dark .admin-topbar-subtitle { color: #f8fafc !important; }
+    body.dark #darkModeToggle {
+      background: #0b1220 !important;
+      border-color: #1e293b !important;
       color: #fde68a !important;
-      box-shadow: 0 10px 26px rgba(0, 0, 0, .28) !important;
     }
-    .dark #darkModeToggle:hover {
-      background: #111827 !important;
-      border-color: #334155 !important;
-    }
-    .dark .login-tab-btn,
-    .dark .recovery-tab-btn {
-      color: #94a3b8 !important;
-    }
-    .dark .login-tab-btn.is-active,
-    .dark .recovery-tab-btn.is-active {
-      color: #ecfdf5 !important;
-    }
-    .dark .login-tab-indicator,
-    .dark .recovery-tab-indicator {
-      background: #020617 !important;
-      border: 1px solid rgba(148, 163, 184, .12);
-    }
+    body.dark .table-shell thead tr { background: #111827 !important; }
+    body.dark .table-shell tbody tr:hover { background: #111827 !important; }
+    body.dark .mobile-brand-card { background: #0f172a !important; border-color: #1e293b !important; }
+    body.dark .mobile-page-chip { background: #111c33 !important; color: #cbd5e1 !important; }
+    body.dark .admin-bottom-safe { background: transparent !important; }
 
-    @media (prefers-reduced-motion: reduce) {
-      .login-tab-indicator,
-      .login-tab-indicator.is-moving,
-      .login-tab-btn,
-      .recovery-tab-indicator,
-      .recovery-tab-indicator.is-moving,
-      .recovery-tab-btn,
-      .account-help-card {
-        animation: none !important;
-        transition: none !important;
-      }
+    @media (max-width: 1023px) {
+      .mobile-nav-scroll::-webkit-scrollbar { display: none; }
+      .mobile-nav-scroll { -ms-overflow-style: none; scrollbar-width: none; }
     }
   </style>
 </head>
-<body data-page="login" class="min-h-screen bg-gray-50 text-gray-800 antialiased overflow-x-hidden">
-
-  <main class="relative min-h-screen w-full px-4 py-5 md:px-6 lg:px-8">
-    <div class="absolute inset-0 -z-10 overflow-hidden">
-      <div class="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-emerald-200/50 blur-3xl"></div>
-      <div class="absolute top-24 right-0 h-80 w-80 rounded-full bg-emerald-100/70 blur-3xl"></div>
-      <div class="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-rose-100/50 blur-3xl"></div>
-    </div>
-
-    <header class="mx-auto flex w-full max-w-6xl items-start justify-end gap-3 pb-2 lg:justify-between lg:pb-0">
-      <div class="hidden lg:flex items-start">
-        <img
-          src="./assets/logo-olah-uang.png"
-          alt="Logo Olah Uang"
-          class="logo-img logo-light h-auto w-[260px] select-none"
-        />
-        <img
-          src="./assets/logo-olah-uang-dark.png"
-          alt="Logo Olah Uang"
-          class="logo-img logo-dark h-auto w-[260px] select-none"
-        />
-      </div>
-
-      <button onclick="toggleDarkMode()" id="darkModeToggle"
-        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gray-100 bg-white/90 text-lg font-bold text-gray-700 soft-card transition hover:scale-[1.02]"
-        title="Mode gelap/terang" aria-label="Mode gelap/terang">🌕</button>
-    </header>
-
-    <section class="mx-auto grid min-h-[calc(100vh-120px)] w-full max-w-6xl items-center gap-6 lg:grid-cols-[1.05fr_.95fr]">
-      <div class="hidden lg:block">
-        <div class="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/80 px-4 py-2 text-xs font-extrabold text-emerald-700 soft-card">
-          <span>✨</span>
-          <span>Dashboard keuangan sederhana untuk pengguna awam</span>
-        </div>
-        <h1 class="mt-6 max-w-xl text-5xl font-extrabold tracking-tight text-gray-900 leading-tight">
-          Kelola keuangan lebih rapi, sederhana, dan mudah dipahami.
-        </h1>
-        <p class="mt-4 max-w-lg text-base leading-7 text-gray-500">
-          Catat transaksi harian, pantau saldo, lihat budget, dan evaluasi pola pengeluaran dalam satu aplikasi yang ringan dan ramah pengguna.
-        </p>
-        <div class="mt-7 grid max-w-xl grid-cols-3 gap-3">
-          <div class="rounded-3xl border border-gray-100 bg-white p-4 soft-card">
-            <p class="text-2xl">⚡</p>
-            <p class="mt-2 text-sm font-extrabold text-gray-900">Cepat</p>
-            <p class="mt-1 text-xs text-gray-400">Catat sebelum lupa.</p>
+<body data-page="dashboard-admin" class="min-h-screen antialiased">
+  <div class="min-h-screen lg:grid lg:grid-cols-[290px_1fr]">
+    <aside class="admin-sidebar hidden h-screen border-r border-gray-100 bg-white px-5 py-6 soft-card lg:sticky lg:top-0 lg:block">
+      <div class="mb-8 flex items-center gap-3">
+        <div class="admin-logo flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-500 to-emerald-800 text-2xl text-white">🛡️</div>
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <h1 class="truncate text-[1.65rem] font-extrabold text-gray-950">Olah Uang</h1>
+            <span class="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-amber-700">Admin</span>
           </div>
-          <div class="rounded-3xl border border-gray-100 bg-white p-4 soft-card">
-            <p class="text-2xl">📊</p>
-            <p class="mt-2 text-sm font-extrabold text-gray-900">Terukur</p>
-            <p class="mt-1 text-xs text-gray-400">Grafik dan budget.</p>
-          </div>
-          <div class="rounded-3xl border border-gray-100 bg-white p-4 soft-card">
-            <p class="text-2xl">🔐</p>
-            <p class="mt-2 text-sm font-extrabold text-gray-900">Aman</p>
-            <p class="mt-1 text-xs text-gray-400">Akun per pengguna.</p>
-          </div>
+          <p class="mt-1 text-sm font-semibold text-gray-400">Management Console</p>
         </div>
       </div>
 
-      <div class="mx-auto w-full max-w-md">
-        <section class="mb-6 text-center lg:hidden">
-          <img
-            src="./assets/logo-olah-uang.png"
-            alt="Logo Olah Uang"
-            class="logo-img logo-light mx-auto h-auto w-[320px] max-w-[86vw] select-none sm:w-[340px] md:w-[360px]"
-          />
-          <img
-            src="./assets/logo-olah-uang-dark.png"
-            alt="Logo Olah Uang"
-            class="logo-img logo-dark mx-auto h-auto w-[320px] max-w-[86vw] select-none sm:w-[340px] md:w-[360px]"
-          />
-          <p class="mt-3 text-sm text-gray-400"></p>
-          <p class="mt-3 text-sm text-gray-400"></p>
-        </section>
-
-        <section id="authCard" class="overflow-hidden rounded-[2rem] border border-gray-100 bg-white p-2 soft-card">
-          <div id="loginTabTrack" class="login-tab-track grid grid-cols-2 gap-2 rounded-[1.45rem] bg-gray-100 p-1">
-            <span id="loginTabIndicator" class="login-tab-indicator"></span>
-            <button id="tabMasuk" onclick="switchLoginTab('masuk')" class="login-tab-btn is-active rounded-2xl py-4 text-sm cursor-pointer">Masuk</button>
-            <button id="tabDaftar" onclick="switchLoginTab('daftar')" class="login-tab-btn rounded-2xl py-4 text-sm cursor-pointer">Daftar</button>
-          </div>
-
-          <p id="registrationNotice" class="hidden mx-5 mt-5 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2"></p>
-
-          <div class="p-6">
-            <div id="formMasuk">
-              <div class="mb-5">
-                <h2 class="text-2xl font-extrabold text-gray-900">Masuk ke akun</h2>
-                <p class="mt-1 text-sm text-gray-400">Lanjutkan pencatatan keuanganmu.</p>
-              </div>
-
-              <div class="space-y-4">
-                <div>
-                  <label for="loginEmail" class="block text-xs font-extrabold text-gray-500 mb-2 uppercase tracking-wide">Email</label>
-                  <input id="loginEmail" type="email" autocomplete="email" placeholder="kamu@email.com"
-                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm text-gray-800 transition" />
-                </div>
-                <div>
-                  <label for="loginPassword" class="block text-xs font-extrabold text-gray-500 mb-2 uppercase tracking-wide">Password</label>
-                  <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••"
-                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm text-gray-800 transition"
-                    onkeydown="if(event.key==='Enter') doLogin()" />
-                </div>
-              </div>
-
-              <div class="mt-4 flex justify-end">
-                <button type="button" onclick="openAccountHelpModal()" class="text-xs font-extrabold text-emerald-600 hover:text-emerald-700">Lupa akun?</button>
-              </div>
-
-              <button onclick="doLogin()" class="btn-primary w-full mt-6 py-4 rounded-2xl text-white text-sm font-extrabold cursor-pointer">
-                Masuk Sekarang
-              </button>
-            </div>
-
-            <div id="formDaftar" class="hidden">
-              <div class="mb-5">
-                <h2 class="text-2xl font-extrabold text-gray-900">Buat akun baru</h2>
-                <p class="mt-1 text-sm text-gray-400">Mulai olah keuanganmu dengan akun sendiri.</p>
-              </div>
-
-              <div class="space-y-4">
-                <div>
-                  <label for="daftarNama" class="block text-xs font-extrabold text-gray-500 mb-2 uppercase tracking-wide">Nama Lengkap</label>
-                  <input id="daftarNama" type="text" autocomplete="name" placeholder="Nama kamu"
-                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm text-gray-800 transition" />
-                </div>
-                <div>
-                  <label for="daftarEmail" class="block text-xs font-extrabold text-gray-500 mb-2 uppercase tracking-wide">Email</label>
-                  <input id="daftarEmail" type="email" autocomplete="email" placeholder="kamu@email.com"
-                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm text-gray-800 transition" />
-                </div>
-                <div>
-                  <label for="daftarPassword" class="block text-xs font-extrabold text-gray-500 mb-2 uppercase tracking-wide">Password</label>
-                  <input id="daftarPassword" type="password" autocomplete="new-password" placeholder="Minimal 6 karakter"
-                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm text-gray-800 transition"
-                    onkeydown="if(event.key==='Enter') doRegister()" />
-                </div>
-              </div>
-
-              <button onclick="doRegister()" class="btn-primary w-full mt-6 py-4 rounded-2xl text-white text-sm font-extrabold cursor-pointer">
-                Buat Akun
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <p class="text-center text-xs text-gray-400 mt-6">
-          All rights reserved by
-          <a href="https://asfa-tech.netlify.app/" target="_blank" rel="noopener noreferrer" class="font-extrabold text-emerald-600 hover:text-emerald-700">Asfa.Tech</a>.
-          Copyright 2026.
-        </p>
-      </div>
-    </section>
-  </main>
-
-  <!-- Modal Bantuan Akun -->
-  <div id="accountHelpModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 account-help-backdrop">
-    <div class="account-help-card w-full max-w-lg rounded-[2rem] border border-gray-100 bg-white p-6 soft-card">
-      <div class="mb-5 flex items-start justify-between gap-4">
-        <div>
-          <h2 class="text-2xl font-extrabold text-gray-900">Bantuan Akun</h2>
-          <p class="mt-1 text-sm text-gray-400">Pilih bantuan sesuai kendala login.</p>
-        </div>
-        <button type="button" onclick="closeAccountHelpModal()" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 text-gray-500 hover:bg-gray-100" aria-label="Tutup">
-          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 6l12 12M18 6L6 18"/></svg>
+      <nav class="space-y-2.5" aria-label="Navigasi admin">
+        <button type="button" onclick="showAdminView('overview')" data-admin-nav="overview" class="admin-nav-idle flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-sm font-extrabold transition">
+          <span class="text-lg">🏠</span><span>Ringkasan</span>
         </button>
-      </div>
+        <button type="button" onclick="showAdminView('users')" data-admin-nav="users" class="admin-nav-idle flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-sm font-extrabold transition">
+          <span class="text-lg">👥</span><span>Pengguna</span>
+        </button>
+        <button type="button" onclick="showAdminView('activity')" data-admin-nav="activity" class="admin-nav-idle flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-sm font-extrabold transition">
+          <span class="text-lg">🟢</span><span>Aktivitas</span>
+        </button>
+        <button type="button" onclick="showAdminView('recovery')" data-admin-nav="recovery" class="admin-nav-idle flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-sm font-extrabold transition">
+          <span class="text-lg">🆘</span><span>Bantuan Akun</span>
+        </button>
+        <button type="button" onclick="showAdminView('transactions')" data-admin-nav="transactions" class="admin-nav-idle flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-sm font-extrabold transition">
+          <span class="text-lg">🧾</span><span>Transaksi</span>
+        </button>
+      </nav>
 
-      <div id="recoveryTabTrack" class="recovery-tab-track mb-5 grid grid-cols-2 gap-2 rounded-[1.45rem] bg-gray-100 p-1">
-        <span id="recoveryTabIndicator" class="recovery-tab-indicator"></span>
-        <button id="recoveryPasswordTab" type="button" onclick="setRecoveryTab('password')" class="recovery-tab-btn is-active rounded-2xl py-3 text-xs cursor-pointer">Lupa Password</button>
-        <button id="recoveryEmailTab" type="button" onclick="setRecoveryTab('email')" class="recovery-tab-btn rounded-2xl py-3 text-xs cursor-pointer">Lupa Email</button>
+      <div class="absolute bottom-6 left-5 right-5 space-y-3">
+        <button onclick="muatData()" class="flex w-full items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-extrabold text-gray-700 transition hover:bg-gray-100">Refresh Data</button>
+        <button onclick="doLogout()" class="flex w-full items-center justify-center rounded-2xl bg-rose-100 px-4 py-3 text-sm font-extrabold text-rose-700 transition hover:bg-rose-200">Keluar</button>
       </div>
+    </aside>
 
-      <div id="recoveryPasswordPanel">
-        <p class="mb-4 text-sm leading-6 text-gray-400">Masukkan email akunmu. Kami akan mengirim link untuk membuat password baru.</p>
-        <label for="recoveryEmail" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Email</label>
-        <input id="recoveryEmail" type="email" autocomplete="email" placeholder="kamu@email.com"
-          class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
-        <button type="button" onclick="sendPasswordResetLink()" class="btn-primary mt-5 w-full rounded-2xl py-4 text-sm font-extrabold text-white cursor-pointer">Kirim Link Reset Password</button>
-      </div>
-
-      <div id="recoveryEmailPanel" class="hidden">
-        <p class="mb-4 text-sm leading-6 text-gray-400">Kalau lupa email akun, isi data berikut. Admin akan mencocokkan data dan menghubungi lewat nomor HP.</p>
-        <div class="space-y-4">
-          <div>
-            <label for="recoveryNama" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Nama</label>
-            <input id="recoveryNama" type="text" autocomplete="name" placeholder="Nama yang terdaftar"
-              class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
+    <main class="min-w-0">
+      <header class="admin-topbar sticky top-0 z-20 border-b border-gray-100 bg-white/95 px-4 py-4 backdrop-blur-xl md:px-6 lg:px-8">
+        <div class="mx-auto flex max-w-7xl items-start justify-between gap-4">
+          <div class="min-w-0 lg:block">
+            <div class="mobile-brand-card flex items-center gap-3 rounded-3xl border border-gray-100 bg-white p-3 soft-card lg:hidden">
+              <div class="admin-logo flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-800 text-xl text-white">🛡️</div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <p class="truncate text-base font-extrabold text-gray-950">Olah Uang Admin</p>
+                </div>
+                <p class="truncate text-xs font-semibold text-gray-400">Halo, <span id="adminNama">Admin</span></p>
+              </div>
+            </div>
+            <div class="hidden lg:block">
+              <p class="text-xs font-extrabold uppercase tracking-[.24em] text-emerald-600">Dashboard Admin</p>
+              <h2 id="adminPageTitle" class="admin-topbar-title mt-1 text-3xl font-extrabold text-gray-950">Ringkasan</h2>
+              <p id="adminPageSubtitle" class="admin-topbar-subtitle mt-1 text-sm text-gray-400">Pantau ringkasan performa aplikasi dan data keuangan seluruh user.</p>
+            </div>
           </div>
-          <div>
-            <label for="recoveryPhone" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Nomor HP</label>
-            <input id="recoveryPhone" type="tel" autocomplete="tel" placeholder="Contoh: 081234567890"
-              class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition" />
-          </div>
-          <div>
-            <label for="recoveryNote" class="mb-2 block text-xs font-extrabold uppercase tracking-wide text-gray-500">Catatan Opsional</label>
-            <textarea id="recoveryNote" rows="3" placeholder="Contoh: lupa email yang dipakai saat daftar"
-              class="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 transition"></textarea>
-          </div>
+          <button onclick="toggleDarkMode()" id="darkModeToggle" class="rounded-2xl border border-gray-100 bg-white px-4 py-3 text-sm font-bold text-gray-700 soft-card transition hover:scale-[1.02]" title="Mode gelap/terang">🌕</button>
         </div>
-        <button type="button" onclick="sendAccountRecoveryRequest()" class="btn-primary mt-5 w-full rounded-2xl py-4 text-sm font-extrabold text-white cursor-pointer">Kirim Permintaan Bantuan</button>
+      </header>
+
+      <div class="mx-auto max-w-7xl px-4 py-5 pb-28 md:px-6 lg:px-8 lg:pb-8 lg:py-7">
+        <div class="mb-5 grid gap-3 md:grid-cols-2 lg:hidden">
+          <button onclick="muatData()" class="surface-card flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-extrabold text-gray-700 soft-card">Refresh Data</button>
+          <button onclick="doLogout()" class="flex items-center justify-center rounded-2xl bg-rose-100 px-4 py-3 text-sm font-extrabold text-rose-700 soft-card">Keluar</button>
+        </div>
+
+        <section data-admin-view="overview" class="content-panel space-y-5">
+          <div class="lg:hidden">
+            <span class="mobile-page-chip inline-flex rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-emerald-700">Ringkasan</span>
+          </div>
+          <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div class="metric-card surface-card min-w-0 rounded-[28px] p-5 soft-card">
+              <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-3xl bg-emerald-100 text-2xl">👥</div>
+              <p class="mb-2 min-h-[2.75rem] text-[11px] font-extrabold uppercase tracking-wide text-gray-400">Total User</p>
+              <p id="statTotalUser" class="metric-value text-4xl font-extrabold text-gray-900">—</p>
+            </div>
+            <div class="metric-card surface-card min-w-0 rounded-[28px] p-5 soft-card">
+              <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-3xl bg-emerald-100 text-2xl">🟢</div>
+              <p class="mb-2 min-h-[2.75rem] text-[11px] font-extrabold uppercase tracking-wide text-gray-400">Aktif Sekarang</p>
+              <p id="statActiveUsers" class="metric-value text-4xl font-extrabold text-emerald-600">—</p>
+            </div>
+            <div class="metric-card surface-card min-w-0 rounded-[28px] p-5 soft-card">
+              <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-3xl bg-violet-100 text-2xl">🆕</div>
+              <p class="mb-2 min-h-[2.75rem] text-[11px] font-extrabold uppercase tracking-wide text-gray-400">Baru Hari Ini</p>
+              <p id="statNewUsersToday" class="metric-value text-4xl font-extrabold text-violet-600">—</p>
+            </div>
+            <div class="metric-card surface-card min-w-0 rounded-[28px] p-5 soft-card">
+              <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-3xl bg-blue-100 text-2xl">🧾</div>
+              <p class="mb-2 min-h-[2.75rem] text-[11px] font-extrabold uppercase tracking-wide text-gray-400">Total Transaksi</p>
+              <p id="statTotalTrx" class="metric-value text-4xl font-extrabold text-gray-900">—</p>
+            </div>
+            <div class="metric-card surface-card min-w-0 rounded-[28px] p-5 soft-card xl:col-span-2">
+              <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-3xl bg-emerald-100 text-2xl">📈</div>
+              <p class="mb-2 min-h-[2.75rem] text-[11px] font-extrabold uppercase tracking-wide text-gray-400">Total Pemasukan</p>
+              <p id="statTotalMasuk" class="metric-value text-[clamp(1.8rem,2.6vw,2.9rem)] font-extrabold leading-tight text-emerald-600">—</p>
+            </div>
+            <div class="metric-card surface-card min-w-0 rounded-[28px] p-5 soft-card xl:col-span-2">
+              <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-3xl bg-rose-100 text-2xl">📉</div>
+              <p class="mb-2 min-h-[2.75rem] text-[11px] font-extrabold uppercase tracking-wide text-gray-400">Total Pengeluaran</p>
+              <p id="statTotalKeluar" class="metric-value text-[clamp(1.8rem,2.6vw,2.9rem)] font-extrabold leading-tight text-rose-500">—</p>
+            </div>
+            <div class="metric-card surface-card min-w-0 rounded-[28px] p-5 soft-card xl:col-span-4">
+              <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-3xl bg-amber-100 text-2xl">🆘</div>
+              <p class="mb-2 min-h-[2.75rem] text-[11px] font-extrabold uppercase tracking-wide text-gray-400">Bantuan Akun</p>
+              <p id="statRecoveryNew" class="metric-value text-4xl font-extrabold text-amber-600">—</p>
+            </div>
+          </section>
+
+          <section class="grid gap-5 xl:grid-cols-5">
+            <div class="surface-card rounded-[28px] p-5 soft-card md:p-6 xl:col-span-3">
+              <div class="mb-5 flex items-start justify-between gap-3">
+                <div>
+                  <h2 class="font-extrabold text-gray-900">Tren Keuangan Semua User</h2>
+                  <p class="mt-1 text-xs text-gray-400">Perbandingan pemasukan dan pengeluaran seluruh pengguna.</p>
+                </div>
+                <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-700">Live</span>
+              </div>
+              <div class="surface-soft h-80 rounded-3xl p-4">
+                <canvas id="adminChart"></canvas>
+              </div>
+            </div>
+
+            <div class="surface-card rounded-[28px] p-5 soft-card md:p-6 xl:col-span-2">
+              <div class="mb-5">
+                <h2 class="font-extrabold text-gray-900">Aktivitas per User</h2>
+                <p class="mt-1 text-xs text-gray-400">User dengan transaksi terbanyak.</p>
+              </div>
+              <div id="userActivity" class="space-y-4 text-sm"></div>
+            </div>
+          </section>
+        </section>
+
+        <section data-admin-view="users" class="content-panel hidden space-y-4">
+          <div class="lg:hidden">
+            <span class="mobile-page-chip inline-flex rounded-full bg-blue-50 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-blue-700">Pengguna</span>
+          </div>
+          <div class="surface-card overflow-hidden rounded-[28px] soft-card">
+            <div class="flex flex-col gap-3 border-b border-gray-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between md:px-6">
+              <div>
+                <h2 class="font-extrabold text-gray-900">Daftar Pengguna</h2>
+                <p class="mt-1 text-xs text-gray-400">Kelola akun, role, status, dan akses user dengan tampilan yang lebih rapi.</p>
+              </div>
+              <button onclick="muatData()" class="inline-flex w-full items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 px-4 py-2.5 text-xs font-extrabold text-gray-700 transition hover:bg-gray-100 sm:w-auto cursor-pointer">Refresh Data</button>
+            </div>
+            <div class="table-shell overflow-x-auto">
+              <table class="w-full min-w-[880px] text-sm">
+                <thead>
+                  <tr class="border-b border-gray-100 bg-gray-50">
+                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Nama</th>
+                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Email</th>
+                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Role</th>
+                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Bergabung</th>
+                    <th class="px-6 py-3 text-center text-xs font-extrabold uppercase tracking-wide text-gray-400">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="userTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section data-admin-view="activity" class="content-panel hidden space-y-5">
+          <div class="lg:hidden">
+            <span class="mobile-page-chip inline-flex rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-emerald-700">Aktivitas</span>
+          </div>
+          <section class="grid gap-5 xl:grid-cols-2">
+            <div class="surface-card rounded-[28px] p-5 soft-card md:p-6">
+              <div class="mb-5 flex items-start justify-between gap-3">
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h2 class="font-extrabold text-gray-900">Pengguna Sedang Aktif</h2>
+                    <span class="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-extrabold text-emerald-700">Live</span>
+                  </div>
+                  <p class="mt-1 text-xs text-gray-400">User yang terakhir aktif dalam ±2 menit terakhir.</p>
+                </div>
+                <button onclick="muatData(false)" class="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-2 text-xs font-extrabold text-gray-700 transition hover:bg-gray-100 cursor-pointer">Refresh</button>
+              </div>
+              <div id="activeUsersBody" class="space-y-3"></div>
+            </div>
+
+            <div class="surface-card rounded-[28px] p-5 soft-card md:p-6">
+              <div class="mb-5 flex items-start justify-between gap-3">
+                <div>
+                  <h2 class="font-extrabold text-gray-900">Pengguna Baru</h2>
+                  <p class="mt-1 text-xs text-gray-400">Akun terbaru yang berhasil terdaftar di aplikasi.</p>
+                </div>
+                <span class="rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-extrabold text-violet-700">Terbaru</span>
+              </div>
+              <div id="newUsersBody" class="space-y-3"></div>
+            </div>
+          </section>
+        </section>
+
+        <section data-admin-view="recovery" class="content-panel hidden space-y-4">
+          <div class="lg:hidden">
+            <span class="mobile-page-chip inline-flex rounded-full bg-amber-50 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-amber-700">Bantuan Akun</span>
+          </div>
+          <div class="surface-card overflow-hidden rounded-[28px] soft-card">
+            <div class="flex flex-col gap-3 border-b border-gray-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between md:px-6">
+              <div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <h2 class="font-extrabold text-gray-900">Permintaan Bantuan Akun</h2>
+                  <span id="recoveryNewBadge" class="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-700">0 baru</span>
+                </div>
+                <p class="mt-1 text-xs text-gray-400">Tinjau bantuan akun yang masuk dan proses dengan cepat.</p>
+              </div>
+              <button onclick="muatData()" class="inline-flex w-full items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 px-4 py-2.5 text-xs font-extrabold text-gray-700 transition hover:bg-gray-100 sm:w-auto cursor-pointer">Refresh Bantuan</button>
+            </div>
+            <div class="table-shell overflow-x-auto">
+              <table class="w-full min-w-[1020px] text-sm">
+                <thead>
+                  <tr class="border-b border-gray-100 bg-gray-50">
+                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Nama</th>
+                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Nomor HP</th>
+                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Catatan</th>
+                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Kemungkinan Akun</th>
+                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Tanggal</th>
+                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="accountRecoveryBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section data-admin-view="transactions" class="content-panel hidden space-y-4">
+          <div class="lg:hidden">
+            <span class="mobile-page-chip inline-flex rounded-full bg-slate-100 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-slate-700">Transaksi</span>
+          </div>
+          <div class="surface-card overflow-hidden rounded-[28px] soft-card">
+            <div class="border-b border-gray-100 px-5 py-5 md:px-6">
+              <h2 class="font-extrabold text-gray-900">Riwayat Transaksi Semua User</h2>
+              <p class="mt-1 text-xs text-gray-400">Pantau transaksi terbaru dari seluruh akun pengguna.</p>
+            </div>
+            <div class="table-shell overflow-x-auto">
+              <table class="w-full min-w-[760px] text-sm">
+                <thead>
+                  <tr class="border-b border-gray-100 bg-gray-50">
+                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Tanggal</th>
+                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">User</th>
+                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Kategori</th>
+                    <th class="px-6 py-3 text-right text-xs font-extrabold uppercase tracking-wide text-gray-400">Nominal</th>
+                  </tr>
+                </thead>
+                <tbody id="allTrxBody"></tbody>
+              </table>
+            </div>
+            <div id="trxPagination" class="flex flex-wrap justify-center gap-1 px-6 py-5"></div>
+          </div>
+        </section>
       </div>
-    </div>
+
+      <div class="admin-bottom-safe lg:hidden" style="height: 92px;"></div>
+      <nav class="mobile-bottom-nav fixed bottom-0 left-0 right-0 z-30 border-t border-gray-100 bg-white/95 px-3 py-3 backdrop-blur-xl soft-card lg:hidden" aria-label="Navigasi admin mobile">
+        <div class="mx-auto flex max-w-2xl items-center gap-2 rounded-3xl border border-gray-100 bg-white p-2">
+          <button type="button" onclick="showAdminView('overview')" data-admin-nav="overview" class="admin-nav-idle rounded-2xl px-3 py-2 text-[11px] font-extrabold transition">🏠<span class="mt-1 block">Ringkasan</span></button>
+          <button type="button" onclick="showAdminView('users')" data-admin-nav="users" class="admin-nav-idle rounded-2xl px-3 py-2 text-[11px] font-extrabold transition">👥<span class="mt-1 block">Pengguna</span></button>
+          <button type="button" onclick="showAdminView('activity')" data-admin-nav="activity" class="admin-nav-idle rounded-2xl px-3 py-2 text-[11px] font-extrabold transition">🟢<span class="mt-1 block">Aktivitas</span></button>
+          <button type="button" onclick="showAdminView('recovery')" data-admin-nav="recovery" class="admin-nav-idle rounded-2xl px-3 py-2 text-[11px] font-extrabold transition">🆘<span class="mt-1 block">Bantuan</span></button>
+          <button type="button" onclick="showAdminView('transactions')" data-admin-nav="transactions" class="admin-nav-idle rounded-2xl px-3 py-2 text-[11px] font-extrabold transition">🧾<span class="mt-1 block">Transaksi</span></button>
+        </div>
+      </nav>
+    </main>
   </div>
 
-  <script>
-    let activeLoginTab = 'masuk';
-    let activeRecoveryTab = 'password';
-
-    function animateTabIndicator(trackId, indicatorId, activeButton) {
-      const track = document.getElementById(trackId);
-      const indicator = document.getElementById(indicatorId);
-      if (!track || !indicator || !activeButton) return;
-
-      const trackRect = track.getBoundingClientRect();
-      const btnRect = activeButton.getBoundingClientRect();
-      const toLeft = btnRect.left - trackRect.left;
-      const toWidth = btnRect.width;
-      const fromLeft = Number(indicator.dataset.left ?? toLeft);
-      const fromWidth = Number(indicator.dataset.width ?? toWidth);
-      const midLeft = Math.min(fromLeft, toLeft);
-      const midRight = Math.max(fromLeft + fromWidth, toLeft + toWidth);
-      const midWidth = midRight - midLeft;
-      const distance = Math.abs(toLeft - fromLeft);
-      const duration = Math.min(760, Math.max(520, 520 + distance * 1.2));
-
-      const prefix = indicatorId === 'recoveryTabIndicator' ? 'recovery-' : '';
-      indicator.style.setProperty(`--${prefix}from-left`, `${fromLeft}px`);
-      indicator.style.setProperty(`--${prefix}from-width`, `${fromWidth}px`);
-      indicator.style.setProperty(`--${prefix}mid-left`, `${midLeft}px`);
-      indicator.style.setProperty(`--${prefix}mid-width`, `${midWidth}px`);
-      indicator.style.setProperty(`--${prefix}to-left`, `${toLeft}px`);
-      indicator.style.setProperty(`--${prefix}to-width`, `${toWidth}px`);
-      indicator.style.setProperty(`--${prefix}tab-duration`, `${duration}ms`);
-
-      indicator.classList.remove('is-moving');
-      void indicator.offsetWidth;
-      indicator.classList.add('is-moving');
-
-      indicator.dataset.left = String(toLeft);
-      indicator.dataset.width = String(toWidth);
-      if (indicatorId === 'recoveryTabIndicator') {
-        indicator.style.setProperty('--recovery-tab-left', `${toLeft}px`);
-        indicator.style.setProperty('--recovery-tab-width', `${toWidth}px`);
-      } else {
-        indicator.style.setProperty('--tab-left', `${toLeft}px`);
-        indicator.style.setProperty('--tab-width', `${toWidth}px`);
-      }
-    }
-
-    function switchLoginTab(tab) {
-      const isLogin = tab === 'masuk';
-      const previous = activeLoginTab;
-      activeLoginTab = isLogin ? 'masuk' : 'daftar';
-
-      document.getElementById('formMasuk')?.classList.toggle('hidden', !isLogin);
-      document.getElementById('formDaftar')?.classList.toggle('hidden', isLogin);
-      document.getElementById('tabMasuk')?.classList.toggle('is-active', isLogin);
-      document.getElementById('tabDaftar')?.classList.toggle('is-active', !isLogin);
-
-      if (previous !== activeLoginTab) {
-        animateTabIndicator('loginTabTrack', 'loginTabIndicator', document.getElementById(isLogin ? 'tabMasuk' : 'tabDaftar'));
-      }
-    }
-
-    function setRecoveryTab(tab) {
-      const isPassword = tab !== 'email';
-      const previous = activeRecoveryTab;
-      activeRecoveryTab = isPassword ? 'password' : 'email';
-
-      document.getElementById('recoveryPasswordPanel')?.classList.toggle('hidden', !isPassword);
-      document.getElementById('recoveryEmailPanel')?.classList.toggle('hidden', isPassword);
-      document.getElementById('recoveryPasswordTab')?.classList.toggle('is-active', isPassword);
-      document.getElementById('recoveryEmailTab')?.classList.toggle('is-active', !isPassword);
-
-      if (previous !== activeRecoveryTab) {
-        animateTabIndicator('recoveryTabTrack', 'recoveryTabIndicator', document.getElementById(isPassword ? 'recoveryPasswordTab' : 'recoveryEmailTab'));
-      }
-    }
-
-    function openAccountHelpModal() {
-      const modal = document.getElementById('accountHelpModal');
-      if (!modal) return;
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-      setTimeout(() => {
-        animateTabIndicator('recoveryTabTrack', 'recoveryTabIndicator', document.getElementById(activeRecoveryTab === 'email' ? 'recoveryEmailTab' : 'recoveryPasswordTab'));
-      }, 30);
-    }
-
-    function closeAccountHelpModal() {
-      const modal = document.getElementById('accountHelpModal');
-      if (!modal) return;
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-    }
-
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') closeAccountHelpModal();
-    });
-
-    window.addEventListener('load', () => {
-      animateTabIndicator('loginTabTrack', 'loginTabIndicator', document.getElementById(activeLoginTab === 'daftar' ? 'tabDaftar' : 'tabMasuk'));
-    });
-    window.addEventListener('resize', () => {
-      animateTabIndicator('loginTabTrack', 'loginTabIndicator', document.getElementById(activeLoginTab === 'daftar' ? 'tabDaftar' : 'tabMasuk'));
-      animateTabIndicator('recoveryTabTrack', 'recoveryTabIndicator', document.getElementById(activeRecoveryTab === 'email' ? 'recoveryEmailTab' : 'recoveryPasswordTab'));
-    });
-
-    // Jangan pakai nama fungsi generik dari script.js untuk tab login.
-    // Fungsi ini dibuat khusus agar animasi tab login tidak bentrok.
-    window.switchLoginTab = switchLoginTab;
-  </script>
-  <script src="./script.js?v=20260619-v55-index-tab-fix"></script>
+  <script src="./script.js?v=20260620-v64-stable-admin-data"></script>
 </body>
 </html>
