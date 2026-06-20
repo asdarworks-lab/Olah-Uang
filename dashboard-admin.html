@@ -2,7 +2,24 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta id="themeColorMeta" name="theme-color" content="#f7fbf9">
+  <meta id="navButtonColorMeta" name="msapplication-navbutton-color" content="#f7fbf9">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var isDark = localStorage.getItem('olahUangDarkMode') === '1';
+        var color = isDark ? '#020617' : '#f7fbf9';
+        document.documentElement.classList.toggle('dark', isDark);
+        document.documentElement.style.backgroundColor = color;
+        var themeMeta = document.getElementById('themeColorMeta');
+        var navMeta = document.getElementById('navButtonColorMeta');
+        if (themeMeta) themeMeta.setAttribute('content', color);
+        if (navMeta) navMeta.setAttribute('content', color);
+      } catch (error) {}
+    })();
+  </script>
   <title>Admin — Olah Uang</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -820,6 +837,63 @@
       color: #34d399 !important;
     }
 
+
+    /* v83: Android PWA top/status area mengikuti dark mode dashboard admin */
+    html,
+    body {
+      min-height: 100%;
+      background-color: #f7fbf9 !important;
+    }
+
+    html.dark,
+    html.dark body,
+    body.dark {
+      background-color: #020617 !important;
+    }
+
+    html.dark body[data-page="dashboard-admin"],
+    body.dark[data-page="dashboard-admin"] {
+      background: #020617 !important;
+    }
+
+    body[data-page="dashboard-admin"]:not(.dark) {
+      background: #f6f8fb !important;
+    }
+
+    body.dark .admin-topbar,
+    html.dark body .admin-topbar {
+      background: #020617 !important;
+      border-color: #1e293b !important;
+    }
+
+    body:not(.dark) .admin-topbar,
+    html:not(.dark) body .admin-topbar {
+      background: #ffffff !important;
+    }
+
+    @supports (padding-top: env(safe-area-inset-top)) {
+      body[data-page="dashboard-admin"] .admin-topbar {
+        padding-top: calc(.75rem + env(safe-area-inset-top));
+      }
+
+      body[data-page="dashboard-admin"]::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: env(safe-area-inset-top);
+        background: #f6f8fb;
+        z-index: 2147483647;
+        pointer-events: none;
+      }
+
+      body.dark[data-page="dashboard-admin"]::before,
+      html.dark body[data-page="dashboard-admin"]::before {
+        background: #020617 !important;
+      }
+    }
+
   </style>
 </head>
 <body data-page="dashboard-admin" class="min-h-screen antialiased">
@@ -1192,6 +1266,47 @@
     window.openAdminDrawer = openAdminDrawer;
     window.closeAdminDrawer = closeAdminDrawer;
   </script>
-  <script src="./script.js?v=20260620-v78-activity-dark-polish"></script>
+  <script src="./script.js?v=20260620-v83-android-pwa-top-dark-fix"></script>
+
+  <script>
+    function updateDashboardPwaTopColor() {
+      var isDark = document.documentElement.classList.contains('dark') || document.body.classList.contains('dark');
+      var color = isDark ? '#020617' : '#f7fbf9';
+
+      var themeMeta = document.querySelector('meta[name="theme-color"]');
+      var navMeta = document.querySelector('meta[name="msapplication-navbutton-color"]');
+
+      if (!themeMeta) {
+        themeMeta = document.createElement('meta');
+        themeMeta.setAttribute('name', 'theme-color');
+        document.head.appendChild(themeMeta);
+      }
+
+      if (!navMeta) {
+        navMeta = document.createElement('meta');
+        navMeta.setAttribute('name', 'msapplication-navbutton-color');
+        document.head.appendChild(navMeta);
+      }
+
+      themeMeta.setAttribute('content', color);
+      navMeta.setAttribute('content', color);
+      document.documentElement.style.backgroundColor = color;
+      document.body.style.backgroundColor = color;
+    }
+
+    window.addEventListener('DOMContentLoaded', function () {
+      updateDashboardPwaTopColor();
+      var observer = new MutationObserver(updateDashboardPwaTopColor);
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+      observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      setTimeout(updateDashboardPwaTopColor, 80);
+      setTimeout(updateDashboardPwaTopColor, 350);
+      setTimeout(updateDashboardPwaTopColor, 1000);
+    });
+
+    window.addEventListener('load', updateDashboardPwaTopColor);
+    window.addEventListener('pageshow', updateDashboardPwaTopColor);
+  </script>
+
 </body>
 </html>
