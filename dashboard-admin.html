@@ -644,6 +644,14 @@
       min-width: 0 !important;
     }
 
+
+    /* Visual-only fix: align mobile user action icons to the left without touching global script */
+    .mobile-user-actions .admin-actions-wrap {
+      justify-content: flex-start !important;
+      width: auto !important;
+      min-width: 0 !important;
+    }
+
   </style>
 </head>
 <body data-page="dashboard-admin" class="min-h-screen antialiased">
@@ -1016,6 +1024,6 @@
     window.openAdminDrawer = openAdminDrawer;
     window.closeAdminDrawer = closeAdminDrawer;
   </script>
-  <script src="./script.js?v=20260620-v75-mobile-actions-left-fix"></script>
+  <script src="./script.js?v=20260620-v76-restore-user-safe"></script>
 </body>
 </html>
