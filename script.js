@@ -50,6 +50,8 @@ let adminTrxPage = 1;
 const adminTrxPerPage = 15;
 let allProfiles = [];
 let allTrxData = [];
+let allUserActivity = [];
+let userPresenceTimer = null;
 let allRecoveryRequests = [];
 
 // ============================================================
@@ -482,6 +484,7 @@ async function showAppView(view = 'beranda') {
   activeAppView = targetView;
   requestAnimationFrame(() => updateMovingNavIndicators(targetView));
   localStorage.setItem('olahUangActiveView', targetView);
+  updateUserPresence(getCurrentPresencePageLabel()).catch((error) => console.warn('[Presence view]', error));
 
   if (targetView === 'analisis' && grafikKeuangan) {
     setTimeout(() => grafikKeuangan?.resize?.(), 80);
@@ -785,6 +788,32 @@ async function fetchAllProfiles({ maxRows = MAX_FETCH_ROWS } = {}) {
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) throw error;
+
+    const batch = data || [];
+    allRows = allRows.concat(batch);
+
+    if (batch.length < DATA_PAGE_SIZE) break;
+    from += DATA_PAGE_SIZE;
+  }
+
+  return allRows;
+}
+
+
+async function fetchAllUserActivity({ maxRows = 1000 } = {}) {
+  let allRows = [];
+  let from = 0;
+
+  while (from < maxRows) {
+    const to = Math.min(from + DATA_PAGE_SIZE - 1, maxRows - 1);
+
+    const { data, error } = await db
+      .from('user_activity')
+      .select('*')
+      .order('last_seen', { ascending: false })
       .range(from, to);
 
     if (error) throw error;
@@ -2370,10 +2399,221 @@ async function initUserDashboard() {
   setJenis('keluar');
   setDefaultFilterBulanBerjalan();
   setupUserRealtime();
+  startUserPresence();
   await updateUI();
   localStorage.removeItem('olahUangActiveView');
   showAppView('beranda');
 }
+
+
+// ============================================================
+// USER PRESENCE / AKTIVITAS ONLINE
+// ============================================================
+function getCurrentPresencePageLabel() {
+  const page = document.body?.dataset?.page || detectPageFromPath();
+
+  if (page === 'dashboard-admin') return 'Dashboard Admin';
+
+  const map = {
+    beranda: 'Beranda',
+    riwayat: 'Riwayat',
+    catat: 'Catat Transaksi',
+    analisis: 'Analisis',
+    setting: 'Pengaturan'
+  };
+
+  if (page === 'dashboard-user') return map[activeAppView] || 'Dashboard User';
+  if (page === 'login') return 'Halaman Login';
+  return 'Website';
+}
+
+async function updateUserPresence(pageLabel = getCurrentPresencePageLabel()) {
+  if (!currentUser) return false;
+
+  const now = new Date().toISOString();
+
+  const { error } = await db
+    .from('user_activity')
+    .upsert({
+      user_id: currentUser.id,
+      current_page: pageLabel,
+      last_seen: now,
+      updated_at: now
+    }, { onConflict: 'user_id' });
+
+  if (error) {
+    console.warn('[User presence gagal]', error);
+    return false;
+  }
+
+  return true;
+}
+
+function startUserPresence() {
+  if (!currentUser) return;
+
+  if (userPresenceTimer) clearInterval(userPresenceTimer);
+
+  updateUserPresence().catch((error) => console.warn('[Presence init]', error));
+
+  userPresenceTimer = setInterval(() => {
+    updateUserPresence().catch((error) => console.warn('[Presence interval]', error));
+  }, 30000);
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      updateUserPresence().catch((error) => console.warn('[Presence visible]', error));
+    }
+  });
+
+  window.addEventListener('focus', () => {
+    updateUserPresence().catch((error) => console.warn('[Presence focus]', error));
+  });
+}
+
+function getLastSeenInfo(lastSeenValue) {
+  const date = new Date(lastSeenValue);
+  if (Number.isNaN(date.getTime())) {
+    return { online: false, label: '-', minutes: Infinity };
+  }
+
+  const diffMs = Date.now() - date.getTime();
+  const minutes = Math.max(Math.floor(diffMs / 60000), 0);
+  const online = diffMs <= 120000;
+
+  if (diffMs < 15000) return { online, label: 'baru saja', minutes };
+  if (minutes < 1) return { online, label: 'kurang dari 1 menit lalu', minutes };
+  if (minutes < 60) return { online, label: `${minutes} menit lalu`, minutes };
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return { online, label: `${hours} jam lalu`, minutes };
+
+  return {
+    online,
+    label: date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+    minutes
+  };
+}
+
+function renderActiveUsers(activity = [], error = null) {
+  const container = $('activeUsersBody');
+  if (!container) return;
+
+  if (error) {
+    container.innerHTML = `
+      <div class="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-4 text-sm text-amber-700">
+        Fitur pengguna aktif belum bisa dibaca. Jalankan SQL terbaru dulu di Supabase.
+      </div>`;
+    if ($('statActiveUsers')) $('statActiveUsers').textContent = '—';
+    return;
+  }
+
+  const rows = (activity || [])
+    .map((item) => {
+      const profile = allProfiles.find((p) => p.id === item.user_id);
+      const seen = getLastSeenInfo(item.last_seen);
+      return {
+        ...item,
+        profile,
+        seen,
+        nama: profile?.nama || profile?.email || item.user_id || 'Pengguna',
+        email: profile?.email || '-',
+        role: profile?.role || 'user'
+      };
+    })
+    .filter((item) => item.seen.online)
+    .sort((a, b) => new Date(b.last_seen) - new Date(a.last_seen))
+    .slice(0, 10);
+
+  if ($('statActiveUsers')) $('statActiveUsers').textContent = rows.length;
+
+  if (!rows.length) {
+    container.innerHTML = `
+      <div class="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-5 text-center text-sm text-gray-400">
+        Belum ada pengguna yang sedang aktif.
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = rows.map((item) => {
+    const roleBadge = item.role === 'admin'
+      ? '<span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-700">Admin</span>'
+      : '<span class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-extrabold text-blue-700">User</span>';
+
+    return `
+      <div class="flex items-start justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,.16)]"></span>
+            <p class="truncate font-extrabold text-gray-900">${escapeHTML(item.nama)}</p>
+            ${roleBadge}
+          </div>
+          <p class="mt-1 truncate text-xs text-gray-500">${escapeHTML(item.email)}</p>
+          <p class="mt-1 text-xs font-bold text-emerald-700">${escapeHTML(item.current_page || 'Website')}</p>
+        </div>
+        <p class="shrink-0 text-right text-[11px] font-bold text-emerald-700">${escapeHTML(item.seen.label)}</p>
+      </div>`;
+  }).join('');
+}
+
+function renderNewUsers(profiles = []) {
+  const container = $('newUsersBody');
+  if (!container) return;
+
+  const now = new Date();
+  const todayKey = now.toISOString().slice(0, 10);
+
+  const sorted = [...(profiles || [])]
+    .filter((profile) => profile.created_at)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  const todayCount = sorted.filter((profile) => {
+    const date = new Date(profile.created_at);
+    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === todayKey;
+  }).length;
+
+  if ($('statNewUsersToday')) $('statNewUsersToday').textContent = todayCount;
+
+  const latest = sorted.slice(0, 8);
+
+  if (!latest.length) {
+    container.innerHTML = `
+      <div class="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-5 text-center text-sm text-gray-400">
+        Belum ada data pengguna baru.
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = latest.map((profile) => {
+    const joined = new Date(profile.created_at);
+    const tanggal = Number.isNaN(joined.getTime())
+      ? '-'
+      : joined.toLocaleString('id-ID', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+    const roleBadge = profile.role === 'admin'
+      ? '<span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-700">Admin</span>'
+      : '<span class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-extrabold text-blue-700">User</span>';
+
+    return `
+      <div class="flex items-start justify-between gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <p class="truncate font-extrabold text-gray-900">${escapeHTML(profile.nama || profile.email || 'Pengguna')}</p>
+            ${roleBadge}
+          </div>
+          <p class="mt-1 truncate text-xs text-gray-500">${escapeHTML(profile.email || '-')}</p>
+        </div>
+        <p class="shrink-0 text-right text-[11px] font-bold text-gray-400">${escapeHTML(tanggal)}</p>
+      </div>`;
+  }).join('');
+}
+
 
 // ============================================================
 // DASHBOARD ADMIN
@@ -2386,6 +2626,7 @@ function setupAdminRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'transaksi' }, () => muatData(false))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => muatData(false))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'account_recovery_requests' }, () => muatData(false))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'user_activity' }, () => muatData(false))
     .subscribe();
 }
 
@@ -2396,11 +2637,19 @@ async function muatData(showLoading = true) {
   if (showLoading && $('accountRecoveryBody')) {
     $('accountRecoveryBody').innerHTML = '<tr><td colspan="7" class="px-6 py-6 text-center text-gray-400">Memuat permintaan bantuan akun...</td></tr>';
   }
+  if (showLoading && $('activeUsersBody')) {
+    $('activeUsersBody').innerHTML = '<div class="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-5 text-center text-sm text-gray-400">Memuat pengguna aktif...</div>';
+  }
+  if (showLoading && $('newUsersBody')) {
+    $('newUsersBody').innerHTML = '<div class="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-5 text-center text-sm text-gray-400">Memuat pengguna baru...</div>';
+  }
 
   let profilesData = [];
   let trxData = [];
   let recoveryData = [];
   let recoveryError = null;
+  let activityData = [];
+  let activityError = null;
 
   try {
     [profilesData, trxData] = await Promise.all([
@@ -2418,19 +2667,29 @@ async function muatData(showLoading = true) {
     console.error('[Gagal mengambil permintaan bantuan akun]', error);
   }
 
+  try {
+    activityData = await fetchAllUserActivity();
+  } catch (error) {
+    activityError = error;
+    console.error('[Gagal mengambil aktivitas pengguna]', error);
+  }
+
   allProfiles = profilesData || [];
   allTrxData = trxData || [];
   allRecoveryRequests = recoveryData || [];
+  allUserActivity = activityData || [];
 
-  renderStatCards(allProfiles, allTrxData, allRecoveryRequests);
+  renderStatCards(allProfiles, allTrxData, allRecoveryRequests, allUserActivity);
   renderAccountRecoveryRequests(allRecoveryRequests, recoveryError);
+  renderActiveUsers(allUserActivity, activityError);
+  renderNewUsers(allProfiles);
   renderUserTable(allProfiles, allTrxData);
   renderUserActivity(allProfiles, allTrxData);
   renderAllTrx();
   renderAdminChart(allTrxData);
 }
 
-function renderStatCards(profiles, trx, recoveryRequests = []) {
+function renderStatCards(profiles, trx, recoveryRequests = [], userActivity = []) {
   const totalMasuk = trx
     .filter((item) => item.jenis === 'masuk')
     .reduce((acc, item) => acc + (Number(item.nominal) || 0), 0);
@@ -2440,12 +2699,20 @@ function renderStatCards(profiles, trx, recoveryRequests = []) {
     .reduce((acc, item) => acc + (Number(item.nominal) || 0), 0);
 
   const totalRecoveryNew = recoveryRequests.filter((item) => (item.status || 'baru') === 'baru').length;
+  const totalActiveUsers = (userActivity || []).filter((item) => getLastSeenInfo(item.last_seen).online).length;
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const totalNewToday = (profiles || []).filter((profile) => {
+    const date = new Date(profile.created_at);
+    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === todayKey;
+  }).length;
 
   if ($('statTotalUser')) $('statTotalUser').textContent = profiles.length;
   if ($('statTotalTrx')) $('statTotalTrx').textContent = trx.length;
   if ($('statTotalMasuk')) $('statTotalMasuk').textContent = formatRupiah(totalMasuk);
   if ($('statTotalKeluar')) $('statTotalKeluar').textContent = formatRupiah(totalKeluar);
   if ($('statRecoveryNew')) $('statRecoveryNew').textContent = totalRecoveryNew;
+  if ($('statActiveUsers')) $('statActiveUsers').textContent = totalActiveUsers;
+  if ($('statNewUsersToday')) $('statNewUsersToday').textContent = totalNewToday;
 }
 
 function normalizeRecoveryPhone(value = '') {
@@ -2812,6 +3079,7 @@ async function initAdminDashboard() {
 
   if ($('adminNama')) $('adminNama').textContent = currentProfile?.nama || currentProfile?.email || currentUser.email;
 
+  startUserPresence();
   setupAdminRealtime();
   await muatData();
 }
