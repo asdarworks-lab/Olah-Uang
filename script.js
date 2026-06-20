@@ -6,7 +6,7 @@
 const SUPABASE_URL = 'https://uezjncjapumyrkjxzslw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_gMbWszjY1XIou5Cj4wDkjg_UlGiuOd5';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const APP_VERSION = '20260620-v75-mobile-actions-left-fix';
+const APP_VERSION = '20260620-v76-restore-user-safe';
 console.log(`Olah Uang script loaded: ${APP_VERSION}`);
 window.OLAH_UANG_VERSION = APP_VERSION;
 document.documentElement.setAttribute('data-olah-uang-version', APP_VERSION);
@@ -3316,40 +3316,36 @@ function renderUserTable(profiles, trx) {
     const isDeleted = status === 'deleted';
     const isSuspended = status === 'suspended';
     const initial = escapeHTML(String(profile.nama || profile.email || '?').slice(0, 1).toUpperCase());
-
-    const roleBadge = isAdmin
-      ? '<span class="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-700">Admin</span>'
-      : '<span class="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-extrabold text-blue-700">User</span>';
-
-    const statusBadge = getProfileStatusBadge(profile);
+    const roleLabel = isAdmin ? 'Admin' : 'User';
+    const statusLabel = getProfileStatusLabel(profile);
 
     return `
       <article class="mobile-user-card ${isDeleted ? 'opacity-70' : ''}">
-        <div class="mobile-user-head">
-          <div class="mobile-user-avatar">${initial}</div>
-
-          <div class="min-w-0">
+        <div class="flex items-start gap-3">
+          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-base font-extrabold text-emerald-700">${initial}</div>
+          <div class="min-w-0 flex-1">
             <div class="flex min-w-0 items-center gap-2">
-              <p class="mobile-user-name">${escapeHTML(profile.nama || '—')}</p>
+              <p class="truncate text-lg font-extrabold leading-tight text-gray-900">${escapeHTML(profile.nama || '—')}</p>
               ${isSelf ? '<span class="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700">Kamu</span>' : ''}
             </div>
+            <span class="mobile-user-email mt-1 text-sm font-semibold text-gray-500" title="${escapeHTML(profile.email || '—')}">${escapeHTML(profile.email || '—')}</span>
 
-            <span class="mobile-user-email" title="${escapeHTML(profile.email || '—')}">${escapeHTML(profile.email || '—')}</span>
-
-            <div class="mobile-user-badges">
-              ${statusBadge}
-              ${roleBadge}
+            <div class="mobile-user-meta mt-3">
+              <span class="${status === 'active' ? 'text-emerald-600' : status === 'suspended' ? 'text-amber-600' : 'text-rose-600'}">${escapeHTML(statusLabel)}</span>
+              <span class="mobile-user-dot"></span>
+              <span>${escapeHTML(roleLabel)}</span>
             </div>
 
-            <div class="mobile-user-info">
-              <p><b>Bergabung:</b> ${escapeHTML(tanggal)}</p>
-              <p><b>Total Transaksi:</b> ${jumlahTrx} transaksi</p>
-            </div>
-
-            <div class="mobile-user-actions">
-              ${renderUserActionButtons(profile, isSuspended, isSelf, isDeleted)}
+            <div class="mobile-user-meta mt-2">
+              <span>Bergabung: ${escapeHTML(tanggal)}</span>
+              <span class="mobile-user-dot"></span>
+              <span>${jumlahTrx} transaksi</span>
             </div>
           </div>
+        </div>
+
+        <div class="mobile-user-actions mt-4">
+          ${renderUserActionButtons(profile, isSuspended, isSelf, isDeleted)}
         </div>
       </article>`;
   }).join('');
@@ -3907,3 +3903,37 @@ window.updateUI = updateUI;
 window.changeItemsPerPage = changeItemsPerPage;
 window.changePage = changePage;
 window.resetUserPageAndUpdate = resetUserPageAndUpdate;
+window.ubahFilterTahun = ubahFilterTahun;
+window.hapusTransaksi = hapusTransaksi;
+window.exportToExcel = exportToExcel;
+window.toggleDarkMode = toggleDarkMode;
+window.muatData = muatData;
+window.toggleRole = toggleRole;
+window.changeAdminTrxPage = changeAdminTrxPage;
+window.updateRecoveryStatus = updateRecoveryStatus;
+window.showAdminView = showAdminView;
+window.editAdminUser = editAdminUser;
+window.setUserSuspended = setUserSuspended;
+window.deleteAdminUser = deleteAdminUser;
+window.applyAdminUserFilters = applyAdminUserFilters;
+window.resetAdminUserFilters = resetAdminUserFilters;
+window.applyAdminTrxFilters = applyAdminTrxFilters;
+window.resetAdminTrxFilters = resetAdminTrxFilters;
+window.showAppView = showAppView;
+window.openCatatModal = openCatatModal;
+window.handleCatatSekarang = handleCatatSekarang;
+window.closeCatatModal = closeCatatModal;
+window.setQuickJenis = setQuickJenis;
+window.submitQuickTransaction = submitQuickTransaction;
+window.toggleProfileEdit = toggleProfileEdit;
+window.saveProfileSettings = saveProfileSettings;
+window.toggleFinanceEdit = toggleFinanceEdit;
+window.saveFinanceSettings = saveFinanceSettings;
+window.addFinanceCategory = addFinanceCategory;
+window.removeFinanceCategoryRow = removeFinanceCategoryRow;
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
