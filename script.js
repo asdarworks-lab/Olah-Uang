@@ -6,7 +6,7 @@
 const SUPABASE_URL = 'https://uezjncjapumyrkjxzslw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_gMbWszjY1XIou5Cj4wDkjg_UlGiuOd5';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const APP_VERSION = '20260619-v50-ai-variasi-insight';
+const APP_VERSION = '20260620-v71-center-action-buttons';
 console.log(`Olah Uang script loaded: ${APP_VERSION}`);
 window.OLAH_UANG_VERSION = APP_VERSION;
 document.documentElement.setAttribute('data-olah-uang-version', APP_VERSION);
@@ -3023,6 +3023,13 @@ function renderStatCards(profiles, trx, recoveryRequests = [], userActivity = []
   if ($('statTotalTrx')) $('statTotalTrx').textContent = trx.length;
   if ($('statTotalMasuk')) $('statTotalMasuk').textContent = formatRupiah(totalMasuk);
   if ($('statTotalKeluar')) $('statTotalKeluar').textContent = formatRupiah(totalKeluar);
+  if ($('statNetBalance')) {
+    const netBalance = totalMasuk - totalKeluar;
+    $('statNetBalance').textContent = formatRupiah(netBalance);
+    $('statNetBalance').classList.toggle('text-emerald-600', netBalance >= 0);
+    $('statNetBalance').classList.toggle('text-rose-500', netBalance < 0);
+    $('statNetBalance').classList.toggle('text-gray-900', false);
+  }
   if ($('statRecoveryNew')) $('statRecoveryNew').textContent = totalRecoveryNew;
   if ($('statActiveUsers')) $('statActiveUsers').textContent = totalActiveUsers;
   if ($('statNewUsersToday')) $('statNewUsersToday').textContent = totalNewToday;
@@ -3077,6 +3084,37 @@ function getLikelyRecoveryMatches(request) {
     .map((item) => item.profile);
 }
 
+
+function recoveryActionIcon(type) {
+  const icons = {
+    process: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+    done: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25L15 9.75"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.75a8.25 8.25 0 100 16.5 8.25 8.25 0 000-16.5z"/></svg>',
+    reject: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.75a8.25 8.25 0 100 16.5 8.25 8.25 0 000-16.5z"/></svg>'
+  };
+
+  return icons[type] || '';
+}
+
+function renderRecoveryActionButtons(request) {
+  const status = request.status || 'baru';
+  const id = escapeHTML(request.id);
+
+  const buttons = [
+    status !== 'diproses'
+      ? `<button onclick="updateRecoveryStatus('${id}','diproses')" class="admin-icon-btn admin-icon-process" title="Proses bantuan" aria-label="Proses bantuan">${recoveryActionIcon('process')}</button>`
+      : '',
+    status !== 'selesai'
+      ? `<button onclick="updateRecoveryStatus('${id}','selesai')" class="admin-icon-btn admin-icon-success" title="Tandai selesai" aria-label="Tandai selesai">${recoveryActionIcon('done')}</button>`
+      : '',
+    status !== 'ditolak'
+      ? `<button onclick="updateRecoveryStatus('${id}','ditolak')" class="admin-icon-btn admin-icon-danger" title="Tolak bantuan" aria-label="Tolak bantuan">${recoveryActionIcon('reject')}</button>`
+      : ''
+  ].filter(Boolean).join('');
+
+  return `<div class=\"admin-actions-wrap\">${buttons || '<span class=\"text-xs text-gray-400\">Tidak ada aksi</span>'}</div>`;
+}
+
+
 function renderAccountRecoveryRequests(requests, error = null) {
   const body = $('accountRecoveryBody');
   if (!body) return;
@@ -3110,11 +3148,6 @@ function renderAccountRecoveryRequests(requests, error = null) {
     const matchText = matches.length
       ? matches.map((profile) => `<div class="font-bold text-gray-700">${escapeHTML(profile.nama || profile.email || 'Pengguna')}</div><div class="text-[11px] text-gray-400">${escapeHTML(profile.email || '-')}</div>`).join('<div class="my-1 border-t border-gray-100"></div>')
       : '<span class="text-gray-400">Belum ditemukan</span>';
-    const actions = [
-      status !== 'diproses' ? `<button onclick="updateRecoveryStatus('${escapeHTML(request.id)}','diproses')" class="inline-flex min-w-[86px] items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-extrabold text-blue-700 transition hover:bg-blue-100">Proses</button>` : '',
-      status !== 'selesai' ? `<button onclick="updateRecoveryStatus('${escapeHTML(request.id)}','selesai')" class="inline-flex min-w-[86px] items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-xs font-extrabold text-emerald-700 transition hover:bg-emerald-100">Selesai</button>` : '',
-      status !== 'ditolak' ? `<button onclick="updateRecoveryStatus('${escapeHTML(request.id)}','ditolak')" class="inline-flex min-w-[86px] items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-extrabold text-rose-700 transition hover:bg-rose-100">Tolak</button>` : ''
-    ].filter(Boolean).join(' ');
 
     return `
       <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
@@ -3126,8 +3159,8 @@ function renderAccountRecoveryRequests(requests, error = null) {
         <td class="px-6 py-4 text-gray-500">${matchText}</td>
         <td class="px-6 py-4 whitespace-nowrap text-gray-400">${escapeHTML(tanggal)}</td>
         <td class="px-6 py-4 whitespace-nowrap">${getRecoveryStatusBadge(status)}</td>
-        <td class="px-6 py-4">
-          <div class="flex flex-wrap gap-2">${actions || '<span class="text-xs text-gray-400">Tidak ada aksi</span>'}</div>
+        <td class="admin-actions-cell px-6 py-4">
+          ${renderRecoveryActionButtons(request)}
         </td>
       </tr>`;
   }).join('');
@@ -3167,43 +3200,72 @@ async function updateRecoveryStatus(requestId, statusBaru) {
   await muatData(false);
 }
 
+function adminActionIcon(type) {
+  const icons = {
+    edit: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L9.38 17.273a4.5 4.5 0 01-1.897 1.13l-2.685.805.805-2.685a4.5 4.5 0 011.13-1.897L16.862 4.487z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 7.125L16.875 4.5"/></svg>',
+    suspend: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636A9 9 0 115.636 18.364 9 9 0 0118.364 5.636z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 6.75l10.5 10.5"/></svg>',
+    active: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25L15 9.75"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 3.75a8.25 8.25 0 100 16.5 8.25 8.25 0 000-16.5z"/></svg>',
+    delete: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166M19.228 5.79L18.16 19.673A2.25 2.25 0 0115.916 21.75H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .563c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>'
+  };
+
+  return icons[type] || '';
+}
+
+function renderUserActionButtons(profile, isSuspended, isSelf, isDeleted) {
+  const id = escapeHTML(profile.id);
+  const editDisabled = isDeleted ? 'disabled' : '';
+  const suspendDisabled = (isSelf || isDeleted) ? 'disabled' : '';
+  const deleteDisabled = isSelf || isDeleted ? 'disabled' : '';
+  const suspendClass = isSuspended ? 'admin-icon-success' : 'admin-icon-warning';
+  const suspendTitle = isSuspended ? 'Aktifkan akun' : 'Suspend akun';
+  const suspendIcon = isSuspended ? adminActionIcon('active') : adminActionIcon('suspend');
+
+  return `
+    <div class="admin-actions-wrap">
+      <button onclick="editAdminUser('${id}')" ${editDisabled}
+        class="admin-icon-btn admin-icon-edit" title="Edit akun" aria-label="Edit akun">
+        ${adminActionIcon('edit')}
+      </button>
+      <button onclick="setUserSuspended('${id}', ${isSuspended ? 'false' : 'true'})" ${suspendDisabled}
+        class="admin-icon-btn ${suspendClass}" title="${suspendTitle}" aria-label="${suspendTitle}">
+        ${suspendIcon}
+      </button>
+      <button onclick="deleteAdminUser('${id}')" ${deleteDisabled}
+        class="admin-icon-btn admin-icon-danger" title="Hapus akun" aria-label="Hapus akun">
+        ${adminActionIcon('delete')}
+      </button>
+    </div>`;
+}
+
 function renderUserTable(profiles, trx) {
   const body = $('userTableBody');
-  if (!body) return;
+  const cards = $('userCardsBody');
+  if (!body && !cards) return;
 
   const all = [...(profiles || [])];
   const filteredProfiles = getFilteredAdminProfiles(all);
   updateAdminUserFilterSummary(filteredProfiles.length, all.length);
 
+  const emptyState = (icon, title, desc) => `
+    <div class="mx-auto max-w-md rounded-3xl border border-gray-100 bg-gray-50 px-5 py-6 text-center">
+      <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-2xl">${icon}</div>
+      <p class="font-extrabold text-gray-800">${title}</p>
+      <p class="mt-1 text-sm text-gray-400">${desc}</p>
+    </div>`;
+
   if (!all.length) {
-    body.innerHTML = `
-      <tr>
-        <td colspan="6" class="px-6 py-10 text-center">
-          <div class="mx-auto max-w-md rounded-3xl border border-gray-100 bg-gray-50 px-5 py-6">
-            <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-2xl">👥</div>
-            <p class="font-extrabold text-gray-800">Belum ada pengguna</p>
-            <p class="mt-1 text-sm text-gray-400">Data akun akan muncul setelah user berhasil daftar.</p>
-          </div>
-        </td>
-      </tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="6" class="px-6 py-10">${emptyState('👥', 'Belum ada pengguna', 'Data akun akan muncul setelah user berhasil daftar.')}</td></tr>`;
+    if (cards) cards.innerHTML = emptyState('👥', 'Belum ada pengguna', 'Data akun akan muncul setelah user berhasil daftar.');
     return;
   }
 
   if (!filteredProfiles.length) {
-    body.innerHTML = `
-      <tr>
-        <td colspan="6" class="px-6 py-10 text-center">
-          <div class="mx-auto max-w-md rounded-3xl border border-gray-100 bg-gray-50 px-5 py-6">
-            <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-2xl">🔎</div>
-            <p class="font-extrabold text-gray-800">Tidak ada user yang cocok</p>
-            <p class="mt-1 text-sm text-gray-400">Coba ubah kata kunci, role, atau status filter.</p>
-          </div>
-        </td>
-      </tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="6" class="px-6 py-10">${emptyState('🔎', 'Tidak ada user yang cocok', 'Coba ubah kata kunci, role, atau status filter.')}</td></tr>`;
+    if (cards) cards.innerHTML = emptyState('🔎', 'Tidak ada user yang cocok', 'Coba ubah kata kunci, role, atau status filter.');
     return;
   }
 
-  body.innerHTML = filteredProfiles.map((profile) => {
+  const rows = filteredProfiles.map((profile) => {
     const jumlahTrx = trx.filter((item) => item.user_id === profile.id).length;
     const tanggal = formatTanggal(profile.created_at, { day: 'numeric', month: 'short', year: 'numeric' });
     const isAdmin = profile.role === 'admin';
@@ -3211,54 +3273,86 @@ function renderUserTable(profiles, trx) {
     const status = getAccountStatus(profile);
     const isDeleted = status === 'deleted';
     const isSuspended = status === 'suspended';
+    const initial = escapeHTML(String(profile.nama || profile.email || '?').slice(0, 1).toUpperCase());
     const roleBadge = isAdmin
       ? '<span class="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-700">Admin</span>'
       : '<span class="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-extrabold text-blue-700">User</span>';
 
-    const editDisabled = isDeleted ? 'disabled' : '';
-    const suspendDisabled = (isSelf || isDeleted) ? 'disabled' : '';
-    const deleteDisabled = isSelf || isDeleted ? 'disabled' : '';
-
     return `
       <tr class="border-b border-gray-50 transition hover:bg-gray-50 ${isDeleted ? 'opacity-70' : ''}">
-        <td class="px-5 py-4 font-medium text-gray-800">
-          <div class="flex min-w-[180px] items-center gap-3">
-            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-sm font-extrabold text-emerald-700">${escapeHTML(String(profile.nama || profile.email || '?').slice(0, 1).toUpperCase())}</div>
+        <td class="px-5 py-4">
+          <div class="flex min-w-0 items-center gap-3">
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-sm font-extrabold text-emerald-700">${initial}</div>
             <div class="min-w-0">
-              <p class="truncate font-extrabold text-gray-900">${escapeHTML(profile.nama || '—')}</p>
+              <p class="truncate font-extrabold text-gray-900" title="${escapeHTML(profile.nama || '')}">${escapeHTML(profile.nama || '—')}</p>
               ${isSelf ? '<p class="mt-1 text-[10px] font-bold text-emerald-600">Akun kamu</p>' : ''}
             </div>
           </div>
         </td>
-        <td class="px-5 py-4 text-gray-500">
-          <div class="max-w-[260px] break-all text-sm">${escapeHTML(profile.email || '—')}</div>
+        <td class="px-5 py-4">
+          <span class="admin-user-email text-sm font-semibold text-gray-500" title="${escapeHTML(profile.email || '—')}">${escapeHTML(profile.email || '—')}</span>
         </td>
         <td class="px-5 py-4">${roleBadge}</td>
         <td class="px-5 py-4">${getProfileStatusBadge(profile)}</td>
-        <td class="px-5 py-4 text-gray-400">
-          <div class="min-w-[135px]">
-            <p class="font-bold text-gray-500">${escapeHTML(tanggal)}</p>
+        <td class="px-5 py-4">
+          <div>
+            <p class="whitespace-nowrap font-bold text-gray-600">${escapeHTML(tanggal)}</p>
             <p class="mt-1 text-[11px] text-gray-400">${jumlahTrx} transaksi</p>
           </div>
         </td>
-        <td class="px-5 py-4">
-          <div class="flex min-w-[280px] flex-wrap justify-center gap-2">
-            <button onclick="editAdminUser('${escapeHTML(profile.id)}')" ${editDisabled}
-              class="admin-action-btn admin-action-neutral">
-              Edit
-            </button>
-            <button onclick="setUserSuspended('${escapeHTML(profile.id)}', ${isSuspended ? 'false' : 'true'})" ${suspendDisabled}
-              class="admin-action-btn ${isSuspended ? 'admin-action-success' : 'admin-action-warning'}">
-              ${isSuspended ? 'Aktifkan' : 'Suspend'}
-            </button>
-            <button onclick="deleteAdminUser('${escapeHTML(profile.id)}')" ${deleteDisabled}
-              class="admin-action-btn admin-action-danger">
-              Hapus
-            </button>
-          </div>
-        </td>
+        <td class="admin-actions-cell px-5 py-4">${renderUserActionButtons(profile, isSuspended, isSelf, isDeleted)}</td>
       </tr>`;
   }).join('');
+
+  const cardItems = filteredProfiles.map((profile) => {
+    const jumlahTrx = trx.filter((item) => item.user_id === profile.id).length;
+    const tanggal = formatTanggal(profile.created_at, { day: 'numeric', month: 'short', year: 'numeric' });
+    const isAdmin = profile.role === 'admin';
+    const isSelf = profile.id === currentUser?.id;
+    const status = getAccountStatus(profile);
+    const isDeleted = status === 'deleted';
+    const isSuspended = status === 'suspended';
+    const initial = escapeHTML(String(profile.nama || profile.email || '?').slice(0, 1).toUpperCase());
+    const roleBadge = isAdmin
+      ? '<span class="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-700">Admin</span>'
+      : '<span class="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-extrabold text-blue-700">User</span>';
+
+    return `
+      <article class="rounded-3xl border border-gray-100 bg-gray-50 p-4 ${isDeleted ? 'opacity-70' : ''}">
+        <div class="flex items-start gap-3">
+          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-sm font-extrabold text-emerald-700">${initial}</div>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <p class="font-extrabold text-gray-900">${escapeHTML(profile.nama || '—')}</p>
+              ${isSelf ? '<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700">Akun kamu</span>' : ''}
+            </div>
+            <p class="mt-1 break-words text-sm font-semibold text-gray-500">${escapeHTML(profile.email || '—')}</p>
+          </div>
+        </div>
+        <div class="mt-4 grid grid-cols-2 gap-3 text-xs">
+          <div>
+            <p class="font-extrabold uppercase tracking-wide text-gray-400">Role</p>
+            <div class="mt-1">${roleBadge}</div>
+          </div>
+          <div>
+            <p class="font-extrabold uppercase tracking-wide text-gray-400">Status</p>
+            <div class="mt-1">${getProfileStatusBadge(profile)}</div>
+          </div>
+          <div>
+            <p class="font-extrabold uppercase tracking-wide text-gray-400">Bergabung</p>
+            <p class="mt-1 font-bold text-gray-600">${escapeHTML(tanggal)}</p>
+          </div>
+          <div>
+            <p class="font-extrabold uppercase tracking-wide text-gray-400">Transaksi</p>
+            <p class="mt-1 font-bold text-gray-600">${jumlahTrx} transaksi</p>
+          </div>
+        </div>
+        <div class="mt-4 flex justify-end">${renderUserActionButtons(profile, isSuspended, isSelf, isDeleted)}</div>
+      </article>`;
+  }).join('');
+
+  if (body) body.innerHTML = rows;
+  if (cards) cards.innerHTML = cardItems;
 }
 
 function renderUserActivity(profiles, trx) {
