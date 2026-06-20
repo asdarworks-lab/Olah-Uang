@@ -13,105 +13,90 @@
 
     * { font-family: 'Plus Jakarta Sans', sans-serif; }
     html { scroll-behavior: smooth; }
-    body { background: #f8fafc; color: #1e293b; }
+    body { background: #f6f8fb; color: #1f2937; }
 
-    .soft-card { box-shadow: 0 12px 34px rgba(15, 23, 42, 0.06); }
-    .admin-logo { box-shadow: 0 16px 34px rgba(5, 150, 105, .18); }
-    .table-shell table { border-collapse: separate; border-spacing: 0; }
-    .table-shell th { white-space: nowrap; }
-    .content-panel { animation: adminFade .22s ease-out; }
-    .metric-value { overflow-wrap: anywhere; word-break: break-word; }
-    .metric-card { min-height: 188px; }
-    .surface-card { background: #ffffff; border: 1px solid #e5e7eb; }
-    .surface-soft { background: #f8fafc; border: 1px solid #e5e7eb; }
+    .soft-card { box-shadow: 0 10px 26px rgba(15, 23, 42, .055); }
+    .admin-logo { box-shadow: 0 14px 30px rgba(5, 150, 105, .18); }
+    .surface-card { background: #ffffff; border: 1px solid #e7edf4; }
+    .surface-soft { background: #f8fafc; border: 1px solid #e7edf4; }
 
     .admin-nav-active {
-      background: linear-gradient(135deg, #10b981, #059669) !important;
+      background: #059669 !important;
       color: #ffffff !important;
-      box-shadow: 0 16px 28px rgba(5, 150, 105, .22);
+      box-shadow: 0 10px 22px rgba(5, 150, 105, .22);
     }
     .admin-nav-idle {
-      background: transparent;
       color: #64748b;
+      background: transparent;
     }
     .admin-nav-idle:hover {
-      background: #f1f5f9;
       color: #0f172a;
+      background: #f1f5f9;
     }
 
-    .mobile-bottom-nav button {
-      min-width: 0;
-      flex: 1 1 0;
+    .admin-nav-btn {
+      display: flex;
+      width: 100%;
+      align-items: center;
+      gap: .85rem;
+      border-radius: 1rem;
+      padding: .85rem 1rem;
+      text-align: left;
+      font-size: .92rem;
+      font-weight: 800;
+      transition: background .18s ease, color .18s ease, transform .18s ease;
+    }
+    .admin-nav-btn:hover { transform: translateX(2px); }
+    .admin-nav-btn span:first-child {
+      width: 1.55rem;
+      text-align: center;
+      font-size: 1.05rem;
     }
 
-    @keyframes adminFade {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
+    .metric-card {
+      min-height: 112px;
+      padding: 1rem;
+      border-radius: 1.35rem;
+    }
+    .metric-icon {
+      display: flex;
+      height: 2.35rem;
+      width: 2.35rem;
+      align-items: center;
+      justify-content: center;
+      border-radius: .95rem;
+      font-size: 1.1rem;
+    }
+    .metric-label {
+      min-height: 1.55rem;
+      font-size: .64rem;
+      line-height: .9rem;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+    .metric-value {
+      margin-top: .35rem;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      font-weight: 800;
+      line-height: 1.15;
     }
 
-    body.dark {
-      background: #020617 !important;
-      color: #e2e8f0 !important;
-    }
-    body.dark .surface-card,
-    body.dark .surface-soft,
-    body.dark .admin-sidebar,
-    body.dark .admin-topbar,
-    body.dark .mobile-bottom-nav {
-      background: #0f172a !important;
-      border-color: #1e293b !important;
-      color: #e2e8f0 !important;
-    }
-    body.dark .surface-soft { background: #111c33 !important; }
-    body.dark .bg-white { background-color: #0f172a !important; }
-    body.dark .bg-gray-50 { background-color: #111827 !important; }
-    body.dark .bg-gray-100 { background-color: #1e293b !important; }
-    body.dark .bg-gray-200 { background-color: #334155 !important; }
-    body.dark .text-gray-950,
-    body.dark .text-gray-900,
-    body.dark .text-gray-800,
-    body.dark .text-gray-700 { color: #f8fafc !important; }
-    body.dark .text-gray-600,
-    body.dark .text-gray-500,
-    body.dark .text-gray-400,
-    body.dark .text-slate-700,
-    body.dark .text-slate-600 { color: #94a3b8 !important; }
-    body.dark .border-gray-50,
-    body.dark .border-gray-100,
-    body.dark .border-gray-200,
-    body.dark .border-slate-200 { border-color: #1e293b !important; }
-    body.dark .hover\:bg-gray-50:hover,
-    body.dark .hover\:bg-gray-100:hover,
-    body.dark .hover\:bg-slate-100:hover { background-color: #162338 !important; }
-    body.dark .soft-card { box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28); }
-    body.dark .admin-nav-idle { color: #94a3b8; }
-    body.dark .admin-nav-idle:hover { background: #162338; color: #f8fafc; }
-    body.dark .admin-topbar-title,
-    body.dark .admin-topbar-subtitle { color: #f8fafc !important; }
-    body.dark #darkModeToggle {
-      background: #0b1220 !important;
-      border-color: #1e293b !important;
-      color: #fde68a !important;
-    }
-    body.dark .table-shell thead tr { background: #111827 !important; }
-    body.dark .table-shell tbody tr:hover { background: #111827 !important; }
-    body.dark .mobile-brand-card { background: #0f172a !important; border-color: #1e293b !important; }
-    body.dark .mobile-page-chip { background: #111c33 !important; color: #cbd5e1 !important; }
-    body.dark .admin-bottom-safe { background: transparent !important; }
-
-    @media (max-width: 1023px) {
-      .mobile-nav-scroll::-webkit-scrollbar { display: none; }
-      .mobile-nav-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+    @media (min-width: 768px) {
+      .metric-card { min-height: 126px; padding: 1.1rem; }
+      .metric-icon { height: 2.6rem; width: 2.6rem; }
     }
 
     .admin-input,
     .admin-select {
       width: 100%;
       border-radius: 1rem;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #e2e8f0;
       background: #f8fafc;
-      padding: .75rem 1rem;
-      font-size: .875rem;
+      padding: .78rem 1rem;
+      font-size: .86rem;
       font-weight: 800;
       color: #334155;
       outline: none;
@@ -120,26 +105,46 @@
     .admin-input:focus,
     .admin-select:focus {
       border-color: #10b981;
-      box-shadow: 0 0 0 4px rgba(16, 185, 129, .12);
       background: #ffffff;
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, .12);
     }
+
+    .table-shell { overflow-x: auto; }
+    .table-shell table { border-collapse: separate; border-spacing: 0; }
+    .table-shell th {
+      white-space: nowrap;
+      background: #f8fafc;
+      color: #94a3b8;
+      font-size: .68rem;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .table-shell td {
+      vertical-align: middle;
+    }
+    .table-shell tbody tr {
+      border-bottom: 1px solid #eef2f7;
+    }
+    .table-shell tbody tr:hover {
+      background: #f8fafc;
+    }
+
     .admin-action-btn {
       display: inline-flex;
-      min-width: 86px;
+      min-width: 82px;
       align-items: center;
       justify-content: center;
-      border-radius: 1rem;
+      border-radius: .9rem;
       border: 1px solid transparent;
-      padding: .55rem .85rem;
-      font-size: .75rem;
+      padding: .55rem .75rem;
+      font-size: .74rem;
       font-weight: 800;
-      transition: background .18s ease, border-color .18s ease, transform .18s ease;
+      transition: background .18s ease, border-color .18s ease;
     }
-    .admin-action-btn:hover { transform: translateY(-1px); }
     .admin-action-btn:disabled {
       cursor: not-allowed;
       opacity: .42;
-      transform: none;
     }
     .admin-action-neutral { background: #f8fafc; border-color: #e2e8f0; color: #475569; }
     .admin-action-neutral:hover { background: #f1f5f9; }
@@ -149,6 +154,7 @@
     .admin-action-success:hover { background: #d1fae5; }
     .admin-action-danger { background: #fff1f2; border-color: #fecdd3; color: #be123c; }
     .admin-action-danger:hover { background: #ffe4e6; }
+
     .admin-page-btn {
       min-width: 2rem;
       border-radius: .8rem;
@@ -161,12 +167,68 @@
     }
     .admin-page-btn:hover { background: #e2e8f0; color: #0f172a; }
     .admin-page-btn.is-active { background: #059669; color: #ffffff; }
-    .metric-card { min-height: 124px; }
-    .metric-icon { height: 2.6rem; width: 2.6rem; border-radius: 1.1rem; }
-    @media (min-width: 768px) {
-      .metric-card { min-height: 142px; }
-      .metric-icon { height: 3rem; width: 3rem; border-radius: 1.25rem; }
+
+    .content-panel { animation: adminFade .18s ease-out; }
+    @keyframes adminFade {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
     }
+
+    .mobile-drawer {
+      transform: translateX(-100%);
+      transition: transform .22s ease;
+    }
+    .mobile-drawer.is-open {
+      transform: translateX(0);
+    }
+    .mobile-backdrop {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .22s ease;
+    }
+    .mobile-backdrop.is-open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    body.dark {
+      background: #020617 !important;
+      color: #e2e8f0 !important;
+    }
+    body.dark .surface-card,
+    body.dark .surface-soft,
+    body.dark .admin-sidebar,
+    body.dark .admin-topbar,
+    body.dark .mobile-drawer {
+      background: #0f172a !important;
+      border-color: #1e293b !important;
+      color: #e2e8f0 !important;
+    }
+    body.dark .surface-soft { background: #111827 !important; }
+    body.dark .bg-white { background-color: #0f172a !important; }
+    body.dark .bg-gray-50 { background-color: #111827 !important; }
+    body.dark .bg-gray-100 { background-color: #1e293b !important; }
+    body.dark .bg-gray-200 { background-color: #334155 !important; }
+
+    body.dark .text-gray-950,
+    body.dark .text-gray-900,
+    body.dark .text-gray-800,
+    body.dark .text-gray-700,
+    body.dark .text-slate-900 { color: #f8fafc !important; }
+
+    body.dark .text-gray-600,
+    body.dark .text-gray-500,
+    body.dark .text-gray-400,
+    body.dark .text-slate-600,
+    body.dark .text-slate-500 { color: #94a3b8 !important; }
+
+    body.dark .border-gray-50,
+    body.dark .border-gray-100,
+    body.dark .border-gray-200,
+    body.dark .border-slate-200 { border-color: #1e293b !important; }
+
+    body.dark .admin-nav-idle { color: #94a3b8; }
+    body.dark .admin-nav-idle:hover { background: #111827; color: #f8fafc; }
     body.dark .admin-input,
     body.dark .admin-select {
       background: #0b1220 !important;
@@ -179,6 +241,10 @@
       border-color: #10b981 !important;
       box-shadow: 0 0 0 4px rgba(16, 185, 129, .14);
     }
+    body.dark .table-shell th { background: #111827 !important; color: #94a3b8 !important; }
+    body.dark .table-shell tbody tr { border-color: #1e293b !important; }
+    body.dark .table-shell tbody tr:hover { background: #111827 !important; }
+
     body.dark .admin-action-neutral { background: #111827; border-color: #334155; color: #cbd5e1; }
     body.dark .admin-action-neutral:hover { background: #1e293b; }
     body.dark .admin-action-warning { background: rgba(146, 64, 14, .18); border-color: rgba(245, 158, 11, .30); color: #fbbf24; }
@@ -187,163 +253,408 @@
     body.dark .admin-action-success:hover { background: rgba(6, 95, 70, .32); }
     body.dark .admin-action-danger { background: rgba(159, 18, 57, .20); border-color: rgba(244, 63, 94, .30); color: #fb7185; }
     body.dark .admin-action-danger:hover { background: rgba(159, 18, 57, .32); }
+
     body.dark .admin-page-btn { background: #111827; color: #94a3b8; }
     body.dark .admin-page-btn:hover { background: #1e293b; color: #f8fafc; }
     body.dark .admin-page-btn.is-active { background: #059669; color: #ffffff; }
-    body.dark .table-shell tbody tr { border-color: #1e293b !important; }
-    body.dark .table-shell tbody tr:hover { background: #111827 !important; }
-    body.dark .table-shell tbody td { border-color: #1e293b !important; }
-    body.dark .bg-emerald-50 { background-color: rgba(6, 95, 70, .18) !important; }
-    body.dark .bg-rose-50 { background-color: rgba(159, 18, 57, .18) !important; }
-    body.dark .bg-amber-50 { background-color: rgba(146, 64, 14, .18) !important; }
-    body.dark .bg-blue-50 { background-color: rgba(30, 64, 175, .18) !important; }
-    body.dark .bg-violet-50 { background-color: rgba(91, 33, 182, .18) !important; }
+
+    body.dark #darkModeToggle {
+      background: #0b1220 !important;
+      border-color: #1e293b !important;
+      color: #fde68a !important;
+    }
+
+    /* User table readability fix */
+    .admin-user-table {
+      table-layout: fixed;
+    }
+    .admin-user-table th,
+    .admin-user-table td {
+      overflow: hidden;
+    }
+    .admin-user-email {
+      display: block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .admin-icon-btn {
+      display: inline-flex;
+      height: 2.45rem;
+      width: 2.45rem;
+      align-items: center;
+      justify-content: center;
+      border-radius: .95rem;
+      border: 1px solid transparent;
+      transition: background .18s ease, border-color .18s ease, transform .18s ease;
+    }
+    .admin-icon-btn:hover {
+      transform: translateY(-1px);
+    }
+    .admin-icon-btn:disabled {
+      cursor: not-allowed;
+      opacity: .42;
+      transform: none;
+    }
+    .admin-icon-btn svg {
+      height: 1.05rem;
+      width: 1.05rem;
+      stroke-width: 2.2;
+    }
+    .admin-icon-edit {
+      background: #f8fafc;
+      border-color: #e2e8f0;
+      color: #475569;
+    }
+    .admin-icon-edit:hover { background: #f1f5f9; }
+    .admin-icon-warning {
+      background: #fffbeb;
+      border-color: #fde68a;
+      color: #b45309;
+    }
+    .admin-icon-warning:hover { background: #fef3c7; }
+    .admin-icon-success {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+      color: #047857;
+    }
+    .admin-icon-success:hover { background: #d1fae5; }
+    .admin-icon-danger {
+      background: #fff1f2;
+      border-color: #fecdd3;
+      color: #be123c;
+    }
+    .admin-icon-danger:hover { background: #ffe4e6; }
+    body.dark .admin-icon-edit {
+      background: #111827;
+      border-color: #334155;
+      color: #cbd5e1;
+    }
+    body.dark .admin-icon-edit:hover { background: #1e293b; }
+    body.dark .admin-icon-warning {
+      background: rgba(146, 64, 14, .18);
+      border-color: rgba(245, 158, 11, .30);
+      color: #fbbf24;
+    }
+    body.dark .admin-icon-warning:hover { background: rgba(146, 64, 14, .28); }
+    body.dark .admin-icon-success {
+      background: rgba(6, 95, 70, .20);
+      border-color: rgba(16, 185, 129, .30);
+      color: #34d399;
+    }
+    body.dark .admin-icon-success:hover { background: rgba(6, 95, 70, .32); }
+    body.dark .admin-icon-danger {
+      background: rgba(159, 18, 57, .20);
+      border-color: rgba(244, 63, 94, .30);
+      color: #fb7185;
+    }
+    body.dark .admin-icon-danger:hover { background: rgba(159, 18, 57, .32); }
+
+
+    /* Readable admin stats layout */
+    .stats-grid-compact {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .75rem;
+    }
+    .stats-grid-money {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: .75rem;
+    }
+    .metric-card {
+      min-height: 104px;
+      padding: .95rem;
+      border-radius: 1.25rem;
+    }
+    .metric-card-compact {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: .85rem;
+      min-height: 96px;
+    }
+    .metric-card-compact .metric-icon {
+      margin: 0 !important;
+    }
+    .metric-card-compact .metric-label {
+      min-height: 0;
+      margin-bottom: .25rem;
+    }
+    .metric-card-compact .metric-value {
+      margin-top: 0;
+    }
+    .finance-card {
+      min-height: 132px;
+      padding: 1rem;
+      border-radius: 1.4rem;
+    }
+    .finance-value {
+      display: block;
+      width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: clamp(1.55rem, 4.8vw, 2.3rem);
+      line-height: 1.1;
+      font-weight: 800;
+      letter-spacing: -.03em;
+    }
+    .finance-caption {
+      margin-top: .35rem;
+      font-size: .75rem;
+      font-weight: 700;
+      color: #94a3b8;
+    }
+    @media (min-width: 768px) {
+      .stats-grid-compact {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+      .stats-grid-money {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .metric-card { min-height: 112px; }
+      .finance-card { min-height: 148px; padding: 1.15rem; }
+      .finance-value {
+        font-size: clamp(1.35rem, 2.25vw, 2.15rem);
+      }
+    }
+    @media (min-width: 1280px) {
+      .finance-value {
+        font-size: clamp(1.45rem, 1.9vw, 2.15rem);
+      }
+    }
+    @media (max-width: 420px) {
+      .stats-grid-compact {
+        grid-template-columns: 1fr;
+      }
+      .metric-card-compact {
+        min-height: 88px;
+      }
+      .finance-value {
+        font-size: clamp(1.35rem, 8vw, 1.8rem);
+      }
+    }
+
+
+    .admin-icon-process {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #1d4ed8;
+    }
+    .admin-icon-process:hover { background: #dbeafe; }
+    body.dark .admin-icon-process {
+      background: rgba(30, 64, 175, .20);
+      border-color: rgba(59, 130, 246, .34);
+      color: #60a5fa;
+    }
+    body.dark .admin-icon-process:hover { background: rgba(30, 64, 175, .30); }
+
+
+    .admin-actions-cell {
+      text-align: center;
+      vertical-align: middle;
+    }
+    .admin-actions-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+      width: 100%;
+      min-width: 8.4rem;
+    }
 
   </style>
 </head>
 <body data-page="dashboard-admin" class="min-h-screen antialiased">
-  <div class="min-h-screen lg:grid lg:grid-cols-[290px_1fr]">
-    <aside class="admin-sidebar hidden h-screen border-r border-gray-100 bg-white px-5 py-6 soft-card lg:sticky lg:top-0 lg:block">
-      <div class="mb-8 flex items-center gap-3">
-        <div class="admin-logo flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-500 to-emerald-800 text-2xl text-white">🛡️</div>
+
+  <!-- Mobile backdrop + drawer -->
+  <div id="adminDrawerBackdrop" onclick="closeAdminDrawer()" class="mobile-backdrop fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-sm lg:hidden"></div>
+
+  <aside id="adminMobileDrawer" class="mobile-drawer mobile-drawer-panel fixed inset-y-0 left-0 z-50 w-[84vw] max-w-[320px] border-r border-gray-100 bg-white p-4 lg:hidden">
+    <div class="mb-5 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="admin-logo flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-800 text-xl text-white">🛡️</div>
+        <div>
+          <p class="font-extrabold text-gray-900">Olah Uang</p>
+          <p class="text-[11px] font-bold text-gray-400">Admin Console</p>
+        </div>
+      </div>
+      <button onclick="closeAdminDrawer()" class="flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 text-gray-500">✕</button>
+    </div>
+
+    <nav class="space-y-2" aria-label="Menu admin mobile">
+      <button type="button" onclick="closeAdminDrawer(); showAdminView('overview')" data-admin-nav="overview" class="admin-nav-btn admin-nav-idle"><span>🏠</span><span>Ringkasan</span></button>
+      <button type="button" onclick="closeAdminDrawer(); showAdminView('users')" data-admin-nav="users" class="admin-nav-btn admin-nav-idle"><span>👥</span><span>Pengguna</span></button>
+      <button type="button" onclick="closeAdminDrawer(); showAdminView('activity')" data-admin-nav="activity" class="admin-nav-btn admin-nav-idle"><span>🟢</span><span>Aktivitas</span></button>
+      <button type="button" onclick="closeAdminDrawer(); showAdminView('recovery')" data-admin-nav="recovery" class="admin-nav-btn admin-nav-idle"><span>🆘</span><span>Bantuan Akun</span></button>
+      <button type="button" onclick="closeAdminDrawer(); showAdminView('transactions')" data-admin-nav="transactions" class="admin-nav-btn admin-nav-idle"><span>🧾</span><span>Transaksi</span></button>
+    </nav>
+
+    <div class="mt-5 grid gap-2">
+      <button onclick="muatData()" class="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-extrabold text-gray-700">Refresh Data</button>
+      <button onclick="doLogout()" class="rounded-2xl bg-rose-100 px-4 py-3 text-sm font-extrabold text-rose-700">Keluar</button>
+    </div>
+  </aside>
+
+  <div class="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
+    <!-- Desktop sidebar -->
+    <aside class="admin-sidebar hidden h-screen border-r border-gray-100 bg-white px-4 py-5 lg:sticky lg:top-0 lg:block">
+      <div class="mb-6 flex items-center gap-3 px-2">
+        <div class="admin-logo flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-800 text-xl text-white">🛡️</div>
         <div class="min-w-0">
-          <div class="flex flex-wrap items-center gap-2">
-            <h1 class="truncate text-[1.65rem] font-extrabold text-gray-950">Olah Uang</h1>
-            <span class="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-amber-700">Admin</span>
+          <div class="flex items-center gap-2">
+            <h1 class="truncate text-lg font-extrabold text-gray-950">Olah Uang</h1>
+            <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-700">Admin</span>
           </div>
-          <p class="mt-1 text-sm font-semibold text-gray-400">Management Console</p>
+          <p class="text-xs font-bold text-gray-400">Management Console</p>
         </div>
       </div>
 
-      <nav class="space-y-2.5" aria-label="Navigasi admin">
-        <button type="button" onclick="showAdminView('overview')" data-admin-nav="overview" class="admin-nav-idle flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-sm font-extrabold transition">
-          <span class="text-lg">🏠</span><span>Ringkasan</span>
-        </button>
-        <button type="button" onclick="showAdminView('users')" data-admin-nav="users" class="admin-nav-idle flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-sm font-extrabold transition">
-          <span class="text-lg">👥</span><span>Pengguna</span>
-        </button>
-        <button type="button" onclick="showAdminView('activity')" data-admin-nav="activity" class="admin-nav-idle flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-sm font-extrabold transition">
-          <span class="text-lg">🟢</span><span>Aktivitas</span>
-        </button>
-        <button type="button" onclick="showAdminView('recovery')" data-admin-nav="recovery" class="admin-nav-idle flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-sm font-extrabold transition">
-          <span class="text-lg">🆘</span><span>Bantuan Akun</span>
-        </button>
-        <button type="button" onclick="showAdminView('transactions')" data-admin-nav="transactions" class="admin-nav-idle flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-sm font-extrabold transition">
-          <span class="text-lg">🧾</span><span>Transaksi</span>
-        </button>
+      <nav class="space-y-1.5" aria-label="Menu admin">
+        <button type="button" onclick="showAdminView('overview')" data-admin-nav="overview" class="admin-nav-btn admin-nav-idle"><span>🏠</span><span>Ringkasan</span></button>
+        <button type="button" onclick="showAdminView('users')" data-admin-nav="users" class="admin-nav-btn admin-nav-idle"><span>👥</span><span>Pengguna</span></button>
+        <button type="button" onclick="showAdminView('activity')" data-admin-nav="activity" class="admin-nav-btn admin-nav-idle"><span>🟢</span><span>Aktivitas</span></button>
+        <button type="button" onclick="showAdminView('recovery')" data-admin-nav="recovery" class="admin-nav-btn admin-nav-idle"><span>🆘</span><span>Bantuan Akun</span></button>
+        <button type="button" onclick="showAdminView('transactions')" data-admin-nav="transactions" class="admin-nav-btn admin-nav-idle"><span>🧾</span><span>Transaksi</span></button>
       </nav>
 
-      <div class="absolute bottom-6 left-5 right-5 space-y-3">
+      <div class="absolute bottom-5 left-4 right-4 space-y-2">
         <button onclick="muatData()" class="flex w-full items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-extrabold text-gray-700 transition hover:bg-gray-100">Refresh Data</button>
         <button onclick="doLogout()" class="flex w-full items-center justify-center rounded-2xl bg-rose-100 px-4 py-3 text-sm font-extrabold text-rose-700 transition hover:bg-rose-200">Keluar</button>
       </div>
     </aside>
 
     <main class="min-w-0">
-      <header class="admin-topbar sticky top-0 z-20 border-b border-gray-100 bg-white/95 px-4 py-4 backdrop-blur-xl md:px-6 lg:px-8">
-        <div class="mx-auto flex max-w-7xl items-start justify-between gap-4">
-          <div class="min-w-0 lg:block">
-            <div class="mobile-brand-card flex items-center gap-3 rounded-3xl border border-gray-100 bg-white p-3 soft-card lg:hidden">
-              <div class="admin-logo flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-800 text-xl text-white">🛡️</div>
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2">
-                  <p class="truncate text-base font-extrabold text-gray-950">Olah Uang Admin</p>
-                </div>
-                <p class="truncate text-xs font-semibold text-gray-400">Halo, <span id="adminNama">Admin</span></p>
-              </div>
-            </div>
-            <div class="hidden lg:block">
-              <p class="text-xs font-extrabold uppercase tracking-[.24em] text-emerald-600">Dashboard Admin</p>
-              <h2 id="adminPageTitle" class="admin-topbar-title mt-1 text-3xl font-extrabold text-gray-950">Ringkasan</h2>
-              <p id="adminPageSubtitle" class="admin-topbar-subtitle mt-1 text-sm text-gray-400">Pantau ringkasan performa aplikasi dan data keuangan seluruh user.</p>
+      <!-- Topbar -->
+      <header class="admin-topbar sticky top-0 z-30 border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur-xl md:px-6">
+        <div class="mx-auto flex max-w-7xl items-center justify-between gap-3">
+          <div class="flex min-w-0 items-center gap-3">
+            <button onclick="openAdminDrawer()" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 text-xl font-extrabold text-gray-700 lg:hidden" aria-label="Buka menu">☰</button>
+            <div class="min-w-0">
+              <p class="text-[11px] font-extrabold uppercase tracking-[.20em] text-emerald-600">Dashboard Admin</p>
+              <h2 id="adminPageTitle" class="truncate text-xl font-extrabold text-gray-950 md:text-2xl">Ringkasan</h2>
+              <p id="adminPageSubtitle" class="hidden text-sm text-gray-400 md:block">Pantau ringkasan performa aplikasi dan data keuangan seluruh user.</p>
             </div>
           </div>
-          <button onclick="toggleDarkMode()" id="darkModeToggle" class="rounded-2xl border border-gray-100 bg-white px-4 py-3 text-sm font-bold text-gray-700 soft-card transition hover:scale-[1.02]" title="Mode gelap/terang">🌕</button>
+
+          <div class="flex shrink-0 items-center gap-2">
+            <div class="hidden rounded-2xl bg-gray-50 px-3 py-2 text-xs font-bold text-gray-500 md:block">
+              Halo, <span id="adminNama">Admin</span>
+            </div>
+            <button onclick="toggleDarkMode()" id="darkModeToggle" class="flex h-11 w-11 items-center justify-center rounded-2xl border border-gray-100 bg-white text-lg font-bold text-gray-700 soft-card transition hover:scale-[1.02]" title="Mode gelap/terang">🌕</button>
+          </div>
         </div>
       </header>
 
-      <div class="mx-auto max-w-7xl px-4 py-5 pb-28 md:px-6 lg:px-8 lg:pb-8 lg:py-7">
-        <div class="mb-5 grid gap-3 md:grid-cols-2 lg:hidden">
-          <button onclick="muatData()" class="surface-card flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-extrabold text-gray-700 soft-card">Refresh Data</button>
-          <button onclick="doLogout()" class="flex items-center justify-center rounded-2xl bg-rose-100 px-4 py-3 text-sm font-extrabold text-rose-700 soft-card">Keluar</button>
-        </div>
-
-        <section data-admin-view="overview" class="content-panel space-y-5">
-          <div class="lg:hidden">
-            <span class="mobile-page-chip inline-flex rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-emerald-700">Ringkasan</span>
-          </div>
-          <section class="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
-            <div class="metric-card surface-card min-w-0 rounded-3xl p-4 soft-card md:p-5">
-              <div class="metric-icon mb-4 flex items-center justify-center bg-emerald-100 text-xl">👥</div>
-              <p class="mb-2 min-h-[2rem] text-[10px] font-extrabold uppercase leading-4 tracking-wide text-gray-400">Total User</p>
-              <p id="statTotalUser" class="metric-value text-2xl font-extrabold text-gray-900 md:text-3xl">—</p>
-            </div>
-            <div class="metric-card surface-card min-w-0 rounded-3xl p-4 soft-card md:p-5">
-              <div class="metric-icon mb-4 flex items-center justify-center bg-emerald-100 text-xl">🟢</div>
-              <p class="mb-2 min-h-[2rem] text-[10px] font-extrabold uppercase leading-4 tracking-wide text-gray-400">Aktif Sekarang</p>
-              <p id="statActiveUsers" class="metric-value text-2xl font-extrabold text-emerald-600 md:text-3xl">—</p>
-            </div>
-            <div class="metric-card surface-card min-w-0 rounded-3xl p-4 soft-card md:p-5">
-              <div class="metric-icon mb-4 flex items-center justify-center bg-violet-100 text-xl">🆕</div>
-              <p class="mb-2 min-h-[2rem] text-[10px] font-extrabold uppercase leading-4 tracking-wide text-gray-400">Baru Hari Ini</p>
-              <p id="statNewUsersToday" class="metric-value text-2xl font-extrabold text-violet-600 md:text-3xl">—</p>
-            </div>
-            <div class="metric-card surface-card min-w-0 rounded-3xl p-4 soft-card md:p-5">
-              <div class="metric-icon mb-4 flex items-center justify-center bg-blue-100 text-xl">🧾</div>
-              <p class="mb-2 min-h-[2rem] text-[10px] font-extrabold uppercase leading-4 tracking-wide text-gray-400">Total Transaksi</p>
-              <p id="statTotalTrx" class="metric-value text-2xl font-extrabold text-gray-900 md:text-3xl">—</p>
-            </div>
-            <div class="metric-card surface-card col-span-2 min-w-0 rounded-3xl p-4 soft-card md:p-5 xl:col-span-1">
-              <div class="metric-icon mb-4 flex items-center justify-center bg-emerald-100 text-xl">📈</div>
-              <p class="mb-2 min-h-[2rem] text-[10px] font-extrabold uppercase leading-4 tracking-wide text-gray-400">Total Pemasukan</p>
-              <p id="statTotalMasuk" class="metric-value text-[clamp(1.15rem,4.2vw,1.75rem)] font-extrabold leading-tight text-emerald-600 xl:text-[1.15rem]">—</p>
-            </div>
-            <div class="metric-card surface-card col-span-2 min-w-0 rounded-3xl p-4 soft-card md:p-5 xl:col-span-1">
-              <div class="metric-icon mb-4 flex items-center justify-center bg-rose-100 text-xl">📉</div>
-              <p class="mb-2 min-h-[2rem] text-[10px] font-extrabold uppercase leading-4 tracking-wide text-gray-400">Total Pengeluaran</p>
-              <p id="statTotalKeluar" class="metric-value text-[clamp(1.15rem,4.2vw,1.75rem)] font-extrabold leading-tight text-rose-500 xl:text-[1.15rem]">—</p>
-            </div>
-            <div class="metric-card surface-card col-span-2 min-w-0 rounded-3xl p-4 soft-card md:p-5 md:col-span-4 xl:col-span-1">
-              <div class="metric-icon mb-4 flex items-center justify-center bg-amber-100 text-xl">🆘</div>
-              <p class="mb-2 min-h-[2rem] text-[10px] font-extrabold uppercase leading-4 tracking-wide text-gray-400">Bantuan Akun</p>
-              <p id="statRecoveryNew" class="metric-value text-2xl font-extrabold text-amber-600 md:text-3xl">—</p>
-            </div>
-          </section>
-
-          <section class="grid gap-5 xl:grid-cols-5">
-            <div class="surface-card rounded-[28px] p-5 soft-card md:p-6 xl:col-span-3">
-              <div class="mb-5 flex items-start justify-between gap-3">
-                <div>
-                  <h2 class="font-extrabold text-gray-900">Tren Keuangan Semua User</h2>
-                  <p class="mt-1 text-xs text-gray-400">Perbandingan pemasukan dan pengeluaran seluruh pengguna.</p>
+      <div class="mx-auto max-w-7xl px-4 py-4 md:px-6 md:py-6">
+        <!-- Overview -->
+        <section data-admin-view="overview" class="content-panel space-y-4">
+          <div class="space-y-3">
+            <section class="stats-grid-compact">
+              <div class="metric-card metric-card-compact surface-card min-w-0 soft-card">
+                <div class="metric-icon bg-emerald-100">👥</div>
+                <div class="min-w-0">
+                  <p class="metric-label">Total User</p>
+                  <p id="statTotalUser" class="metric-value text-2xl text-gray-900 md:text-3xl">—</p>
                 </div>
-                <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-700">Live</span>
               </div>
-              <div class="surface-soft h-80 rounded-3xl p-4">
+              <div class="metric-card metric-card-compact surface-card min-w-0 soft-card">
+                <div class="metric-icon bg-emerald-100">🟢</div>
+                <div class="min-w-0">
+                  <p class="metric-label">Aktif Sekarang</p>
+                  <p id="statActiveUsers" class="metric-value text-2xl text-emerald-600 md:text-3xl">—</p>
+                </div>
+              </div>
+              <div class="metric-card metric-card-compact surface-card min-w-0 soft-card">
+                <div class="metric-icon bg-violet-100">🆕</div>
+                <div class="min-w-0">
+                  <p class="metric-label">Baru Hari Ini</p>
+                  <p id="statNewUsersToday" class="metric-value text-2xl text-violet-600 md:text-3xl">—</p>
+                </div>
+              </div>
+              <div class="metric-card metric-card-compact surface-card min-w-0 soft-card">
+                <div class="metric-icon bg-blue-100">🧾</div>
+                <div class="min-w-0">
+                  <p class="metric-label">Total Transaksi</p>
+                  <p id="statTotalTrx" class="metric-value text-2xl text-gray-900 md:text-3xl">—</p>
+                </div>
+              </div>
+              <div class="metric-card metric-card-compact surface-card min-w-0 soft-card">
+                <div class="metric-icon bg-amber-100">🆘</div>
+                <div class="min-w-0">
+                  <p class="metric-label">Bantuan Akun</p>
+                  <p id="statRecoveryNew" class="metric-value text-2xl text-amber-600 md:text-3xl">—</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="stats-grid-money">
+              <div class="finance-card surface-card min-w-0 soft-card">
+                <div class="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p class="metric-label">Total Pemasukan</p>
+                    <p class="finance-caption">Akumulasi transaksi masuk</p>
+                  </div>
+                  <div class="metric-icon shrink-0 bg-emerald-100">📈</div>
+                </div>
+                <p id="statTotalMasuk" class="finance-value text-emerald-600">—</p>
+              </div>
+
+              <div class="finance-card surface-card min-w-0 soft-card">
+                <div class="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p class="metric-label">Total Pengeluaran</p>
+                    <p class="finance-caption">Akumulasi transaksi keluar</p>
+                  </div>
+                  <div class="metric-icon shrink-0 bg-rose-100">📉</div>
+                </div>
+                <p id="statTotalKeluar" class="finance-value text-rose-500">—</p>
+              </div>
+
+              <div class="finance-card surface-card min-w-0 soft-card">
+                <div class="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p class="metric-label">Selisih Total</p>
+                    <p class="finance-caption">Pemasukan dikurangi pengeluaran</p>
+                  </div>
+                  <div class="metric-icon shrink-0 bg-blue-100">⚖️</div>
+                </div>
+                <p id="statNetBalance" class="finance-value text-gray-900">—</p>
+              </div>
+            </section>
+          </div>
+
+          <section class="grid gap-4 xl:grid-cols-[1.3fr_.7fr]">
+            <div class="surface-card rounded-3xl p-4 soft-card md:p-5">
+              <div class="mb-4">
+                <h3 class="font-extrabold text-gray-900">Tren Keuangan Semua User</h3>
+                <p class="mt-1 text-sm text-gray-400">Pemasukan dan pengeluaran seluruh pengguna.</p>
+              </div>
+              <div class="surface-soft h-72 rounded-3xl p-3 md:h-80">
                 <canvas id="adminChart"></canvas>
               </div>
             </div>
 
-            <div class="surface-card rounded-[28px] p-5 soft-card md:p-6 xl:col-span-2">
-              <div class="mb-5">
-                <h2 class="font-extrabold text-gray-900">Aktivitas per User</h2>
-                <p class="mt-1 text-xs text-gray-400">User dengan transaksi terbanyak.</p>
+            <div class="surface-card rounded-3xl p-4 soft-card md:p-5">
+              <div class="mb-4">
+                <h3 class="font-extrabold text-gray-900">Aktivitas per User</h3>
+                <p class="mt-1 text-sm text-gray-400">User dengan transaksi terbanyak.</p>
               </div>
-              <div id="userActivity" class="space-y-4 text-sm"></div>
+              <div id="userActivity" class="space-y-3 text-sm"></div>
             </div>
           </section>
         </section>
 
-        <section data-admin-view="users" class="content-panel hidden space-y-4">
-          <div class="lg:hidden">
-            <span class="mobile-page-chip inline-flex rounded-full bg-blue-50 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-blue-700">Pengguna</span>
-          </div>
-          <div class="surface-card overflow-hidden rounded-[28px] soft-card">
-            <div class="border-b border-gray-100 px-5 py-5 md:px-6">
+        <!-- Users -->
+        <section data-admin-view="users" class="content-panel hidden">
+          <div class="surface-card overflow-hidden rounded-3xl soft-card">
+            <div class="border-b border-gray-100 px-4 py-4 md:px-5">
               <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <h2 class="font-extrabold text-gray-900">Daftar Pengguna</h2>
-                  <p class="mt-1 text-xs text-gray-400">Cari user, filter status, lalu kelola Edit / Suspend / Hapus.</p>
+                  <h3 class="font-extrabold text-gray-900">Daftar Pengguna</h3>
+                  <p class="mt-1 text-sm text-gray-400">Cari user, filter status, lalu kelola akses akun.</p>
                 </div>
                 <div class="rounded-2xl bg-gray-50 px-3 py-2 text-xs font-extrabold text-gray-500">
                   <span id="adminUserFilterCount">0 akun</span>
@@ -366,16 +677,27 @@
                 <button onclick="resetAdminUserFilters()" class="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-xs font-extrabold text-gray-700 transition hover:bg-gray-100">Reset</button>
               </div>
             </div>
-            <div class="table-shell overflow-x-auto">
-              <table class="w-full min-w-[980px] text-sm">
+
+            <div id="userCardsBody" class="space-y-3 p-4 md:hidden"></div>
+
+            <div class="table-shell hidden md:block">
+              <table class="admin-user-table w-full min-w-[1040px] text-sm">
+                <colgroup>
+                  <col style="width: 24%;">
+                  <col style="width: 27%;">
+                  <col style="width: 9%;">
+                  <col style="width: 10%;">
+                  <col style="width: 14%;">
+                  <col style="width: 16%;">
+                </colgroup>
                 <thead>
-                  <tr class="border-b border-gray-100 bg-gray-50">
-                    <th class="px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Nama</th>
-                    <th class="px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Email</th>
-                    <th class="px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Role</th>
-                    <th class="px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Status</th>
-                    <th class="px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Bergabung</th>
-                    <th class="px-5 py-3 text-center text-xs font-extrabold uppercase tracking-wide text-gray-400">Aksi</th>
+                  <tr class="border-b border-gray-100">
+                    <th class="px-5 py-3 text-left">Nama</th>
+                    <th class="px-5 py-3 text-left">Email</th>
+                    <th class="px-5 py-3 text-left">Role</th>
+                    <th class="px-5 py-3 text-left">Status</th>
+                    <th class="px-5 py-3 text-left">Bergabung</th>
+                    <th class="px-5 py-3 text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody id="userTableBody"></tbody>
@@ -384,30 +706,28 @@
           </div>
         </section>
 
-        <section data-admin-view="activity" class="content-panel hidden space-y-5">
-          <div class="lg:hidden">
-            <span class="mobile-page-chip inline-flex rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-emerald-700">Aktivitas</span>
-          </div>
-          <section class="grid gap-5 xl:grid-cols-2">
-            <div class="surface-card rounded-[28px] p-5 soft-card md:p-6">
-              <div class="mb-5 flex items-start justify-between gap-3">
+        <!-- Activity -->
+        <section data-admin-view="activity" class="content-panel hidden">
+          <section class="grid gap-4 xl:grid-cols-2">
+            <div class="surface-card rounded-3xl p-4 soft-card md:p-5">
+              <div class="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <div class="flex flex-wrap items-center gap-2">
-                    <h2 class="font-extrabold text-gray-900">Pengguna Sedang Aktif</h2>
+                    <h3 class="font-extrabold text-gray-900">Pengguna Sedang Aktif</h3>
                     <span class="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-extrabold text-emerald-700">Live</span>
                   </div>
-                  <p class="mt-1 text-xs text-gray-400">User yang terakhir aktif dalam ±2 menit terakhir.</p>
+                  <p class="mt-1 text-sm text-gray-400">User aktif dalam ±2 menit terakhir.</p>
                 </div>
-                <button onclick="muatData(false)" class="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-2 text-xs font-extrabold text-gray-700 transition hover:bg-gray-100 cursor-pointer">Refresh</button>
+                <button onclick="muatData(false)" class="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-2 text-xs font-extrabold text-gray-700">Refresh</button>
               </div>
               <div id="activeUsersBody" class="space-y-3"></div>
             </div>
 
-            <div class="surface-card rounded-[28px] p-5 soft-card md:p-6">
-              <div class="mb-5 flex items-start justify-between gap-3">
+            <div class="surface-card rounded-3xl p-4 soft-card md:p-5">
+              <div class="mb-4 flex items-start justify-between gap-3">
                 <div>
-                  <h2 class="font-extrabold text-gray-900">Pengguna Baru</h2>
-                  <p class="mt-1 text-xs text-gray-400">Akun terbaru yang berhasil terdaftar di aplikasi.</p>
+                  <h3 class="font-extrabold text-gray-900">Pengguna Baru</h3>
+                  <p class="mt-1 text-sm text-gray-400">Akun terbaru yang berhasil terdaftar.</p>
                 </div>
                 <span class="rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-extrabold text-violet-700">Terbaru</span>
               </div>
@@ -416,32 +736,31 @@
           </section>
         </section>
 
-        <section data-admin-view="recovery" class="content-panel hidden space-y-4">
-          <div class="lg:hidden">
-            <span class="mobile-page-chip inline-flex rounded-full bg-amber-50 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-amber-700">Bantuan Akun</span>
-          </div>
-          <div class="surface-card overflow-hidden rounded-[28px] soft-card">
-            <div class="flex flex-col gap-3 border-b border-gray-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between md:px-6">
+        <!-- Recovery -->
+        <section data-admin-view="recovery" class="content-panel hidden">
+          <div class="surface-card overflow-hidden rounded-3xl soft-card">
+            <div class="flex flex-col gap-3 border-b border-gray-100 px-4 py-4 md:px-5 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <div class="flex flex-wrap items-center gap-2">
-                  <h2 class="font-extrabold text-gray-900">Permintaan Bantuan Akun</h2>
+                  <h3 class="font-extrabold text-gray-900">Permintaan Bantuan Akun</h3>
                   <span id="recoveryNewBadge" class="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-700">0 baru</span>
                 </div>
-                <p class="mt-1 text-xs text-gray-400">Tinjau bantuan akun yang masuk dan proses dengan cepat.</p>
+                <p class="mt-1 text-sm text-gray-400">Bantu user yang lupa email atau akses akun.</p>
               </div>
-              <button onclick="muatData()" class="inline-flex w-full items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 px-4 py-2.5 text-xs font-extrabold text-gray-700 transition hover:bg-gray-100 sm:w-auto cursor-pointer">Refresh Bantuan</button>
+              <button onclick="muatData()" class="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-2.5 text-xs font-extrabold text-gray-700">Refresh Bantuan</button>
             </div>
-            <div class="table-shell overflow-x-auto">
-              <table class="w-full min-w-[1020px] text-sm">
+
+            <div class="table-shell">
+              <table class="w-full min-w-[1040px] text-sm">
                 <thead>
-                  <tr class="border-b border-gray-100 bg-gray-50">
-                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Nama</th>
-                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Nomor HP</th>
-                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Catatan</th>
-                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Kemungkinan Akun</th>
-                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Tanggal</th>
-                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Aksi</th>
+                  <tr class="border-b border-gray-100">
+                    <th class="px-5 py-3 text-left">Nama</th>
+                    <th class="px-5 py-3 text-left">Nomor HP</th>
+                    <th class="px-5 py-3 text-left">Catatan</th>
+                    <th class="px-5 py-3 text-left">Kemungkinan Akun</th>
+                    <th class="px-5 py-3 text-left">Tanggal</th>
+                    <th class="px-5 py-3 text-left">Status</th>
+                    <th class="px-5 py-3 text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody id="accountRecoveryBody"></tbody>
@@ -450,16 +769,14 @@
           </div>
         </section>
 
-        <section data-admin-view="transactions" class="content-panel hidden space-y-4">
-          <div class="lg:hidden">
-            <span class="mobile-page-chip inline-flex rounded-full bg-slate-100 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-slate-700">Transaksi</span>
-          </div>
-          <div class="surface-card overflow-hidden rounded-[28px] soft-card">
-            <div class="border-b border-gray-100 px-5 py-5 md:px-6">
+        <!-- Transactions -->
+        <section data-admin-view="transactions" class="content-panel hidden">
+          <div class="surface-card overflow-hidden rounded-3xl soft-card">
+            <div class="border-b border-gray-100 px-4 py-4 md:px-5">
               <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <h2 class="font-extrabold text-gray-900">Riwayat Transaksi Semua User</h2>
-                  <p class="mt-1 text-xs text-gray-400">Cari transaksi berdasarkan user, kategori, jenis, atau nominal.</p>
+                  <h3 class="font-extrabold text-gray-900">Riwayat Transaksi Semua User</h3>
+                  <p class="mt-1 text-sm text-gray-400">Cari transaksi berdasarkan user, kategori, jenis, atau nominal.</p>
                 </div>
                 <div class="rounded-2xl bg-gray-50 px-3 py-2 text-xs font-extrabold text-gray-500">
                   <span id="adminTrxFilterCount">0 transaksi</span>
@@ -479,37 +796,45 @@
                 <button onclick="resetAdminTrxFilters()" class="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-xs font-extrabold text-gray-700 transition hover:bg-gray-100">Reset</button>
               </div>
             </div>
-            <div class="table-shell overflow-x-auto">
-              <table class="w-full min-w-[800px] text-sm">
+
+            <div class="table-shell">
+              <table class="w-full min-w-[820px] text-sm">
                 <thead>
-                  <tr class="border-b border-gray-100 bg-gray-50">
-                    <th class="px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Tanggal</th>
-                    <th class="px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">User</th>
-                    <th class="px-5 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-gray-400">Kategori</th>
-                    <th class="px-5 py-3 text-right text-xs font-extrabold uppercase tracking-wide text-gray-400">Nominal</th>
+                  <tr class="border-b border-gray-100">
+                    <th class="px-5 py-3 text-left">Tanggal</th>
+                    <th class="px-5 py-3 text-left">User</th>
+                    <th class="px-5 py-3 text-left">Kategori</th>
+                    <th class="px-5 py-3 text-right">Nominal</th>
                   </tr>
                 </thead>
                 <tbody id="allTrxBody"></tbody>
               </table>
             </div>
-            <div id="trxPagination" class="flex flex-wrap justify-center gap-1 px-6 py-5"></div>
+            <div id="trxPagination" class="flex flex-wrap justify-center gap-1 px-5 py-4"></div>
           </div>
         </section>
       </div>
-
-      <div class="admin-bottom-safe lg:hidden" style="height: 92px;"></div>
-      <nav class="mobile-bottom-nav fixed bottom-0 left-0 right-0 z-30 border-t border-gray-100 bg-white/95 px-3 py-3 backdrop-blur-xl soft-card lg:hidden" aria-label="Navigasi admin mobile">
-        <div class="mx-auto flex max-w-2xl items-center gap-2 rounded-3xl border border-gray-100 bg-white p-2">
-          <button type="button" onclick="showAdminView('overview')" data-admin-nav="overview" class="admin-nav-idle rounded-2xl px-3 py-2 text-[11px] font-extrabold transition">🏠<span class="mt-1 block">Ringkasan</span></button>
-          <button type="button" onclick="showAdminView('users')" data-admin-nav="users" class="admin-nav-idle rounded-2xl px-3 py-2 text-[11px] font-extrabold transition">👥<span class="mt-1 block">Pengguna</span></button>
-          <button type="button" onclick="showAdminView('activity')" data-admin-nav="activity" class="admin-nav-idle rounded-2xl px-3 py-2 text-[11px] font-extrabold transition">🟢<span class="mt-1 block">Aktivitas</span></button>
-          <button type="button" onclick="showAdminView('recovery')" data-admin-nav="recovery" class="admin-nav-idle rounded-2xl px-3 py-2 text-[11px] font-extrabold transition">🆘<span class="mt-1 block">Bantuan</span></button>
-          <button type="button" onclick="showAdminView('transactions')" data-admin-nav="transactions" class="admin-nav-idle rounded-2xl px-3 py-2 text-[11px] font-extrabold transition">🧾<span class="mt-1 block">Transaksi</span></button>
-        </div>
-      </nav>
     </main>
   </div>
 
-  <script src="./script.js?v=20260620-v65-admin-polish-filter"></script>
+  <script>
+    function openAdminDrawer() {
+      document.getElementById('adminMobileDrawer')?.classList.add('is-open');
+      document.getElementById('adminDrawerBackdrop')?.classList.add('is-open');
+    }
+
+    function closeAdminDrawer() {
+      document.getElementById('adminMobileDrawer')?.classList.remove('is-open');
+      document.getElementById('adminDrawerBackdrop')?.classList.remove('is-open');
+    }
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeAdminDrawer();
+    });
+
+    window.openAdminDrawer = openAdminDrawer;
+    window.closeAdminDrawer = closeAdminDrawer;
+  </script>
+  <script src="./script.js?v=20260620-v71-center-action-buttons"></script>
 </body>
 </html>
