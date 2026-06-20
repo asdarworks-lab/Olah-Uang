@@ -6,7 +6,7 @@
 const SUPABASE_URL = 'https://uezjncjapumyrkjxzslw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_gMbWszjY1XIou5Cj4wDkjg_UlGiuOd5';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const APP_VERSION = '20260620-v83-android-pwa-top-dark-fix';
+const APP_VERSION = '20260620-v99-login-tab-animation-restore';
 console.log(`Olah Uang script loaded: ${APP_VERSION}`);
 window.OLAH_UANG_VERSION = APP_VERSION;
 document.documentElement.setAttribute('data-olah-uang-version', APP_VERSION);
@@ -1157,6 +1157,8 @@ async function doRegister() {
 
     if (error) return showError('Gagal daftar', error);
 
+    markOnboardingPendingForUser(data?.user, email);
+
     // Kalau email confirmation aktif, Supabase biasanya tidak memberi session.
     // User ada di Authentication, tapi belum bisa masuk sampai verifikasi email.
     if (!data?.session) {
@@ -1171,6 +1173,7 @@ async function doRegister() {
     }
 
     currentUser = data.user;
+    markOnboardingPendingForUser(currentUser, email);
 
     // Tunggu trigger database membuat row di profiles.
     // Kalau trigger belum ada, fallback insert profile sendiri akan dicoba.
@@ -2493,6 +2496,303 @@ async function exportToExcel() {
   XLSX.writeFile(workbook, `riwayat-keuangan-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
+
+// ============================================================
+// USER ONBOARDING / PANDUAN AWAL
+// ============================================================
+let onboardingStepIndex = 0;
+let onboardingOpenedFromAuto = false;
+
+const onboardingSteps = [
+  {
+    icon: '👋',
+    visualTitle: 'Mulai dari gambaran besar',
+    visualSubtitle: 'Olah Uang membantu pengguna memahami alur catat, pantau, dan evaluasi.',
+    phoneLabel: 'Kenalan Singkat',
+    title: 'Selamat datang di Olah Uang',
+    description: 'Kenali alurnya: catat transaksi, pantau budget, lalu evaluasi uangmu.',
+    highlights: [
+      { icon: '💡', title: 'Dipakai untuk apa?', text: 'Catat transaksi, budget, dan kondisi uang harian.' },
+      { icon: '🧭', title: 'Mulai dari mana?', text: 'Mulai dari Catat, lalu cek Riwayat dan Analisis.' }
+    ],
+    tip: 'Tips: catat saat transaksi terjadi, jangan tunggu akhir bulan.'
+  },
+  {
+    icon: '✍️',
+    visualTitle: 'Catat transaksi pertama',
+    visualSubtitle: 'Pilih masuk atau keluar, tentukan kategori, isi nominal, lalu simpan.',
+    phoneLabel: 'Menu Catat',
+    title: 'Catat uang masuk dan keluar',
+    description: 'Masukkan uang masuk dan keluar agar saldo serta laporan tetap akurat.',
+    highlights: [
+      { icon: '⬆️', title: 'Pemasukan', text: 'Contoh: gaji, bonus, atau sisa uang sebelumnya.' },
+      { icon: '⬇️', title: 'Pengeluaran', text: 'Contoh: belanja, bensin, makan luar, atau paylater.' }
+    ],
+    tip: 'Alur cepat: jenis transaksi → kategori → nominal → simpan.'
+  },
+  {
+    icon: '🎯',
+    visualTitle: 'Budget jadi pagar pembatas',
+    visualSubtitle: 'Atur batas tiap kategori supaya pengeluaran tidak liar seperti notifikasi grup keluarga.',
+    phoneLabel: 'Budget Bulanan',
+    title: 'Atur budget sesuai kebiasaanmu',
+    description: 'Atur kategori, budget, target pemasukan, dan target tabungan di Setting.',
+    highlights: [
+      { icon: '🛒', title: 'Budget kategori', text: 'Contoh: Belanja Rp1.500.000 dan Bensin Rp200.000.' },
+      { icon: '🔔', title: 'Peringatan otomatis', text: 'Aplikasi memberi peringatan saat budget hampir habis.' }
+    ],
+    tip: 'Budget itu pagar supaya saldo tidak kabur tanpa pamit.'
+  },
+  {
+    icon: '📊',
+    visualTitle: 'Pantau pola uangmu',
+    visualSubtitle: 'Riwayat dan grafik membantu melihat uang paling banyak pergi ke mana.',
+    phoneLabel: 'Analisis',
+    title: 'Lihat riwayat dan analisis',
+    description: 'Riwayat dan Analisis membantu membaca pola uangmu.',
+    highlights: [
+      { icon: '🗂️', title: 'Riwayat transaksi', text: 'Pakai filter bulan dan tahun untuk cek periode tertentu.' },
+      { icon: '📈', title: 'Grafik keuangan', text: 'Lihat tren uang masuk, uang keluar, dan kategori terbesar.' }
+    ],
+    tip: 'Kalau pengeluaran lebih besar dari pemasukan, itu sinyal untuk evaluasi.'
+  },
+  {
+    icon: '🚀',
+    visualTitle: 'Siap dipakai',
+    visualSubtitle: 'Mulai dari satu transaksi hari ini. Konsistensi kecil yang bikin data jadi berguna.',
+    phoneLabel: 'Mulai Sekarang',
+    title: 'Sekarang kamu siap mulai',
+    description: 'Gunakan rutin agar analisis dan budget makin berguna.',
+    highlights: [
+      { icon: '✅', title: 'Langkah pertama', text: 'Klik Selesai untuk menutup panduan, lalu mulai dari menu Catat.' },
+      { icon: '🔁', title: 'Kebiasaan terbaik', text: 'Catat setiap hari agar tidak menebak di akhir bulan.' }
+    ],
+    tip: 'Data rapi bikin keputusan keuangan lebih mudah.'
+  }
+]
+
+
+function getOnboardingSeenKey(userId = currentUser?.id) {
+  return userId ? `olahUangOnboardingSeen:${userId}` : '';
+}
+
+function getOnboardingPendingKey(userId = currentUser?.id) {
+  return userId ? `olahUangOnboardingPending:${userId}` : '';
+}
+
+function getOnboardingPendingEmailKey(email = currentUser?.email) {
+  return email ? `olahUangOnboardingPendingEmail:${String(email).toLowerCase()}` : '';
+}
+
+function markOnboardingPendingForUser(user = currentUser, email = '') {
+  try {
+    const pendingKey = getOnboardingPendingKey(user?.id);
+    const pendingEmailKey = getOnboardingPendingEmailKey(email || user?.email);
+
+    if (pendingKey) localStorage.setItem(pendingKey, '1');
+    if (pendingEmailKey) localStorage.setItem(pendingEmailKey, '1');
+  } catch (error) {
+    console.warn('[Onboarding pending]', error);
+  }
+}
+
+function clearOnboardingPendingForUser() {
+  try {
+    const pendingKey = getOnboardingPendingKey();
+    const pendingEmailKey = getOnboardingPendingEmailKey();
+
+    if (pendingKey) localStorage.removeItem(pendingKey);
+    if (pendingEmailKey) localStorage.removeItem(pendingEmailKey);
+  } catch (error) {
+    console.warn('[Onboarding clear pending]', error);
+  }
+}
+
+function hasOnboardingPendingForUser() {
+  try {
+    const pendingKey = getOnboardingPendingKey();
+    const pendingEmailKey = getOnboardingPendingEmailKey();
+
+    return Boolean(
+      (pendingKey && localStorage.getItem(pendingKey) === '1') ||
+      (pendingEmailKey && localStorage.getItem(pendingEmailKey) === '1')
+    );
+  } catch (error) {
+    return false;
+  }
+}
+
+function isProfileRecentlyCreated(profile = currentProfile) {
+  const createdAt = profile?.created_at || currentUser?.created_at;
+  if (!createdAt) return false;
+
+  const createdTime = new Date(createdAt).getTime();
+  if (!Number.isFinite(createdTime)) return false;
+
+  return Date.now() - createdTime <= 1000 * 60 * 60 * 24;
+}
+
+function shouldShowOnboardingGuide() {
+  const seenKey = getOnboardingSeenKey();
+  const localSeen = seenKey ? localStorage.getItem(seenKey) === '1' : false;
+  const forcedByRegistration = hasOnboardingPendingForUser();
+
+  if (forcedByRegistration) return true;
+  if (currentProfile?.onboarding_seen === false) return true;
+  if (currentProfile?.onboarding_seen === true) return false;
+
+  // Fallback kalau kolom onboarding_seen belum kebaca karena schema cache,
+  // tapi akun benar-benar baru. Browser dan database kadang kompak bikin bingung.
+  return !localSeen && isProfileRecentlyCreated(currentProfile);
+}
+
+
+
+function renderOnboardingGuide() {
+  const modal = $('onboardingModal');
+  if (!modal) return;
+
+  const step = onboardingSteps[onboardingStepIndex] || onboardingSteps[0];
+  const totalSteps = onboardingSteps.length;
+  const progress = Math.round(((onboardingStepIndex + 1) / totalSteps) * 100);
+
+  const visualIcon = $('onboardingVisualIcon');
+  if (visualIcon) visualIcon.textContent = step.icon;
+
+  if ($('onboardingEyebrow')) $('onboardingEyebrow').textContent = `Langkah ${onboardingStepIndex + 1} dari ${totalSteps}`;
+  if ($('onboardingTitle')) $('onboardingTitle').textContent = step.title;
+  if ($('onboardingDescription')) $('onboardingDescription').textContent = step.description;
+
+  if ($('onboardingVisualTitle')) $('onboardingVisualTitle').textContent = step.visualTitle || step.title;
+  if ($('onboardingVisualSubtitle')) $('onboardingVisualSubtitle').textContent = step.visualSubtitle || step.description;
+  if ($('onboardingPhoneLabel')) $('onboardingPhoneLabel').textContent = step.phoneLabel || 'Panduan';
+  if ($('onboardingPhoneBadge')) $('onboardingPhoneBadge').textContent = `Step ${onboardingStepIndex + 1}`;
+
+  const highlights = $('onboardingHighlights');
+  if (highlights) {
+    highlights.innerHTML = (step.highlights || [])
+      .map((item) => `
+        <div class="onboarding-highlight">
+          <div class="onboarding-highlight-icon">${escapeHTML(item.icon || '•')}</div>
+          <div>
+            <strong>${escapeHTML(item.title || '')}</strong>
+            <span>${escapeHTML(item.text || '')}</span>
+          </div>
+        </div>
+      `)
+      .join('');
+  }
+
+  const tip = $('onboardingTip');
+  if (tip) {
+    tip.textContent = step.tip || '';
+    tip.classList.toggle('hidden', !step.tip);
+  }
+
+  const dots = $('onboardingDots');
+  if (dots) {
+    dots.innerHTML = onboardingSteps
+      .map((_, index) => `<span class="onboarding-dot ${index === onboardingStepIndex ? 'is-active' : ''}" aria-hidden="true"></span>`)
+      .join('');
+  }
+
+  const backBtn = $('onboardingBackBtn');
+  if (backBtn) backBtn.disabled = onboardingStepIndex === 0;
+
+  const nextBtn = $('onboardingNextBtn');
+  if (nextBtn) nextBtn.textContent = onboardingStepIndex === totalSteps - 1
+    ? 'Selesai'
+    : 'Lanjut';
+
+  const skipBtn = $('onboardingSkipBtn');
+  if (skipBtn) skipBtn.textContent = onboardingOpenedFromAuto ? 'Lewati' : 'Tutup';
+}
+
+function openOnboardingGuide(auto = false) {
+  onboardingOpenedFromAuto = Boolean(auto);
+  onboardingStepIndex = 0;
+  renderOnboardingGuide();
+
+  const modal = $('onboardingModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+  }
+}
+
+function closeOnboardingGuide(markSeen = false) {
+  const modal = $('onboardingModal');
+  if (modal) modal.classList.add('hidden');
+  document.body.classList.remove('overflow-hidden');
+
+  if (markSeen) markOnboardingSeen().catch((error) => console.warn('[Onboarding seen]', error));
+}
+
+function nextOnboardingStep() {
+  if (onboardingStepIndex < onboardingSteps.length - 1) {
+    onboardingStepIndex += 1;
+    renderOnboardingGuide();
+    return;
+  }
+
+  finishOnboardingGuide(false);
+}
+
+function previousOnboardingStep() {
+  if (onboardingStepIndex <= 0) return;
+  onboardingStepIndex -= 1;
+  renderOnboardingGuide();
+}
+
+async function markOnboardingSeen() {
+  if (!currentUser) return;
+
+  try {
+    const seenKey = getOnboardingSeenKey();
+    if (seenKey) localStorage.setItem(seenKey, '1');
+    clearOnboardingPendingForUser();
+  } catch (error) {
+    console.warn('[Onboarding local seen]', error);
+  }
+
+  const { data, error } = await db
+    .from('profiles')
+    .update({ onboarding_seen: true })
+    .eq('id', currentUser.id)
+    .select('*')
+    .single();
+
+  if (error) {
+    console.warn('[Onboarding] Gagal menyimpan status panduan. Pastikan SQL onboarding sudah dijalankan.', error);
+    return;
+  }
+
+  if (data) currentProfile = data;
+}
+
+async function finishOnboardingGuide(goToCatat = true) {
+  closeOnboardingGuide(false);
+
+  if (onboardingOpenedFromAuto || currentProfile?.onboarding_seen === false) {
+    await markOnboardingSeen();
+  }
+
+  if (goToCatat) {
+    await showAppView('catat');
+    setTimeout(() => {
+      const nominalInput = $('amount');
+      if (nominalInput) nominalInput.focus();
+    }, 120);
+  }
+}
+
+function maybeShowOnboardingGuide() {
+  if (shouldShowOnboardingGuide()) {
+    setTimeout(() => openOnboardingGuide(true), 500);
+  }
+}
+
+
 async function initUserDashboard() {
   const ok = await requireAuth();
   if (!ok) return;
@@ -2525,6 +2825,7 @@ async function initUserDashboard() {
   await updateUI();
   localStorage.removeItem('olahUangActiveView');
   showAppView('beranda');
+  maybeShowOnboardingGuide();
 }
 
 
@@ -3967,5 +4268,12 @@ window.removeFinanceCategoryRow = removeFinanceCategoryRow;
 if (document.readyState === 'loading') {
   window.addEventListener('DOMContentLoaded', initApp);
 } else {
-  initApp();
+  
+window.openOnboardingGuide = openOnboardingGuide;
+window.closeOnboardingGuide = closeOnboardingGuide;
+window.nextOnboardingStep = nextOnboardingStep;
+window.previousOnboardingStep = previousOnboardingStep;
+window.finishOnboardingGuide = finishOnboardingGuide;
+
+initApp();
 }
