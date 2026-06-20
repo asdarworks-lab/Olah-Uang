@@ -149,11 +149,17 @@
       }
     }
 
-    /* v80: samakan warna area paling atas dengan background halaman */
+
+    /* v81: login background light/dark final fix */
     html,
     body {
       margin: 0;
       min-height: 100%;
+    }
+
+    html:not(.dark),
+    html:not(.dark) body,
+    body:not(.dark) {
       background:
         radial-gradient(circle at 12% 8%, rgba(16, 185, 129, .16), transparent 34%),
         radial-gradient(circle at 90% 18%, rgba(16, 185, 129, .10), transparent 30%),
@@ -161,23 +167,140 @@
         linear-gradient(180deg, #f7fbf9 0%, #f8f6fa 100%) !important;
     }
 
-    body[data-page="login"],
-    body[data-page="login"] main {
-      background: transparent !important;
+    html.dark,
+    html.dark body,
+    body.dark {
+      background:
+        radial-gradient(circle at 14% 10%, rgba(16, 185, 129, .18), transparent 30%),
+        radial-gradient(circle at 66% 32%, rgba(148, 163, 184, .16), transparent 30%),
+        radial-gradient(circle at 50% 100%, rgba(244, 114, 182, .10), transparent 36%),
+        linear-gradient(180deg, #031127 0%, #020617 100%) !important;
+      color: #e5e7eb !important;
     }
 
-    body.dark,
-    html.dark body {
+    body[data-page="login"] main {
       background:
-        radial-gradient(circle at 12% 8%, rgba(16, 185, 129, .18), transparent 34%),
-        radial-gradient(circle at 60% 34%, rgba(148, 163, 184, .18), transparent 28%),
-        radial-gradient(circle at 50% 100%, rgba(244, 114, 182, .12), transparent 36%),
+        radial-gradient(circle at 12% 8%, rgba(16, 185, 129, .16), transparent 34%),
+        radial-gradient(circle at 90% 18%, rgba(16, 185, 129, .10), transparent 30%),
+        radial-gradient(circle at 45% 100%, rgba(244, 114, 182, .10), transparent 34%),
+        linear-gradient(180deg, #f7fbf9 0%, #f8f6fa 100%) !important;
+    }
+
+    html.dark body[data-page="login"] main,
+    body.dark[data-page="login"] main {
+      background:
+        radial-gradient(circle at 14% 10%, rgba(16, 185, 129, .18), transparent 30%),
+        radial-gradient(circle at 66% 32%, rgba(148, 163, 184, .16), transparent 30%),
+        radial-gradient(circle at 50% 100%, rgba(244, 114, 182, .10), transparent 36%),
         linear-gradient(180deg, #031127 0%, #020617 100%) !important;
     }
 
-    body.dark[data-page="login"],
-    body.dark[data-page="login"] main {
-      background: transparent !important;
+    /* Matikan blob light mode lama ketika dark mode aktif */
+    html.dark body[data-page="login"] main > .absolute.inset-0,
+    body.dark[data-page="login"] main > .absolute.inset-0 {
+      display: none !important;
+    }
+
+    /* Pastikan teks marketing desktop ikut kontras */
+    html.dark body[data-page="login"] h1,
+    body.dark[data-page="login"] h1 {
+      color: #f8fafc !important;
+    }
+
+    html.dark body[data-page="login"] p,
+    body.dark[data-page="login"] p {
+      color: #94a3b8;
+    }
+
+    html.dark body[data-page="login"] .text-gray-900,
+    body.dark[data-page="login"] .text-gray-900 {
+      color: #f8fafc !important;
+    }
+
+    html.dark body[data-page="login"] .text-gray-800,
+    body.dark[data-page="login"] .text-gray-800 {
+      color: #e5e7eb !important;
+    }
+
+    html.dark body[data-page="login"] .text-gray-500,
+    html.dark body[data-page="login"] .text-gray-400,
+    body.dark[data-page="login"] .text-gray-500,
+    body.dark[data-page="login"] .text-gray-400 {
+      color: #94a3b8 !important;
+    }
+
+    html.dark body[data-page="login"] .bg-white,
+    body.dark[data-page="login"] .bg-white {
+      background-color: #0f172a !important;
+    }
+
+    html.dark body[data-page="login"] .bg-gray-50,
+    body.dark[data-page="login"] .bg-gray-50 {
+      background-color: #020617 !important;
+    }
+
+    html.dark body[data-page="login"] .bg-gray-100,
+    body.dark[data-page="login"] .bg-gray-100 {
+      background-color: #1e293b !important;
+    }
+
+    html.dark body[data-page="login"] .border-gray-100,
+    html.dark body[data-page="login"] .border-gray-200,
+    body.dark[data-page="login"] .border-gray-100,
+    body.dark[data-page="login"] .border-gray-200 {
+      border-color: #1e293b !important;
+    }
+
+    html.dark body[data-page="login"] input,
+    body.dark[data-page="login"] input {
+      background: #020617 !important;
+      border-color: #243044 !important;
+      color: #e5e7eb !important;
+    }
+
+    html.dark body[data-page="login"] input::placeholder,
+    body.dark[data-page="login"] input::placeholder {
+      color: #94a3b8 !important;
+    }
+
+    html.dark body[data-page="login"] #authCard,
+    body.dark[data-page="login"] #authCard {
+      background: #0f172a !important;
+      border-color: #1e293b !important;
+    }
+
+    html.dark body[data-page="login"] #loginTabTrack,
+    body.dark[data-page="login"] #loginTabTrack {
+      background: #1e293b !important;
+      border-color: #243044 !important;
+    }
+
+    html.dark body[data-page="login"] .login-tab-indicator,
+    body.dark[data-page="login"] .login-tab-indicator {
+      background: #020617 !important;
+      border: 1px solid rgba(148, 163, 184, .12) !important;
+    }
+
+    html.dark body[data-page="login"] .login-tab-btn,
+    body.dark[data-page="login"] .login-tab-btn {
+      color: #94a3b8 !important;
+    }
+
+    html.dark body[data-page="login"] .login-tab-btn.is-active,
+    body.dark[data-page="login"] .login-tab-btn.is-active {
+      color: #ecfdf5 !important;
+    }
+
+    html.dark body[data-page="login"] #darkModeToggle,
+    body.dark[data-page="login"] #darkModeToggle {
+      background: #0f172a !important;
+      border-color: #334155 !important;
+      color: #fde68a !important;
+    }
+
+    /* Light mode tetap bersih */
+    body[data-page="login"]:not(.dark) #authCard {
+      background: #ffffff !important;
     }
 
     .auth-top-strip,
@@ -516,7 +639,8 @@
     // Fungsi ini dibuat khusus agar animasi tab login tidak bentrok.
     window.switchLoginTab = switchLoginTab;
   </script>
-  <script src="./script.js?v=20260620-v80-top-background-theme"></script>
+  <script src="./script.js?v=20260620-v81-login-dark-full-fix"></script>
+
 
   <script>
     function updatePwaThemeColor() {
@@ -532,23 +656,15 @@
     window.addEventListener('DOMContentLoaded', updatePwaThemeColor);
     window.addEventListener('load', updatePwaThemeColor);
 
-    const originalToggleDarkMode = window.toggleDarkMode;
-    window.toggleDarkMode = function (...args) {
-      const result = typeof originalToggleDarkMode === 'function'
-        ? originalToggleDarkMode.apply(this, args)
-        : undefined;
-
-      setTimeout(updatePwaThemeColor, 0);
-      setTimeout(updatePwaThemeColor, 120);
-      return result;
-    };
-
     const themeObserver = new MutationObserver(updatePwaThemeColor);
     window.addEventListener('DOMContentLoaded', () => {
       themeObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
       themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     });
+
+    setInterval(updatePwaThemeColor, 1000);
   </script>
+
 
 
   <script>
