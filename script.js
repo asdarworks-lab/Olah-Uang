@@ -29,6 +29,7 @@ let targetTabunganBulanan = DEFAULT_TARGET_TABUNGAN_BULANAN;
 let profileEditEnabled = false;
 let financeEditState = { keluar: false, masuk: false };
 let activeAppView = 'beranda';
+let activeAdminView = 'overview';
 let quickJenisAktif = 'keluar';
 const AI_INSIGHT_STYLE_VERSION = 'numbered-roast-v6-robust-gemini';
 let currentInsightSummary = null;
@@ -2489,13 +2490,81 @@ async function initUserDashboard() {
 }
 
 
+
+// ============================================================
+// ADMIN VIEW NAVIGATION
+// ============================================================
+function getAdminViewLabel(view = activeAdminView) {
+  const labels = {
+    overview: 'Ringkasan',
+    users: 'Pengguna',
+    activity: 'Aktivitas',
+    recovery: 'Bantuan Akun',
+    transactions: 'Transaksi'
+  };
+  return labels[view] || 'Ringkasan';
+}
+
+function showAdminView(view = 'overview') {
+  const available = ['overview', 'users', 'activity', 'recovery', 'transactions'];
+  const targetView = available.includes(view) ? view : 'overview';
+  activeAdminView = targetView;
+
+  document.querySelectorAll('[data-admin-view]').forEach((section) => {
+    section.classList.toggle('hidden', section.dataset.adminView !== targetView);
+  });
+
+  document.querySelectorAll('[data-admin-nav]').forEach((button) => {
+    const isActive = button.dataset.adminNav === targetView;
+    button.classList.toggle('admin-nav-active', isActive);
+    button.classList.toggle('admin-nav-idle', !isActive);
+    button.setAttribute('aria-current', isActive ? 'page' : 'false');
+  });
+
+  const title = $('adminPageTitle');
+  const subtitle = $('adminPageSubtitle');
+
+  const subtitles = {
+    overview: 'Pantau ringkasan performa aplikasi dan data keuangan seluruh user.',
+    users: 'Kelola akun user, role, status akses, suspend, dan hapus akun.',
+    activity: 'Lihat user aktif, pendaftaran terbaru, dan aktivitas transaksi per user.',
+    recovery: 'Tangani permintaan bantuan akun dari pengguna yang lupa email atau akses.',
+    transactions: 'Pantau seluruh transaksi terbaru dari semua akun pengguna.'
+  };
+
+  if (title) title.textContent = getAdminViewLabel(targetView);
+  if (subtitle) subtitle.textContent = subtitles[targetView] || subtitles.overview;
+
+  localStorage.setItem('olahUangAdminView', targetView);
+  if (window.location.hash !== `#${targetView}`) {
+    history.replaceState(null, '', `#${targetView}`);
+  }
+
+  updateUserPresence(`Dashboard Admin - ${getAdminViewLabel(targetView)}`).catch((error) => console.warn('[Presence admin view]', error));
+
+  if (targetView === 'overview' && allTrxData.length) {
+    setTimeout(() => renderAdminChart(allTrxData), 120);
+  }
+}
+
+function getInitialAdminView() {
+  const hash = String(window.location.hash || '').replace('#', '').trim();
+  const stored = localStorage.getItem('olahUangAdminView');
+  const available = ['overview', 'users', 'activity', 'recovery', 'transactions'];
+
+  if (available.includes(hash)) return hash;
+  if (available.includes(stored)) return stored;
+  return 'overview';
+}
+
+
 // ============================================================
 // USER PRESENCE / AKTIVITAS ONLINE
 // ============================================================
 function getCurrentPresencePageLabel() {
   const page = document.body?.dataset?.page || detectPageFromPath();
 
-  if (page === 'dashboard-admin') return 'Dashboard Admin';
+  if (page === 'dashboard-admin') return `Dashboard Admin - ${getAdminViewLabel(activeAdminView)}`;
 
   const map = {
     beranda: 'Beranda',
@@ -3368,7 +3437,9 @@ async function initAdminDashboard() {
 
   startUserPresence();
   setupAdminRealtime();
+  showAdminView(getInitialAdminView());
   await muatData();
+  showAdminView(activeAdminView);
 }
 
 
@@ -3415,6 +3486,7 @@ window.muatData = muatData;
 window.toggleRole = toggleRole;
 window.changeAdminTrxPage = changeAdminTrxPage;
 window.updateRecoveryStatus = updateRecoveryStatus;
+window.showAdminView = showAdminView;
 window.editAdminUser = editAdminUser;
 window.setUserSuspended = setUserSuspended;
 window.deleteAdminUser = deleteAdminUser;
