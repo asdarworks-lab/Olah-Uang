@@ -29,6 +29,7 @@ function sanitizeSummary(summary = {}) {
         budget: item?.budget === null || item?.budget === undefined ? null : safeNumber(item?.budget),
         persen_budget: item?.persen_budget === null || item?.persen_budget === undefined ? null : safeNumber(item?.persen_budget),
         sisa_budget: item?.sisa_budget === null || item?.sisa_budget === undefined ? null : safeNumber(item?.sisa_budget),
+        lebih_budget: item?.lebih_budget === null || item?.lebih_budget === undefined ? null : safeNumber(item?.lebih_budget),
         target: item?.target === null || item?.target === undefined ? null : safeNumber(item?.target)
       })).filter((item) => item.kategori)
     : [];
@@ -50,9 +51,16 @@ function sanitizeSummary(summary = {}) {
     total_pengeluaran: safeNumber(summary.total_pengeluaran),
     potensi_tabungan: safeNumber(summary.potensi_tabungan),
     target_tabungan: safeNumber(summary.target_tabungan),
+    sisa_target_tabungan: safeNumber(summary.sisa_target_tabungan),
+    target_tabungan_tercapai_persen: summary.target_tabungan_tercapai_persen === null ? null : safeNumber(summary.target_tabungan_tercapai_persen),
+    rasio_pengeluaran_terhadap_pemasukan_persen: summary.rasio_pengeluaran_terhadap_pemasukan_persen === null ? null : safeNumber(summary.rasio_pengeluaran_terhadap_pemasukan_persen),
+    status_saldo_periode: String(summary.status_saldo_periode || '').slice(0, 40),
     jumlah_transaksi: safeNumber(summary.jumlah_transaksi),
-    variation_seed: String(summary.variation_seed || '').slice(0, 80),
+    jumlah_kategori_pengeluaran_aktif: safeNumber(summary.jumlah_kategori_pengeluaran_aktif),
+    jumlah_kategori_pemasukan_aktif: safeNumber(summary.jumlah_kategori_pemasukan_aktif),
     variasi_bahasa: variasi,
+    variation_seed: String(summary.variation_seed || '').slice(0, 60),
+    insight_style_version: String(summary.insight_style_version || '').slice(0, 80),
     perbandingan_bulan_lalu: {
       pemasukan_bulan_lalu: safeNumber(summary.perbandingan_bulan_lalu?.pemasukan_bulan_lalu),
       pengeluaran_bulan_lalu: safeNumber(summary.perbandingan_bulan_lalu?.pengeluaran_bulan_lalu),
@@ -60,13 +68,16 @@ function sanitizeSummary(summary = {}) {
       pengeluaran_naik_persen: summary.perbandingan_bulan_lalu?.pengeluaran_naik_persen === null ? null : safeNumber(summary.perbandingan_bulan_lalu?.pengeluaran_naik_persen)
     },
     kategori_pengeluaran_terbesar: pickList(summary.kategori_pengeluaran_terbesar, 8),
-    kategori_pemasukan_terbesar: pickList(summary.kategori_pemasukan_terbesar, 6)
+    kategori_pemasukan_terbesar: pickList(summary.kategori_pemasukan_terbesar, 6),
+    kategori_over_budget: pickList(summary.kategori_over_budget, 5),
+    kategori_hampir_habis: pickList(summary.kategori_hampir_habis, 5)
   };
 }
 
 function extractJson(text = '') {
   const trimmed = String(text || '').trim();
   if (!trimmed) return null;
+
   try { return JSON.parse(trimmed); } catch (_) {}
 
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -74,16 +85,37 @@ function extractJson(text = '') {
     try { return JSON.parse(fenced[1].trim()); } catch (_) {}
   }
 
-  const first = trimmed.indexOf('{');
-  const last = trimmed.lastIndexOf('}');
-  if (first !== -1 && last !== -1 && last > first) {
-    try { return JSON.parse(trimmed.slice(first, last + 1)); } catch (_) {}
+  const firstObj = trimmed.indexOf('{');
+  const lastObj = trimmed.lastIndexOf('}');
+  if (firstObj !== -1 && lastObj !== -1 && lastObj > firstObj) {
+    try { return JSON.parse(trimmed.slice(firstObj, lastObj + 1)); } catch (_) {}
+  }
+
+  const firstArr = trimmed.indexOf('[');
+  const lastArr = trimmed.lastIndexOf(']');
+  if (firstArr !== -1 && lastArr !== -1 && lastArr > firstArr) {
+    try { return JSON.parse(trimmed.slice(firstArr, lastArr + 1)); } catch (_) {}
   }
 
   return null;
 }
 
+function splitTextInsights(text = '') {
+  const cleaned = String(text || '')
+    .replace(/```(?:json)?/gi, '')
+    .replace(/```/g, '')
+    .replace(/^\s*["'{[]+|["'}\]]+\s*$/g, '')
+    .trim();
+
+  return cleaned
+    .split(/\n+/)
+    .flatMap((line) => line.split(/(?=\b\d+[.)]\s+)/g))
+    .map((line) => line.replace(/^[-•*\d.)\s]+/, '').trim())
+    .filter(Boolean);
+}
+
 function normalizeInsights(value) {
+  const result = [];
   const seen = new Set();
 
   const cleanText = (item) => String(item || '')
@@ -92,44 +124,35 @@ function normalizeInsights(value) {
     .replace(/\s+/g, ' ')
     .trim();
 
-  const pushClean = (arr, item) => {
+  const push = (item) => {
     const text = cleanText(item);
-    if (!text) return;
+    if (!text || text.length < 10) return;
     const key = text.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
-    arr.push(text);
+    result.push(text);
   };
-
-  const result = [];
 
   const collect = (source) => {
     if (!source) return;
 
     if (typeof source === 'string') {
-      // Kalau Gemini membalas bukan JSON, tetap coba pecah dari baris/nomor/bullet.
-      source
-        .split(/\n+/)
-        .flatMap((line) => line.split(/(?=\b\d+[.)]\s+)/g))
-        .forEach((line) => pushClean(result, line));
+      splitTextInsights(source).forEach(push);
       return;
     }
 
     if (Array.isArray(source)) {
       source.forEach((item) => {
-        if (typeof item === 'string') pushClean(result, item);
+        if (typeof item === 'string') push(item);
         else if (item && typeof item === 'object') {
-          pushClean(
-            result,
-            item.text ?? item.insight ?? item.message ?? item.content ?? item.value ?? item.deskripsi
-          );
+          push(item.text ?? item.insight ?? item.message ?? item.content ?? item.value ?? item.deskripsi ?? item.keterangan);
         }
       });
       return;
     }
 
     if (source && typeof source === 'object') {
-      const candidates = [
+      [
         source.insights,
         source.insight,
         source.data,
@@ -137,27 +160,76 @@ function normalizeInsights(value) {
         source.result,
         source.results,
         source.output,
-        source.response
-      ];
+        source.response,
+        source.poin,
+        source.points
+      ].forEach(collect);
 
-      candidates.forEach(collect);
-
-      // Kalau object-nya berisi key acak seperti insight_1, insight_2, insight_3.
       Object.keys(source)
-        .filter((key) => /insight|point|poin|item/i.test(key))
+        .filter((key) => /insight|point|poin|item|hasil/i.test(key))
         .sort()
-        .forEach((key) => {
-          if (!candidates.includes(source[key])) collect(source[key]);
-        });
+        .forEach((key) => collect(source[key]));
     }
   };
 
   collect(value);
 
-  // Hindari insight yang terlalu pendek dan tidak bermakna.
-  return result
-    .filter((text) => text.length >= 24)
-    .slice(0, 3);
+  return result.slice(0, 3);
+}
+
+function dataAwareBackupInsights(summary) {
+  const insights = [];
+  const overBudget = summary.kategori_over_budget?.[0];
+  const nearBudget = summary.kategori_hampir_habis?.[0];
+  const topExpense = summary.kategori_pengeluaran_terbesar?.[0];
+  const topIncome = summary.kategori_pemasukan_terbesar?.[0];
+  const ratio = summary.rasio_pengeluaran_terhadap_pemasukan_persen;
+  const change = summary.perbandingan_bulan_lalu?.pengeluaran_naik_persen;
+
+  if (overBudget?.kategori) {
+    insights.push(`${overBudget.kategori} sudah lewat budget ${overBudget.persen_budget}% dengan selisih sekitar ${formatRupiah(overBudget.lebih_budget)}. Budgetnya sudah teriak duluan, tinggal kamu pura-pura dengar atau benar-benar rem 😅`);
+  }
+
+  if (nearBudget?.kategori && insights.length < 3) {
+    insights.push(`${nearBudget.kategori} sudah memakai ${nearBudget.persen_budget}% dari budget. Masih belum jebol, tapi posisinya sudah seperti gelas di pinggir meja: aman sih, tapi bikin waswas 👀`);
+  }
+
+  if (summary.potensi_tabungan < 0 && insights.length < 3) {
+    insights.push(`Periode ini defisit sekitar ${formatRupiah(Math.abs(summary.potensi_tabungan))}. Ini bukan plot twist yang lucu, saldo kamu sedang minta negosiasi damai 😵`);
+  }
+
+  if (Number.isFinite(ratio) && insights.length < 3) {
+    if (ratio >= 100) {
+      insights.push(`Pengeluaran sudah mencapai ${ratio}% dari pemasukan. Dompetnya bukan capek lagi, ini sudah masuk mode lembur tanpa uang makan 😭`);
+    } else if (ratio >= 80) {
+      insights.push(`Pengeluaran sudah makan ${ratio}% dari pemasukan. Masih aman tipis, tapi jangan diuji dengan alasan “sekali-sekali” lagi ya 😌`);
+    } else {
+      insights.push(`Pengeluaran masih sekitar ${ratio}% dari pemasukan. Lumayan rapi, jangan langsung dirayakan dengan checkout mendadak 🛒`);
+    }
+  }
+
+  if (topIncome?.kategori && insights.length < 3) {
+    insights.push(`Pemasukan terbesar datang dari ${topIncome.kategori} sebesar ${formatRupiah(topIncome.nominal)}. Sumber utamanya jelas, sekarang tinggal pengeluarannya jangan ikut merasa punya hak istimewa 😄`);
+  }
+
+  if (Number.isFinite(change) && insights.length < 3) {
+    if (change > 0) insights.push(`Pengeluaran naik ${change}% dibanding periode sebelumnya. Ada yang makin rajin keluar uang, sayangnya bukan saldo yang makin gemuk 😅`);
+    else if (change < 0) insights.push(`Pengeluaran turun ${Math.abs(change)}% dibanding periode sebelumnya. Akhirnya ada kabar baik yang tidak bikin rekening ikut meratap 😌`);
+  }
+
+  if (topExpense?.kategori && insights.length < 3) {
+    insights.push(`${topExpense.kategori} masih jadi pos terbesar dengan ${formatRupiah(topExpense.nominal)}. Pelakunya sudah kelihatan, tinggal kamu mau ajak evaluasi atau biarkan jadi tokoh utama lagi 🧐`);
+  }
+
+  if (summary.target_tabungan > 0 && insights.length < 3) {
+    insights.push(`Target tabungan ${formatRupiah(summary.target_tabungan)}, sementara potensi saat ini ${formatRupiah(Math.max(summary.potensi_tabungan, 0))}. Targetnya gagah, realisasinya perlu diajak olahraga sedikit 💪`);
+  }
+
+  if (insights.length < 3) {
+    insights.push(`Ada ${summary.jumlah_transaksi} transaksi di periode ini. Angkanya sudah cukup buat dibaca polanya, bukan cuma ditatap lalu berharap saldo membaik sendiri 🤓`);
+  }
+
+  return insights.slice(0, 3);
 }
 
 async function verifyUser(req) {
@@ -173,6 +245,38 @@ async function verifyUser(req) {
 
   if (!response.ok) return null;
   return response.json();
+}
+
+async function callGemini(apiKey, prompt, { temperature = 0.8, responseMimeType = 'application/json' } = {}) {
+  const body = {
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature,
+      topP: 0.9,
+      maxOutputTokens: 1200
+    }
+  };
+
+  if (responseMimeType) body.generationConfig.responseMimeType = responseMimeType;
+
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    console.error('[Gemini API error]', data);
+    throw new Error('Google AI belum bisa membuat insight saat ini.');
+  }
+
+  const text = (data.candidates?.[0]?.content?.parts || [])
+    .map((part) => part.text || '')
+    .join('\n')
+    .trim();
+
+  return { text, data };
 }
 
 module.exports = async function handler(req, res) {
@@ -191,12 +295,12 @@ module.exports = async function handler(req, res) {
       return sendJson(res, 400, { message: 'Data ringkasan belum lengkap untuk dibuat insight.' });
     }
 
-    const variasiGaya = summary.variasi_bahasa?.gaya || 'roasting ringan, sindiran halus, emotikon, tetap informatif';
-    const fokus = summary.variasi_bahasa?.fokus?.length ? summary.variasi_bahasa.fokus.join(', ') : 'tren, budget, kategori terbesar, tabungan';
+    const variasiGaya = summary.variasi_bahasa?.gaya || 'roasting ringan, sindiran halus, ekspresif, tetap informatif';
+    const fokus = summary.variasi_bahasa?.fokus?.length ? summary.variasi_bahasa.fokus.join(', ') : 'pola keuangan yang paling menarik';
 
     const prompt = `Kamu adalah penulis insight keuangan untuk aplikasi Olah Uang.
 
-Buat TEPAT 3 insight keuangan dalam bahasa Indonesia berdasarkan DATA RINGKAS KEUANGAN.
+Buat tepat 3 insight keuangan dalam bahasa Indonesia berdasarkan DATA RINGKAS KEUANGAN.
 
 GAYA WAJIB:
 - Roasting ringan + sindiran halus + emotikon + tetap informatif.
@@ -209,8 +313,7 @@ GAYA WAJIB:
 ATURAN ISI:
 - Setiap insight harus membahas angle yang berbeda.
 - Jangan semua insight hanya muter di tren pengeluaran, potensi tabungan, dan kategori terbesar.
-- Pilih 3 angle paling menarik dari data:
-  pemasukan vs pengeluaran, surplus/defisit, rasio pengeluaran, over budget, hampir habis, kategori pemasukan, target tabungan, jumlah transaksi, perubahan periode sebelumnya, peluang hemat, atau prioritas periode berikutnya.
+- Pilih 3 angle paling menarik dari data: pemasukan vs pengeluaran, surplus/defisit, rasio pengeluaran, over budget, hampir habis, kategori pemasukan, target tabungan, jumlah transaksi, perubahan periode sebelumnya, peluang hemat, atau prioritas periode berikutnya.
 - Kalau ada kategori_over_budget atau kategori_hampir_habis, prioritaskan salah satunya.
 - Kalau total_pengeluaran lebih besar dari total_pemasukan, bahas defisit/saldo minus dengan sindiran ringan.
 - Kalau data bulan lalu kosong/null, jangan memaksakan perbandingan bulan lalu.
@@ -222,113 +325,40 @@ ATURAN ISI:
 - Jangan mengulang pola pembuka antar insight.
 
 FORMAT WAJIB:
-Balas hanya JSON valid, tanpa markdown, tanpa penjelasan tambahan.
-
-Contoh struktur:
+Balas hanya JSON valid, tanpa markdown, tanpa penjelasan tambahan:
 {"insights":["kalimat insight 1","kalimat insight 2","kalimat insight 3"]}
 
 DATA RINGKAS KEUANGAN:
 ${JSON.stringify(summary, null, 2)}`;
 
-    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.85,
-          topP: 0.92,
-          maxOutputTokens: 900,
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: 'object',
-            properties: {
-              insights: {
-                type: 'array',
-                minItems: 3,
-                maxItems: 3,
-                items: { type: 'string' }
-              }
-            },
-            required: ['insights']
-          }
-        }
-      })
-    });
+    let insights = [];
 
-    const geminiData = await geminiResponse.json().catch(() => ({}));
-    if (!geminiResponse.ok) {
-      console.error('[Gemini API error]', geminiData);
-      return sendJson(res, 502, { message: 'Google AI belum bisa membuat insight saat ini.' });
-    }
-
-    const text = (geminiData.candidates?.[0]?.content?.parts || [])
-      .map((part) => part.text || '')
-      .join('\n')
-      .trim();
-
-    const parsed = extractJson(text);
-    let insights = normalizeInsights(parsed);
-
-    if (insights.length < 3) {
-      console.warn('[Gemini invalid output, retrying]', text);
-
-      const retryPrompt = `Tulis ulang menjadi TEPAT 3 insight valid.
-
-WAJIB:
-- Bahasa Indonesia.
-- Roasting ringan + sindiran halus + emotikon.
-- Tetap informatif.
-- Jangan template.
-- Setiap insight membahas angle berbeda.
-- Balas hanya JSON valid: {"insights":["...","...","..."]}
-
-DATA:
-${JSON.stringify(summary, null, 2)}
-
-RESPONS SEBELUMNYA YANG BELUM VALID:
-${text}`;
-
-      const retryResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: retryPrompt }] }],
-          generationConfig: {
-            temperature: 0.75,
-            topP: 0.9,
-            maxOutputTokens: 900,
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: 'object',
-              properties: {
-                insights: {
-                  type: 'array',
-                  minItems: 3,
-                  maxItems: 3,
-                  items: { type: 'string' }
-                }
-              },
-              required: ['insights']
-            }
-          }
-        })
-      });
-
-      const retryData = await retryResponse.json().catch(() => ({}));
-      const retryText = (retryData.candidates?.[0]?.content?.parts || [])
-        .map((part) => part.text || '')
-        .join('\n')
-        .trim();
-
-      insights = normalizeInsights(extractJson(retryText) || retryText);
+    try {
+      const first = await callGemini(apiKey, prompt, { temperature: 0.82, responseMimeType: 'application/json' });
+      insights = normalizeInsights(extractJson(first.text) || first.text);
 
       if (insights.length < 3) {
-        console.error('[Gemini invalid output after retry]', { text, retryText, retryData });
-        return sendJson(res, 502, {
-          message: 'Google AI belum mengembalikan 3 insight valid. Coba refresh halaman.'
-        });
+        console.warn('[Gemini invalid JSON output, retrying plain text]', first.text);
+
+        const retryPrompt = `${prompt}
+
+Respons sebelumnya belum valid:
+${first.text}
+
+Tulis ulang SEKARANG sebagai JSON valid persis:
+{"insights":["...","...","..."]}`;
+
+        const retry = await callGemini(apiKey, retryPrompt, { temperature: 0.62, responseMimeType: null });
+        insights = normalizeInsights(extractJson(retry.text) || retry.text);
       }
+    } catch (error) {
+      console.error('[Gemini call failed, using backup]', error);
+    }
+
+    if (insights.length < 3) {
+      // Safety net terakhir agar UI tidak balik ke insight lama yang terasa template.
+      // Ini bukan pengganti AI utama, hanya agar dashboard tetap informatif kalau Gemini sedang bandel.
+      insights = dataAwareBackupInsights(summary);
     }
 
     return sendJson(res, 200, { insights: insights.slice(0, 3) });
