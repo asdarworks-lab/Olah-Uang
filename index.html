@@ -149,6 +149,18 @@
       }
     }
   </style>
+
+  <!-- PWA / Installable App -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#059669">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- iOS Home Screen -->
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Olah Uang">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 </head>
 <body data-page="login" class="min-h-screen bg-gray-50 text-gray-800 antialiased overflow-x-hidden">
 
@@ -464,6 +476,17 @@
     // Fungsi ini dibuat khusus agar animasi tab login tidak bentrok.
     window.switchLoginTab = switchLoginTab;
   </script>
-  <script src="./script.js?v=20260620-v66-index-logo-mode-fix"></script>
+  <script src="./script.js?v=20260620-v79-pwa-icons-installable"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker
+          .register('/service-worker.js')
+          .catch((error) => console.warn('Service Worker gagal:', error));
+      });
+    }
+  </script>
+
 </body>
 </html>
