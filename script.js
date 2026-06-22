@@ -6,7 +6,7 @@
 const SUPABASE_URL = 'https://uezjncjapumyrkjxzslw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_gMbWszjY1XIou5Cj4wDkjg_UlGiuOd5';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const APP_VERSION = '20260620-v99-login-tab-animation-restore';
+const APP_VERSION = '20260620-v100-rupiah-prefix-input';
 console.log(`Olah Uang script loaded: ${APP_VERSION}`);
 window.OLAH_UANG_VERSION = APP_VERSION;
 document.documentElement.setAttribute('data-olah-uang-version', APP_VERSION);
@@ -126,6 +126,56 @@ function formatRupiah(angka = 0) {
     minimumFractionDigits: 0
   }).format(value);
 }
+
+
+function onlyDigits(value = '') {
+  return String(value ?? '').replace(/\D/g, '');
+}
+
+function formatNominalDots(value = '') {
+  const digits = onlyDigits(value);
+  if (!digits) return '';
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function parseNominalInput(value = '') {
+  const digits = onlyDigits(value);
+  return Number(digits || 0);
+}
+
+function formatNominalInputElement(input) {
+  if (!input) return;
+
+  const cursorAtEnd = input.selectionStart === input.value.length;
+  input.value = formatNominalDots(input.value);
+
+  if (cursorAtEnd && typeof input.setSelectionRange === 'function') {
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
+}
+
+function setupNominalInputFormatter(root = document) {
+  root.querySelectorAll('[data-format="nominal"]').forEach((input) => {
+    input.setAttribute('type', 'text');
+    input.setAttribute('inputmode', 'numeric');
+
+    if (input.dataset.nominalFormatterReady === '1') {
+      formatNominalInputElement(input);
+      return;
+    }
+
+    input.dataset.nominalFormatterReady = '1';
+
+    input.addEventListener('input', () => formatNominalInputElement(input));
+    input.addEventListener('blur', () => formatNominalInputElement(input));
+    formatNominalInputElement(input);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setupNominalInputFormatter();
+});
+
 
 function formatTanggal(value, options = { day: 'numeric', month: 'short' }) {
   if (!value) return '-';
@@ -586,7 +636,7 @@ function getSettingsListFromUI(type) {
 
   rows.forEach((row) => {
     const name = row.querySelector('[data-field="name"]')?.value.trim();
-    const amount = Number(row.querySelector('[data-field="amount"]')?.value || 0);
+    const amount = parseNominalInput(row.querySelector('[data-field="amount"]')?.value);
     const lookup = name?.toLowerCase();
     if (!name || usedNames.has(lookup)) return;
     usedNames.add(lookup);
@@ -629,7 +679,10 @@ function renderSettingsRows(containerId, map, type) {
   container.innerHTML = entries.map(([kategori, nominal]) => `
     <div data-setting-type="${type}" class="setting-row rounded-2xl bg-gray-50 border border-gray-100 p-3">
       <input data-field="name" type="text" value="${escapeHTML(kategori)}" ${editable ? '' : 'disabled'} class="min-w-0 px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm" />
-      <input data-field="amount" type="number" min="0" inputmode="numeric" value="${Number(nominal) || 0}" ${editable ? '' : 'disabled'} class="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-right" />
+      <div class="rupiah-field is-compact">
+        <span class="rupiah-prefix">Rp</span>
+        <input data-field="amount" data-format="nominal" type="text" inputmode="numeric" value="${formatNominalDots(nominal)}" ${editable ? '' : 'disabled'} class="rupiah-input w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-right" />
+      </div>
       <button type="button" onclick="removeFinanceCategoryRow(this)" ${editable ? '' : 'disabled'} class="h-10 rounded-xl bg-rose-50 text-rose-600 font-bold hover:bg-rose-100 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" title="Hapus kategori" aria-label="Hapus kategori">
         <svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3m-9 0h12"/></svg>
       </button>
@@ -639,11 +692,12 @@ function renderSettingsRows(containerId, map, type) {
 function renderFinanceSettings() {
   if (!$('financeSettingsPanel')) return;
   if ($('settingTargetSavings')) {
-    $('settingTargetSavings').value = targetTabunganBulanan;
+    $('settingTargetSavings').value = formatNominalDots(targetTabunganBulanan);
     $('settingTargetSavings').disabled = !financeEditState.keluar;
   }
   renderSettingsRows('budgetSettingList', rencanaBudget, 'keluar');
   renderSettingsRows('incomeSettingList', targetPemasukan, 'masuk');
+  setupNominalInputFormatter();
   updateFinanceEditUI('keluar');
   updateFinanceEditUI('masuk');
 }
@@ -694,7 +748,7 @@ function addFinanceCategory(type) {
   const currentMap = getSettingsMapFromUI(type);
 
   const name = nameInput?.value.trim();
-  const amount = Number(amountInput?.value || 0);
+  const amount = parseNominalInput(amountInput?.value);
 
   if (!name) return showWarning('Nama kategori kosong', 'Isi nama kategori dulu. Kategori tanpa nama itu mirip nota tanpa tanggal: bikin curiga.');
   if (Object.keys(currentMap).some((item) => item.toLowerCase() === name.toLowerCase())) return showWarning('Kategori sudah ada', 'Nama kategori ini sudah dipakai. Gunakan nama lain agar laporan tidak ambigu.');
@@ -720,7 +774,7 @@ async function saveFinanceSettings(type = 'all', options = {}) {
   const payload = {};
   if (type === 'keluar' || type === 'all') {
     payload.budget_config = getSettingsListFromUI('keluar');
-    const targetValue = Number($('settingTargetSavings')?.value || 0);
+    const targetValue = parseNominalInput($('settingTargetSavings')?.value);
     payload.target_tabungan_bulanan = Number.isFinite(targetValue) && targetValue >= 0 ? Math.round(targetValue) : 0;
   }
   if (type === 'masuk' || type === 'all') {
@@ -1451,7 +1505,7 @@ async function saveTransactionRecord({ jenis, kategori, nominal }) {
 
 async function addTransaction() {
   const kategori = $('kategori')?.value;
-  const nominal = Number($('amount')?.value);
+  const nominal = parseNominalInput($('amount')?.value);
   const saved = await saveTransactionRecord({ jenis: jenisAktif, kategori, nominal });
   if (saved && $('amount')) $('amount').value = '';
   return saved;
@@ -1493,6 +1547,7 @@ function openCatatModal() {
   if (!modal) return showAppView('catat');
   modal.classList.remove('hidden');
   setQuickJenis(jenisAktif || 'keluar');
+  setupNominalInputFormatter(modal);
   setTimeout(() => $('quickAmount')?.focus(), 80);
 }
 
@@ -1505,7 +1560,7 @@ function closeCatatModal() {
 
 async function submitQuickTransaction() {
   const kategori = $('quickKategori')?.value;
-  const nominal = Number($('quickAmount')?.value);
+  const nominal = parseNominalInput($('quickAmount')?.value);
   const saved = await saveTransactionRecord({ jenis: quickJenisAktif, kategori, nominal });
   if (saved) closeCatatModal();
   return saved;
