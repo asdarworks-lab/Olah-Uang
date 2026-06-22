@@ -6,7 +6,7 @@
 const SUPABASE_URL = 'https://uezjncjapumyrkjxzslw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_gMbWszjY1XIou5Cj4wDkjg_UlGiuOd5';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const APP_VERSION = '20260620-v101-mobile-category-nominal-row-fix';
+const APP_VERSION = '20260620-v103-delete-account-settings';
 console.log(`Olah Uang script loaded: ${APP_VERSION}`);
 window.OLAH_UANG_VERSION = APP_VERSION;
 document.documentElement.setAttribute('data-olah-uang-version', APP_VERSION);
@@ -29,6 +29,7 @@ let targetTabunganBulanan = DEFAULT_TARGET_TABUNGAN_BULANAN;
 let profileEditEnabled = false;
 let financeEditState = { keluar: false, masuk: false };
 let activeAppView = 'beranda';
+let activeSettingsSection = 'profile';
 let activeAdminView = 'overview';
 let quickJenisAktif = 'keluar';
 const AI_INSIGHT_STYLE_VERSION = 'numbered-roast-v6-robust-gemini';
@@ -421,6 +422,44 @@ async function confirmUnsavedSettingsBeforeContinue() {
 }
 
 
+
+async function showSettingsSection(section = 'profile', options = {}) {
+  const allowedSections = ['profile', 'expense', 'income', 'help'];
+  const targetSection = allowedSections.includes(section) ? section : 'profile';
+
+  if (targetSection !== activeSettingsSection && !options.skipGuard && hasUnsavedSettings()) {
+    const canContinue = await confirmUnsavedSettingsBeforeContinue();
+    if (!canContinue) return false;
+  }
+
+  activeSettingsSection = targetSection;
+
+  document.querySelectorAll('[data-settings-panel]').forEach((panel) => {
+    panel.classList.toggle('hidden', panel.dataset.settingsPanel !== targetSection);
+  });
+
+  document.querySelectorAll('[data-settings-tab]').forEach((button) => {
+    const isActive = button.dataset.settingsTab === targetSection;
+    button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+
+  if (targetSection === 'expense' || targetSection === 'income') {
+    renderFinanceSettings();
+  }
+
+  setupNominalInputFormatter();
+  localStorage.setItem('olahUangSettingsSection', targetSection);
+  return true;
+}
+
+function initSettingsSectionMenu() {
+  const savedSection = localStorage.getItem('olahUangSettingsSection') || 'profile';
+  showSettingsSection(savedSection, { skipGuard: true, silent: true });
+}
+
+
+
 function animateNavIndicator(container, indicator, targetX, targetY, targetW, targetH) {
   const hasPosition = Number.isFinite(Number(indicator.dataset.x)) && Number.isFinite(Number(indicator.dataset.w));
 
@@ -548,6 +587,10 @@ async function showAppView(view = 'beranda') {
   if (targetView === 'analisis' && grafikKeuangan) {
     setTimeout(() => grafikKeuangan?.resize?.(), 80);
   }
+
+  if (targetView === 'setting') {
+    initSettingsSectionMenu();
+  }
 }
 
 window.addEventListener('beforeunload', (event) => {
@@ -567,6 +610,7 @@ function fillProfileSettings() {
 }
 
 async function toggleProfileEdit(enabled, options = {}) {
+  if (enabled) showSettingsSection('profile', { skipGuard: true });
   if (enabled && !profileEditEnabled && (financeEditState.keluar || financeEditState.masuk) && !options.skipGuard) {
     const canContinue = await confirmUnsavedSettingsBeforeContinue();
     if (!canContinue) return;
@@ -715,6 +759,7 @@ function updateFinanceEditUI(type) {
 }
 
 async function toggleFinanceEdit(type, enabled, options = {}) {
+  if (enabled) showSettingsSection(type === 'masuk' ? 'income' : 'expense', { skipGuard: true });
   if (enabled && !financeEditState[type] && hasUnsavedSettings() && !options.skipGuard) {
     const canContinue = await confirmUnsavedSettingsBeforeContinue();
     if (!canContinue) return;
@@ -808,6 +853,120 @@ async function saveFinanceSettings(type = 'all', options = {}) {
     showConfirmButton: false
   });
 }
+
+
+
+async function deleteMyAccount() {
+  if (!currentUser?.id) {
+    return showWarning('Akun belum terbaca', 'Silakan login ulang sebelum menghapus akun.');
+  }
+
+  const firstConfirm = await Swal.fire({
+    icon: 'warning',
+    title: 'Hapus akun?',
+    html:
+      'Tindakan ini akan menghapus transaksi akun ini dan menandai profil sebagai terhapus.<br><br>',
+    showCancelButton: true,
+    confirmButtonText: 'Lanjutkan',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#e11d48',
+    cancelButtonColor: '#9ca3af'
+  });
+
+  if (!firstConfirm.isConfirmed) return false;
+
+  const typedConfirm = await Swal.fire({
+    icon: 'error',
+    title: 'Konfirmasi Terakhir!',
+    html: 'Ketik <b>HAPUS</b> untuk melanjutkan.',
+    input: 'text',
+    inputPlaceholder: 'Ketik HAPUS',
+    showCancelButton: true,
+    confirmButtonText: 'Hapus Akun',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#be123c',
+    cancelButtonColor: '#9ca3af',
+    preConfirm: (value) => {
+      if (String(value || '').trim().toUpperCase() !== 'HAPUS') {
+        Swal.showValidationMessage('Ketik HAPUS dengan benar untuk melanjutkan.');
+        return false;
+      }
+      return true;
+    }
+  });
+
+  if (!typedConfirm.isConfirmed) return false;
+
+  try {
+    Swal.fire({
+      title: 'Menghapus akun...',
+      text: 'Tunggu sebentar. Jangan tutup halaman.',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    const userId = currentUser.id;
+
+    // Hapus data transaksi milik user.
+    const { error: trxError } = await db
+      .from('transaksi')
+      .delete()
+      .eq('user_id', userId);
+
+    if (trxError) throw trxError;
+
+    // Hapus activity jika tabel tersedia. Kalau tabel belum ada, jangan gagalkan proses utama.
+    try {
+      await db
+        .from('user_activity')
+        .delete()
+        .eq('user_id', userId);
+    } catch (activityError) {
+      console.warn('[Delete account] user_activity skip', activityError);
+    }
+
+    // Soft delete profil. Ini aman dari sisi frontend karena anon client tidak bisa menghapus auth.users.
+    const { error: profileError } = await db
+      .from('profiles')
+      .update({
+        nama: 'Akun Dihapus',
+        nomor_hp: null,
+        account_status: 'deleted',
+        deleted_at: new Date().toISOString()
+      })
+      .eq('id', userId);
+
+    if (profileError) {
+      // Fallback untuk database lama yang belum punya account_status/deleted_at.
+      const { error: fallbackError } = await db
+        .from('profiles')
+        .update({
+          nama: 'Akun Dihapus',
+          nomor_hp: null
+        })
+        .eq('id', userId);
+
+      if (fallbackError) throw fallbackError;
+    }
+
+    await db.auth.signOut();
+
+    await Swal.fire({
+      icon: 'success',
+      title: 'Akun dihapus',
+      text: 'Data akun di aplikasi sudah dihapus/ditandai terhapus. Kamu akan kembali ke halaman masuk.',
+      confirmButtonColor: '#059669'
+    });
+
+    window.location.href = 'index.html';
+    return true;
+  } catch (error) {
+    console.error('[Delete account]', error);
+    return showError('Gagal menghapus akun', error);
+  }
+}
+
 
 
 async function fetchAllTransaksi({ userId = null, ascending = true, maxRows = MAX_FETCH_ROWS } = {}) {
@@ -4308,6 +4467,8 @@ window.resetAdminUserFilters = resetAdminUserFilters;
 window.applyAdminTrxFilters = applyAdminTrxFilters;
 window.resetAdminTrxFilters = resetAdminTrxFilters;
 window.showAppView = showAppView;
+window.showSettingsSection = showSettingsSection;
+window.deleteMyAccount = deleteMyAccount;
 window.openCatatModal = openCatatModal;
 window.handleCatatSekarang = handleCatatSekarang;
 window.closeCatatModal = closeCatatModal;
