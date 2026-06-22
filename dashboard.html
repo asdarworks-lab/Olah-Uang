@@ -1828,6 +1828,137 @@
       color: #64748b !important;
     }
 
+
+    /* v101: Mobile kategori + nominal tetap 1 baris dan tidak kejepit */
+    .setting-row {
+      grid-template-columns: minmax(0, 1.35fr) minmax(7.4rem, .85fr) 2.5rem !important;
+      align-items: center !important;
+      gap: .55rem !important;
+    }
+
+    .setting-row input[data-field="name"] {
+      min-width: 0 !important;
+      width: 100% !important;
+    }
+
+    .setting-row .rupiah-field.is-compact {
+      min-width: 7.4rem !important;
+      width: 100% !important;
+    }
+
+    .setting-row .rupiah-field.is-compact .rupiah-prefix {
+      left: .62rem !important;
+      font-size: .68rem !important;
+    }
+
+    .setting-row .rupiah-field.is-compact .rupiah-input {
+      width: 100% !important;
+      min-width: 0 !important;
+      padding-left: 2.05rem !important;
+      padding-right: .55rem !important;
+      font-size: .78rem !important;
+      letter-spacing: -.02em !important;
+    }
+
+    .setting-row > button {
+      width: 2.5rem !important;
+      min-width: 2.5rem !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+    }
+
+    @media (max-width: 760px) {
+      .setting-row {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1.28fr) minmax(7rem, .82fr) 2.25rem !important;
+        gap: .42rem !important;
+        padding: .62rem !important;
+      }
+
+      .setting-row input[data-field="name"] {
+        height: 2.45rem !important;
+        padding-left: .62rem !important;
+        padding-right: .5rem !important;
+        font-size: .78rem !important;
+      }
+
+      .setting-row .rupiah-field.is-compact {
+        min-width: 7rem !important;
+      }
+
+      .setting-row .rupiah-field.is-compact .rupiah-input {
+        height: 2.45rem !important;
+        padding-left: 1.9rem !important;
+        padding-right: .42rem !important;
+        font-size: .76rem !important;
+      }
+
+      .setting-row .rupiah-field.is-compact .rupiah-prefix {
+        left: .55rem !important;
+        font-size: .64rem !important;
+      }
+
+      .setting-row > button {
+        width: 2.25rem !important;
+        min-width: 2.25rem !important;
+        height: 2.45rem !important;
+        border-radius: .75rem !important;
+      }
+
+      .setting-row > button svg {
+        width: 1rem !important;
+        height: 1rem !important;
+      }
+
+      #expenseAddRow.setting-row,
+      #incomeAddRow.setting-row {
+        grid-template-columns: minmax(0, 1.28fr) minmax(7rem, .82fr) 2.25rem !important;
+      }
+
+      #expenseAddRow .rupiah-field.is-compact,
+      #incomeAddRow .rupiah-field.is-compact {
+        min-width: 7rem !important;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .setting-row {
+        grid-template-columns: minmax(0, 1.15fr) minmax(6.45rem, .85fr) 2.1rem !important;
+        gap: .34rem !important;
+        padding: .55rem !important;
+      }
+
+      .setting-row input[data-field="name"] {
+        font-size: .72rem !important;
+        padding-left: .52rem !important;
+      }
+
+      .setting-row .rupiah-field.is-compact {
+        min-width: 6.45rem !important;
+      }
+
+      .setting-row .rupiah-field.is-compact .rupiah-input {
+        padding-left: 1.75rem !important;
+        padding-right: .35rem !important;
+        font-size: .70rem !important;
+      }
+
+      .setting-row .rupiah-field.is-compact .rupiah-prefix {
+        left: .48rem !important;
+        font-size: .60rem !important;
+      }
+
+      .setting-row > button {
+        width: 2.1rem !important;
+        min-width: 2.1rem !important;
+      }
+
+      #expenseAddRow.setting-row,
+      #incomeAddRow.setting-row {
+        grid-template-columns: minmax(0, 1.15fr) minmax(6.45rem, .85fr) 2.1rem !important;
+      }
+    }
+
   </style>
 </head>
 <body data-page="dashboard-user" class="bg-gray-50 text-gray-800 antialiased min-h-screen pb-28 md:pb-10">
@@ -2218,7 +2349,7 @@
     </div>
   </nav>
 
-  <script src="./script.js?v=20260620-v100-rupiah-prefix-input"></script>
+  <script src="./script.js?v=20260620-v101-mobile-category-nominal-row-fix"></script>
 
   <script>
     function updateDashboardPwaTopColor() {
