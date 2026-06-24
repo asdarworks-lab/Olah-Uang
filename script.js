@@ -866,8 +866,7 @@ async function deleteMyAccount() {
     icon: 'warning',
     title: 'Hapus akun?',
     html:
-      'Tindakan ini akan menonaktifkan akun, menghapus transaksi, dan mengosongkan data profil yang bisa dikosongkan.<br><br>' +
-      '<span class="text-xs text-gray-400">Catatan: akun Auth Supabase hanya bisa dihapus permanen lewat server/service role. Dari frontend, aplikasi melakukan soft delete agar akun tidak bisa login lagi.</span>',
+      'Tindakan ini akan menonaktifkan akun, menghapus transaksi, dan mengosongkan data profil yang bisa dikosongkan.<br>',
     showCancelButton: true,
     confirmButtonText: 'Lanjutkan',
     cancelButtonText: 'Batal',
