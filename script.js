@@ -7,7 +7,7 @@ const SUPABASE_URL = 'https://uezjncjapumyrkjxzslw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_gMbWszjY1XIou5Cj4wDkjg_UlGiuOd5';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 window.db = db;
-const APP_VERSION = '20260623-v104-final-clean';
+const APP_VERSION = '20260626-v106-balance-hide-6-dots';
 console.log(`Olah Uang script loaded: ${APP_VERSION}`);
 window.OLAH_UANG_VERSION = APP_VERSION;
 document.documentElement.setAttribute('data-olah-uang-version', APP_VERSION);
@@ -31,6 +31,8 @@ let profileEditEnabled = false;
 let financeEditState = { keluar: false, masuk: false };
 let activeAppView = 'beranda';
 let activeSettingsSection = 'profile';
+let totalBalanceHidden = localStorage.getItem('olahUangTotalBalanceHidden') === '1';
+let lastTotalSaldo = 0;
 let activeAdminView = 'overview';
 let quickJenisAktif = 'keluar';
 const AI_INSIGHT_STYLE_VERSION = 'numbered-roast-v6-robust-gemini';
@@ -128,6 +130,54 @@ function formatRupiah(angka = 0) {
     minimumFractionDigits: 0
   }).format(value);
 }
+
+
+function getBalanceVisibleIcon() {
+  return `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12s3.75-6.75 9.75-6.75S21.75 12 21.75 12 18 18.75 12 18.75 2.25 12 2.25 12z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 15.25A3.25 3.25 0 1012 8.75a3.25 3.25 0 000 6.5z"/></svg>`;
+}
+
+function getBalanceHiddenIcon() {
+  return `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18"/><path stroke-linecap="round" stroke-linejoin="round" d="M10.58 10.58A2 2 0 0012 14a2 2 0 001.42-.58"/><path stroke-linecap="round" stroke-linejoin="round" d="M9.88 5.42A8.8 8.8 0 0112 5.25c6 0 9.75 6.75 9.75 6.75a18.4 18.4 0 01-2.47 3.08"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.17 6.85C3.68 8.64 2.25 12 2.25 12s3.75 6.75 9.75 6.75c1.76 0 3.3-.58 4.6-1.39"/></svg>`;
+}
+
+function renderTotalBalance(totalSaldo = lastTotalSaldo) {
+  lastTotalSaldo = Number(totalSaldo) || 0;
+
+  const balanceEl = $('totalBalance');
+  const button = $('balanceVisibilityBtn');
+  const icon = $('balanceVisibilityIcon');
+  const privacyText = $('balancePrivacyText');
+
+  if (balanceEl) {
+    balanceEl.textContent = totalBalanceHidden ? 'Rp ••••••' : formatRupiah(lastTotalSaldo);
+    balanceEl.classList.toggle('balance-hidden', totalBalanceHidden);
+  }
+
+  if (button) {
+    const label = totalBalanceHidden ? 'Tampilkan saldo' : 'Sembunyikan saldo';
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    button.setAttribute('aria-pressed', totalBalanceHidden ? 'true' : 'false');
+  }
+
+  if (icon) {
+    icon.innerHTML = totalBalanceHidden ? getBalanceHiddenIcon() : getBalanceVisibleIcon();
+  }
+
+  if (privacyText) {
+    privacyText.textContent = totalBalanceHidden
+      ? 'Akumulasi seluruh transaksi yang sudah dicatat.'
+      : 'Akumulasi seluruh transaksi yang sudah dicatat.';
+  }
+}
+
+function toggleTotalBalanceVisibility() {
+  totalBalanceHidden = !totalBalanceHidden;
+  localStorage.setItem('olahUangTotalBalanceHidden', totalBalanceHidden ? '1' : '0');
+  renderTotalBalance(lastTotalSaldo);
+}
+
+
 
 
 function onlyDigits(value = '') {
@@ -2715,7 +2765,7 @@ async function updateUI() {
 
   const totalSaldo = totalMasukAkumulasi - totalKeluarAkumulasi;
 
-  if ($('totalBalance')) $('totalBalance').textContent = formatRupiah(totalSaldo);
+  renderTotalBalance(totalSaldo);
 
   fillYearSelects(daftarTahun);
   renderSummaryCards(totalMasukAkumulasi, totalKeluarAkumulasi, namaPeriodeRingkasan);
@@ -4558,6 +4608,7 @@ window.ubahFilterTahun = ubahFilterTahun;
 window.hapusTransaksi = hapusTransaksi;
 window.exportToExcel = exportToExcel;
 window.toggleDarkMode = toggleDarkMode;
+window.toggleTotalBalanceVisibility = toggleTotalBalanceVisibility;
 window.muatData = muatData;
 window.toggleRole = toggleRole;
 window.changeAdminTrxPage = changeAdminTrxPage;
