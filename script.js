@@ -7,7 +7,7 @@ const SUPABASE_URL = 'https://uezjncjapumyrkjxzslw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_gMbWszjY1XIou5Cj4wDkjg_UlGiuOd5';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 window.db = db;
-const APP_VERSION = '20260626-v106-balance-hide-6-dots';
+const APP_VERSION = '20260630-v107-export-excel-filtered';
 console.log(`Olah Uang script loaded: ${APP_VERSION}`);
 window.OLAH_UANG_VERSION = APP_VERSION;
 document.documentElement.setAttribute('data-olah-uang-version', APP_VERSION);
@@ -166,7 +166,7 @@ function renderTotalBalance(totalSaldo = lastTotalSaldo) {
 
   if (privacyText) {
     privacyText.textContent = totalBalanceHidden
-      ? 'Akumulasi seluruh transaksi yang sudah dicatat.'
+      ? 'Saldo disembunyikan untuk menjaga privasi tampilan.'
       : 'Akumulasi seluruh transaksi yang sudah dicatat.';
   }
 }
@@ -2829,36 +2829,158 @@ async function hapusTransaksi(id) {
   });
 }
 
+
+function getSelectedOptionText(selectEl, fallback = '') {
+  if (!selectEl) return fallback;
+  return selectEl.options?.[selectEl.selectedIndex]?.textContent?.trim() || fallback || selectEl.value || '';
+}
+
+function getRiwayatFilterState() {
+  const now = new Date();
+  const monthSelect = $('filterBulan');
+  const yearSelect = $('filterTahunRiwayat');
+
+  const monthValue = monthSelect?.value || String(now.getMonth());
+  const yearValue = yearSelect?.value || filterTahunAktif || String(now.getFullYear());
+
+  const monthLabel = monthValue === 'Semua'
+    ? 'Semua Bulan'
+    : getSelectedOptionText(monthSelect, new Date(2026, Number(monthValue), 1).toLocaleDateString('id-ID', { month: 'long' }));
+
+  const yearLabel = yearValue === 'Semua'
+    ? 'Semua Tahun'
+    : String(yearValue);
+
+  let filePeriod = 'semua';
+  if (monthValue === 'Semua' && yearValue !== 'Semua') {
+    filePeriod = String(yearValue);
+  } else if (monthValue !== 'Semua' && yearValue !== 'Semua') {
+    filePeriod = `${yearValue}-${String(Number(monthValue) + 1).padStart(2, '0')}`;
+  } else if (monthValue !== 'Semua' && yearValue === 'Semua') {
+    filePeriod = `bulan-${String(Number(monthValue) + 1).padStart(2, '0')}-semua-tahun`;
+  }
+
+  return {
+    monthValue,
+    yearValue,
+    monthLabel,
+    yearLabel,
+    label: `${monthLabel} ${yearLabel}`.trim(),
+    filePeriod
+  };
+}
+
+function filterTransactionsByRiwayat(data = [], filterState = getRiwayatFilterState()) {
+  return (data || []).filter((item) => {
+    const date = new Date(item.created_at);
+    if (Number.isNaN(date.getTime())) return false;
+
+    const matchMonth =
+      filterState.monthValue === 'Semua' ||
+      String(date.getMonth()) === String(filterState.monthValue);
+
+    const matchYear =
+      filterState.yearValue === 'Semua' ||
+      String(date.getFullYear()) === String(filterState.yearValue);
+
+    return matchMonth && matchYear;
+  });
+}
+
+function buildExportRows(data = []) {
+  return data.map((row, index) => {
+    const date = new Date(row.created_at);
+    const isValidDate = !Number.isNaN(date.getTime());
+
+    return {
+      No: index + 1,
+      Tanggal: isValidDate ? date.toLocaleDateString('id-ID') : row.created_at,
+      Jam: isValidDate ? date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '',
+      Jenis: row.jenis === 'masuk' ? 'Pemasukan' : 'Pengeluaran',
+      Kategori: row.kategori || '-',
+      Nominal: Number(row.nominal) || 0
+    };
+  });
+}
+
+function getExportTotals(data = []) {
+  return data.reduce((acc, row) => {
+    const nominal = Number(row.nominal) || 0;
+    if (row.jenis === 'masuk') acc.pemasukan += nominal;
+    if (row.jenis === 'keluar') acc.pengeluaran += nominal;
+    acc.selisih = acc.pemasukan - acc.pengeluaran;
+    return acc;
+  }, { pemasukan: 0, pengeluaran: 0, selisih: 0 });
+}
+
+function safeSheetName(name = 'Transaksi') {
+  return String(name)
+    .replace(/[\\/*?:[\]]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 31) || 'Transaksi';
+}
+
+
 async function exportToExcel() {
   if (!currentUser) return;
 
   let data = [];
   try {
-    data = await fetchUserTransactions({ ascending: false });
+    data = await fetchUserTransactions({ ascending: true });
   } catch (error) {
     return showError('Gagal export Excel', error);
   }
 
-  const rows = (data || []).map((row) => ({
-    Tanggal: row.created_at,
-    Jenis: row.jenis,
-    Kategori: row.kategori,
-    Nominal: Number(row.nominal) || 0,
-    User_ID: row.user_id
-  }));
+  const filterState = getRiwayatFilterState();
+  const filteredData = filterTransactionsByRiwayat(data, filterState)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  const rows = buildExportRows(filteredData);
 
   if (!rows.length) {
-    return showWarning('Belum ada data', 'Belum ada transaksi untuk diexport ke Excel. File kosong itu bukan laporan, itu harapan.');
+    return showWarning(
+      'Belum ada data',
+      `Tidak ada transaksi pada filter ${filterState.label}. File Excel kosong itu bukan laporan, itu cuma spreadsheet yang sedang merenung.`
+    );
   }
 
   if (typeof XLSX === 'undefined') {
     return showWarning('Library Excel belum siap', 'XLSX belum termuat. Coba refresh halaman atau cek koneksi internet.');
   }
 
-  const worksheet = XLSX.utils.json_to_sheet(rows);
+  const totals = getExportTotals(filteredData);
+  const exportedAt = new Date();
+
+  const summaryRows = [
+    ['Laporan Riwayat Keuangan Olah Uang'],
+    ['Periode', filterState.label],
+    ['Tanggal Export', exportedAt.toLocaleString('id-ID')],
+    ['Jumlah Transaksi', rows.length],
+    [],
+    ['Total Pemasukan', totals.pemasukan],
+    ['Total Pengeluaran', totals.pengeluaran],
+    ['Selisih', totals.selisih]
+  ];
+
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Transaksi');
-  XLSX.writeFile(workbook, `riwayat-keuangan-${new Date().toISOString().slice(0, 10)}.xlsx`);
+
+  const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
+  summarySheet['!cols'] = [{ wch: 22 }, { wch: 22 }];
+  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Ringkasan');
+
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  worksheet['!cols'] = [
+    { wch: 6 },
+    { wch: 14 },
+    { wch: 10 },
+    { wch: 14 },
+    { wch: 24 },
+    { wch: 16 }
+  ];
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName(`Transaksi ${filterState.filePeriod}`));
+  XLSX.writeFile(workbook, `riwayat-keuangan-${filterState.filePeriod}.xlsx`);
 }
 
 
