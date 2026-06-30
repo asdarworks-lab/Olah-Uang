@@ -20,7 +20,7 @@
       } catch (error) {}
     })();
   </script>
-  <title>Olah Uang</title>
+  <title>Dashboard — Olah Uang</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -2325,7 +2325,7 @@
           <select id="filterTahunRiwayat" onchange="syncYearFilterFromRiwayat()" class="w-full text-xs md:text-sm bg-gray-50 border border-gray-200 text-gray-700 rounded-xl px-2 md:px-3 py-2 outline-none cursor-pointer">
             <option value="Semua">Semua Tahun</option>
           </select>
-          <button onclick="exportToExcel()" title="Export Excel sesuai filter riwayat aktif" class="hidden md:inline-flex items-center justify-center h-10 px-4 bg-emerald-600 text-white text-xs font-bold rounded-xl soft-card cursor-pointer whitespace-nowrap">Excel</button>
+          <button onclick="exportToExcel()" title="Export Excel sesuai filter, lengkap dengan kategori dan budget/target" class="hidden md:inline-flex items-center justify-center h-10 px-4 bg-emerald-600 text-white text-xs font-bold rounded-xl soft-card cursor-pointer whitespace-nowrap">Excel</button>
         </div>
       </div>
       <div class="overflow-x-auto">
@@ -2711,7 +2711,7 @@
     </div>
   </nav>
 
-  <script src="./script.js?v=20260630-v107-export-excel-filtered"></script>
+  <script src="./script.js?v=20260630-v108-export-excel-categories"></script>
 
   <script>
     function updateDashboardPwaTopColor() {
