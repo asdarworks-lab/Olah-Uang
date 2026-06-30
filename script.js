@@ -7,7 +7,7 @@ const SUPABASE_URL = 'https://uezjncjapumyrkjxzslw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_gMbWszjY1XIou5Cj4wDkjg_UlGiuOd5';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 window.db = db;
-const APP_VERSION = '20260630-v107-export-excel-filtered';
+const APP_VERSION = '20260630-v108-export-excel-categories';
 console.log(`Olah Uang script loaded: ${APP_VERSION}`);
 window.OLAH_UANG_VERSION = APP_VERSION;
 document.documentElement.setAttribute('data-olah-uang-version', APP_VERSION);
@@ -2922,6 +2922,78 @@ function safeSheetName(name = 'Transaksi') {
 }
 
 
+
+function sumNominalByCategoryForExport(data = [], jenis = 'keluar') {
+  return (data || []).reduce((acc, row) => {
+    if (row.jenis !== jenis) return acc;
+    const kategori = (row.kategori || '-').trim();
+    acc[kategori] = (acc[kategori] || 0) + (Number(row.nominal) || 0);
+    return acc;
+  }, {});
+}
+
+function buildExpenseCategoryExportRows(data = []) {
+  const terpakaiMap = sumNominalByCategoryForExport(data, 'keluar');
+  const categoryNames = new Set([
+    ...Object.keys(rencanaBudget || {}),
+    ...Object.keys(terpakaiMap || {})
+  ]);
+
+  return Array.from(categoryNames).map((kategori, index) => {
+    const budget = Number(rencanaBudget?.[kategori] || 0);
+    const terpakai = Number(terpakaiMap?.[kategori] || 0);
+    const sisa = budget - terpakai;
+    const persen = budget > 0 ? Math.round((terpakai / budget) * 100) : (terpakai > 0 ? 100 : 0);
+
+    return {
+      No: index + 1,
+      'Kategori Pengeluaran': kategori,
+      'Budget': budget,
+      'Terpakai Periode Filter': terpakai,
+      'Sisa Budget': sisa,
+      'Persentase Terpakai': `${persen}%`,
+      'Status': budget <= 0
+        ? (terpakai > 0 ? 'Belum ada budget' : 'Tanpa budget')
+        : (terpakai > budget ? 'Over budget' : 'Aman')
+    };
+  });
+}
+
+function buildIncomeCategoryExportRows(data = []) {
+  const terkumpulMap = sumNominalByCategoryForExport(data, 'masuk');
+  const categoryNames = new Set([
+    ...Object.keys(targetPemasukan || {}),
+    ...Object.keys(terkumpulMap || {})
+  ]);
+
+  return Array.from(categoryNames).map((kategori, index) => {
+    const target = Number(targetPemasukan?.[kategori] || 0);
+    const terkumpul = Number(terkumpulMap?.[kategori] || 0);
+    const selisih = target - terkumpul;
+    const persen = target > 0 ? Math.round((terkumpul / target) * 100) : (terkumpul > 0 ? 100 : 0);
+
+    return {
+      No: index + 1,
+      'Kategori Pemasukan': kategori,
+      'Target': target,
+      'Terkumpul Periode Filter': terkumpul,
+      'Selisih Target': selisih,
+      'Persentase Tercapai': `${persen}%`,
+      'Status': target <= 0
+        ? (terkumpul > 0 ? 'Belum ada target' : 'Tanpa target')
+        : (terkumpul >= target ? 'Target tercapai' : 'Belum tercapai')
+    };
+  });
+}
+
+function appendJsonSheet(workbook, rows, sheetName, columns = []) {
+  const worksheet = XLSX.utils.json_to_sheet(rows.length ? rows : [{}]);
+  if (columns.length) worksheet['!cols'] = columns;
+  XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName(sheetName));
+  return worksheet;
+}
+
+
 async function exportToExcel() {
   if (!currentUser) return;
 
@@ -2952,11 +3024,16 @@ async function exportToExcel() {
   const totals = getExportTotals(filteredData);
   const exportedAt = new Date();
 
+  const expenseCategoryRows = buildExpenseCategoryExportRows(filteredData);
+  const incomeCategoryRows = buildIncomeCategoryExportRows(filteredData);
+
   const summaryRows = [
     ['Laporan Riwayat Keuangan Olah Uang'],
     ['Periode', filterState.label],
     ['Tanggal Export', exportedAt.toLocaleString('id-ID')],
     ['Jumlah Transaksi', rows.length],
+    ['Jumlah Kategori Pengeluaran', expenseCategoryRows.length],
+    ['Jumlah Kategori Pemasukan', incomeCategoryRows.length],
     [],
     ['Total Pemasukan', totals.pemasukan],
     ['Total Pengeluaran', totals.pengeluaran],
@@ -2980,6 +3057,27 @@ async function exportToExcel() {
   ];
 
   XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName(`Transaksi ${filterState.filePeriod}`));
+
+  appendJsonSheet(workbook, expenseCategoryRows, 'Kategori Pengeluaran', [
+    { wch: 6 },
+    { wch: 28 },
+    { wch: 16 },
+    { wch: 22 },
+    { wch: 16 },
+    { wch: 20 },
+    { wch: 18 }
+  ]);
+
+  appendJsonSheet(workbook, incomeCategoryRows, 'Kategori Pemasukan', [
+    { wch: 6 },
+    { wch: 28 },
+    { wch: 16 },
+    { wch: 22 },
+    { wch: 16 },
+    { wch: 20 },
+    { wch: 18 }
+  ]);
+
   XLSX.writeFile(workbook, `riwayat-keuangan-${filterState.filePeriod}.xlsx`);
 }
 
