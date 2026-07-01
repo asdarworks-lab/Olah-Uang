@@ -60,28 +60,44 @@ function buildDailySummary(userTransactions = [], dateString = '') {
 
   userTransactions.forEach((row) => {
     const nominal = Number(row.nominal) || 0;
-    if (row.jenis === 'masuk') pemasukan += nominal;
+
+    if (row.jenis === 'masuk') {
+      pemasukan += nominal;
+    }
+
     if (row.jenis === 'keluar') {
       pengeluaran += nominal;
-      const kategori = row.kategori || 'Lainnya';
+      const kategori = (row.kategori || 'Lainnya').trim();
       kategoriKeluar[kategori] = (kategoriKeluar[kategori] || 0) + nominal;
     }
   });
 
-  const topExpense = Object.entries(kategoriKeluar).sort((a, b) => b[1] - a[1])[0];
+  const expenseEntries = Object.entries(kategoriKeluar)
+    .sort((a, b) => b[1] - a[1]);
+
+  const topExpense = expenseEntries[0];
   const selisih = pemasukan - pengeluaran;
 
-  const lines = [
-    `Tanggal: ${dateString}`,
-    `Pemasukan: ${rupiah(pemasukan)}`,
-    `Pengeluaran: ${rupiah(pengeluaran)}`,
-    `Selisih: ${rupiah(selisih)}`
-  ];
+  const expenseList = expenseEntries.length
+    ? expenseEntries
+        .map(([kategori, nominal]) => `${kategori} ${rupiah(nominal)}`)
+        .join(' • ')
+    : 'Tidak ada pengeluaran';
 
-  if (topExpense) lines.push(`Terbesar: ${topExpense[0]} (${rupiah(topExpense[1])})`);
-  else lines.push('Belum ada pengeluaran hari ini.');
+  const summaryLine = `Keluar ${rupiah(pengeluaran)} • Masuk ${rupiah(pemasukan)}`;
+  const topLine = topExpense
+    ? `Selisih ${rupiah(selisih)} • Terbesar: ${topExpense[0]}`
+    : `Selisih ${rupiah(selisih)} • Terbesar: -`;
+  const expenseLine = `Pengeluaran: ${expenseList}`;
 
-  return { title: '📊 Ringkasan Harian Olah Uang', body: lines.join('\\n'), url: '/dashboard.html', tag: `olah-uang-daily-${dateString}` };
+  return {
+    title: 'Ringkasan Harian Olah Uang',
+    body: `${summaryLine}
+${topLine}
+${expenseLine}`,
+    url: '/dashboard.html',
+    tag: `olah-uang-daily-${dateString}`
+  };
 }
 
 async function markSubscriptionInactive(endpoint) {
