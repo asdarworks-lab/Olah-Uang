@@ -1,0 +1,3174 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta id="themeColorMeta" name="theme-color" content="#f7fbf9">
+  <meta id="navButtonColorMeta" name="msapplication-navbutton-color" content="#f7fbf9">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      try {
+        var isDark = localStorage.getItem('olahUangDarkMode') === '1';
+        var color = isDark ? '#020617' : '#f7fbf9';
+        document.documentElement.classList.toggle('dark', isDark);
+        document.documentElement.style.backgroundColor = color;
+        var themeMeta = document.getElementById('themeColorMeta');
+        var navMeta = document.getElementById('navButtonColorMeta');
+        if (themeMeta) themeMeta.setAttribute('content', color);
+        if (navMeta) navMeta.setAttribute('content', color);
+      } catch (error) {}
+    })();
+  </script>
+  <title>Dashboard — Olah Uang</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    * { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .soft-card { box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .app-header { background: rgba(249,250,251,.94); }
+    @media (max-width:767px) { .app-header { border-bottom:0 !important; } }
+    .desktop-nav-wrap { position:relative; isolation:isolate; }
+    .desktop-nav-indicator { position:absolute; left:0; top:0; width:0; height:0; border-radius:18px; background:#ecfdf5; box-shadow:0 10px 24px rgba(5,150,105,.12); transform:translate3d(0,0,0); transition:transform var(--nav-travel-duration,.72s) cubic-bezier(.18,.86,.22,1), width var(--nav-travel-duration,.72s) cubic-bezier(.18,.86,.22,1), height var(--nav-travel-duration,.72s) cubic-bezier(.18,.86,.22,1), background-color .22s ease, opacity .2s ease; z-index:0; opacity:0; pointer-events:none; }
+    .desktop-nav-wrap.ready .desktop-nav-indicator { opacity:1; }
+    .desktop-nav-link { color:#64748b; font-size:13px; font-weight:800; transition:color .2s ease .12s, transform .34s cubic-bezier(.22,1,.36,1) .22s; position:relative; z-index:1; padding:10px 13px; border-radius:16px; }
+    .desktop-nav-link:hover, .desktop-nav-link.active { color:#059669; }
+    .desktop-nav-link.active { transform:scale(1.05); }
+    .icon-nav-btn { width:40px; height:40px; border-radius:16px; display:flex; align-items:center; justify-content:center; color:#64748b; transition:color .2s ease .12s, transform .34s cubic-bezier(.22,1,.36,1) .22s; position:relative; z-index:1; }
+    .icon-nav-btn:hover, .icon-nav-btn.active { color:#059669; }
+    .icon-nav-btn.active { transform:scale(1.10); }
+    .mobile-nav-shell { position:relative; isolation:isolate; }
+    .mobile-nav-indicator { position:absolute; z-index:0; width:48px; height:48px; border-radius:18px; background:#059669; box-shadow:0 14px 28px rgba(5,150,105,.22); transform:translate3d(0,0,0); opacity:0; transition:transform var(--nav-travel-duration,.72s) cubic-bezier(.18,.86,.22,1), width var(--nav-travel-duration,.72s) cubic-bezier(.18,.86,.22,1), height var(--nav-travel-duration,.72s) cubic-bezier(.18,.86,.22,1), background-color .22s ease, box-shadow .22s ease, opacity .18s ease; pointer-events:none; }
+    .mobile-nav-shell.ready .mobile-nav-indicator { opacity:1; }
+    .mobile-nav-shell[data-active="catat"] .mobile-nav-indicator { background:#e11d48; box-shadow:0 14px 28px rgba(225,29,72,.24); }
+    .bottom-nav-item { color:#94a3b8; transition:transform .32s cubic-bezier(.22,1,.36,1) .22s, color .18s ease .08s; position:relative; border-radius:18px; height:44px; min-height:44px; overflow:visible; z-index:1; }
+    .bottom-nav-item .nav-bubble { width:38px; height:38px; border-radius:16px; display:flex; align-items:center; justify-content:center; margin:0 auto; transition:transform .32s cubic-bezier(.22,1,.36,1) .22s, filter .18s ease .1s, color .18s ease .08s; position:relative; z-index:2; background:transparent; box-shadow:none; }
+    .bottom-nav-item .nav-bubble svg { width:23px; height:23px; stroke-width:2.05; filter:drop-shadow(0 4px 6px rgba(15,23,42,.12)); }
+    .bottom-nav-item.active { color:#fff; transform:translateY(-8px) scale(1.06); }
+    .bottom-nav-item.active .nav-bubble { transform:scale(1.08); filter:drop-shadow(0 7px 12px rgba(5,150,105,.22)); }
+    .bottom-nav-item[data-nav="catat"] { color:#e11d48; }
+    .bottom-nav-item[data-nav="catat"].active { color:#fff; }
+    .bottom-nav-item[data-nav="catat"].active .nav-bubble { filter:drop-shadow(0 8px 13px rgba(225,29,72,.28)); }
+    .bottom-nav-item.nav-changing::after { content:""; position:absolute; left:50%; bottom:-2px; width:42px; height:10px; border-radius:999px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.48),transparent); transform:translateX(-50%) scaleX(.55); opacity:0; animation:softWaterFlow .48s cubic-bezier(.2,.8,.3,1); pointer-events:none; z-index:3; }
+    @keyframes softWaterFlow { 0%{transform:translateX(-62%) scaleX(.35); opacity:0;} 45%{transform:translateX(-50%) scaleX(.92); opacity:.48;} 100%{transform:translateX(-38%) scaleX(1.05); opacity:0;} }
+    .modal-close-btn { width:38px; height:38px; border-radius:16px; display:flex; align-items:center; justify-content:center; background:#f8fafc; color:#64748b; border:1px solid #e5e7eb; box-shadow:0 8px 18px rgba(15,23,42,.08); transition:none; transform:none; }
+    .modal-close-btn:hover { background:#f1f5f9; color:#0f172a; border-color:#cbd5e1; transform:none; }
+    #profileSettingsPanel.is-editing, #expenseSettingsPanel.is-editing, #incomeSettingsPanel.is-editing { border-color:#10b981 !important; background:linear-gradient(180deg,#ffffff 0%,#f0fdf4 100%) !important; box-shadow:0 16px 38px rgba(16,185,129,.12) !important; }
+    .setting-row { display:grid; grid-template-columns: minmax(0,1fr) 128px 42px; gap:.5rem; align-items:center; }
+    @media (max-width:640px) { .setting-row { grid-template-columns: minmax(0,1fr) 94px 40px; } }
+    .setting-row button { position:static !important; display:flex; align-items:center; justify-content:center; }
+    .setting-bottom-save { margin-top:1rem; justify-content:center; }
+    .setting-action-btn { min-height:46px; min-width:170px; display:inline-flex; align-items:center; justify-content:center; white-space:nowrap; }
+    .chart-box { min-height:320px; display:flex; align-items:center; justify-content:center; }
+    .chart-box canvas { width:100% !important; max-height:320px; }
+    .summary-period-card { min-height:86px; display:flex; flex-direction:column; justify-content:center; text-align:center; }
+    .dark body, body.dark { background:#020617 !important; color:#e5e7eb !important; }
+    .dark .app-header { background:rgba(2,6,23,.94) !important; border-color:#1e293b !important; }
+    .dark .mobile-bottom-nav { background:#0f172a !important; border-color:#1e293b !important; }
+    .dark .desktop-nav-link { color:#94a3b8 !important; }
+    .dark .desktop-nav-link:hover, .dark .desktop-nav-link.active { color:#34d399 !important; }
+    .dark .desktop-nav-indicator { background:#064e3b !important; box-shadow:0 10px 24px rgba(16,185,129,.14) !important; }
+    .dark .icon-nav-btn { color:#94a3b8 !important; }
+    .dark .icon-nav-btn:hover, .dark .icon-nav-btn.active { color:#a7f3d0 !important; }
+    .dark .bottom-nav-item { color:#64748b !important; }
+    .dark .mobile-nav-indicator { background:#059669 !important; box-shadow:0 14px 28px rgba(16,185,129,.18) !important; }
+    .dark .mobile-nav-shell[data-active="catat"] .mobile-nav-indicator { background:#e11d48 !important; box-shadow:0 14px 28px rgba(225,29,72,.22) !important; }
+    .dark .bottom-nav-item.active { color:#fff !important; }
+    .dark .bottom-nav-item[data-nav="catat"] { color:#fecdd3 !important; }
+    .dark .bottom-nav-item[data-nav="catat"].active { color:#fff !important; }
+    .dark .bg-white { background-color:#0f172a !important; }
+    .dark .bg-gray-50 { background-color:#020617 !important; }
+    .dark .bg-gray-100 { background-color:#1e293b !important; }
+    .dark .bg-gray-200 { background-color:#334155 !important; }
+    .dark .text-gray-900, .dark .text-gray-800, .dark .text-gray-700 { color:#f8fafc !important; }
+    .dark .text-gray-600, .dark .text-gray-500, .dark .text-gray-400 { color:#94a3b8 !important; }
+    .dark .border-gray-50, .dark .border-gray-100, .dark .border-gray-200 { border-color:#1e293b !important; }
+    .dark input, .dark select { background-color:#111827 !important; color:#e5e7eb !important; border-color:#334155 !important; }
+    .dark input:disabled, .dark select:disabled { background-color:#0f172a !important; color:#94a3b8 !important; }
+    .dark #profileSettingsPanel.is-editing, .dark #expenseSettingsPanel.is-editing, .dark #incomeSettingsPanel.is-editing { border-color:#34d399 !important; background:linear-gradient(180deg,#0f172a 0%,#052e2b 100%) !important; box-shadow:0 16px 38px rgba(16,185,129,.16) !important; }
+    .dark #profileSettingsPanel.is-editing h2::after, .dark #expenseSettingsPanel.is-editing h2::after, .dark #incomeSettingsPanel.is-editing h2::after { background:#064e3b; color:#a7f3d0; }
+    .dark .modal-close-btn { background:#111827; border-color:#334155; color:#cbd5e1; }
+    .dark .modal-close-btn:hover { background:#1e293b; color:#f8fafc; border-color:#475569; }
+    .dark .soft-card { box-shadow:0 8px 28px rgba(0,0,0,.25); }
+
+    /* v83: Android PWA top/status area mengikuti dark mode dashboard pengguna */
+    html,
+    body {
+      min-height: 100%;
+      background-color: #f7fbf9 !important;
+    }
+
+    html.dark,
+    html.dark body,
+    body.dark {
+      background-color: #020617 !important;
+    }
+
+    html.dark body[data-page="dashboard-user"],
+    body.dark[data-page="dashboard-user"] {
+      background: #020617 !important;
+    }
+
+    body[data-page="dashboard-user"]:not(.dark) {
+      background: #f7fbf9 !important;
+    }
+
+    body.dark .app-header,
+    html.dark body .app-header {
+      background: #020617 !important;
+      border-color: #1e293b !important;
+    }
+
+    body:not(.dark) .app-header,
+    html:not(.dark) body .app-header {
+      background: #f7fbf9 !important;
+    }
+
+    @supports (padding-top: env(safe-area-inset-top)) {
+      body[data-page="dashboard-user"] .app-header {
+        padding-top: calc(1rem + env(safe-area-inset-top));
+      }
+
+      body[data-page="dashboard-user"]::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: env(safe-area-inset-top);
+        background: #f7fbf9;
+        z-index: 2147483647;
+        pointer-events: none;
+      }
+
+      body.dark[data-page="dashboard-user"]::before,
+      html.dark body[data-page="dashboard-user"]::before {
+        background: #020617 !important;
+      }
+    }
+
+
+
+
+    /* v90: Premium onboarding pengguna baru */
+    #onboardingModal {
+      z-index: 90;
+    }
+
+    #onboardingModal.hidden {
+      display: none !important;
+    }
+
+    .onboarding-backdrop {
+      background:
+        radial-gradient(circle at 12% 18%, rgba(16, 185, 129, .28), transparent 32%),
+        radial-gradient(circle at 82% 78%, rgba(59, 130, 246, .20), transparent 30%),
+        rgba(15, 23, 42, .62);
+    }
+
+    .onboarding-shell {
+      width: min(94vw, 920px);
+      max-height: min(90vh, 760px);
+      overflow: hidden;
+      border-radius: 2rem;
+      background: rgba(255, 255, 255, .96);
+      border: 1px solid rgba(226, 232, 240, .92);
+      box-shadow: 0 30px 90px rgba(15, 23, 42, .22);
+      animation: onboardingPop .34s cubic-bezier(.2, .9, .2, 1) both;
+    }
+
+    .onboarding-grid {
+      display: grid;
+      grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr);
+      min-height: 560px;
+    }
+
+    .onboarding-visual {
+      position: relative;
+      overflow: hidden;
+      padding: 1.5rem;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(236, 253, 245, .82), transparent 32%),
+        radial-gradient(circle at 82% 75%, rgba(167, 243, 208, .44), transparent 35%),
+        linear-gradient(145deg, #064e3b 0%, #059669 48%, #0f766e 100%);
+      color: #ecfdf5;
+    }
+
+    .onboarding-visual::before,
+    .onboarding-visual::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      pointer-events: none;
+    }
+
+    .onboarding-visual::before {
+      width: 17rem;
+      height: 17rem;
+      left: -5rem;
+      top: -4rem;
+      background: rgba(255, 255, 255, .16);
+      filter: blur(.5px);
+    }
+
+    .onboarding-visual::after {
+      width: 15rem;
+      height: 15rem;
+      right: -5rem;
+      bottom: -5rem;
+      background: rgba(255, 255, 255, .12);
+    }
+
+    .onboarding-brand-chip {
+      position: relative;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      gap: .6rem;
+      border-radius: 999px;
+      padding: .55rem .8rem;
+      background: rgba(255, 255, 255, .15);
+      border: 1px solid rgba(255, 255, 255, .22);
+      backdrop-filter: blur(16px);
+      font-size: .75rem;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .onboarding-hero-icon {
+      position: relative;
+      z-index: 1;
+      width: 5.75rem;
+      height: 5.75rem;
+      margin-top: 3.4rem;
+      border-radius: 1.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      background: rgba(255, 255, 255, .18);
+      border: 1px solid rgba(255, 255, 255, .26);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 24px 60px rgba(5, 46, 22, .24);
+      transform-origin: center;
+    }
+
+    .onboarding-hero-copy {
+      position: relative;
+      z-index: 1;
+      margin-top: 1.35rem;
+    }
+
+    .onboarding-hero-copy h3 {
+      font-size: 1.65rem;
+      line-height: 1.15;
+      font-weight: 900;
+      letter-spacing: -.035em;
+      margin: 0;
+    }
+
+    .onboarding-hero-copy p {
+      margin-top: .65rem;
+      color: rgba(236, 253, 245, .80);
+      font-size: .9rem;
+      line-height: 1.7;
+    }
+
+    .onboarding-phone {
+      position: relative;
+      z-index: 1;
+      margin-top: 1.6rem;
+      border-radius: 1.75rem;
+      padding: .9rem;
+      background: rgba(2, 6, 23, .24);
+      border: 1px solid rgba(255, 255, 255, .18);
+      backdrop-filter: blur(18px);
+    }
+
+    .onboarding-phone-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: .75rem;
+      color: rgba(236, 253, 245, .72);
+      font-size: .72rem;
+      font-weight: 800;
+    }
+
+    .onboarding-phone-line {
+      height: .72rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,.18);
+    }
+
+    .onboarding-phone-card {
+      border-radius: 1.15rem;
+      padding: .9rem;
+      background: rgba(255,255,255,.14);
+      border: 1px solid rgba(255,255,255,.14);
+    }
+
+    .onboarding-content {
+      position: relative;
+      padding: 1.45rem;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .onboarding-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 2.6rem;
+      height: 2.6rem;
+      border-radius: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      color: #64748b;
+      transition: transform .18s ease, background .18s ease, color .18s ease;
+    }
+
+    .onboarding-close:hover {
+      transform: translateY(-1px);
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .onboarding-step-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      width: fit-content;
+      border-radius: 999px;
+      padding: .45rem .75rem;
+      background: #ecfdf5;
+      color: #047857;
+      font-size: .72rem;
+      font-weight: 900;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+    }
+
+    .onboarding-title {
+      margin-top: 1.15rem;
+      max-width: 26rem;
+      font-size: clamp(1.75rem, 4.2vw, 2.55rem);
+      line-height: 1.08;
+      font-weight: 900;
+      letter-spacing: -.045em;
+      color: #0f172a;
+    }
+
+    .onboarding-desc {
+      margin-top: .9rem;
+      max-width: 28rem;
+      font-size: .98rem;
+      line-height: 1.85;
+      color: #64748b;
+    }
+
+    .onboarding-highlight-grid {
+      display: grid;
+      gap: .75rem;
+      margin-top: 1.2rem;
+    }
+
+    .onboarding-highlight {
+      display: flex;
+      gap: .8rem;
+      align-items: flex-start;
+      border-radius: 1.2rem;
+      border: 1px solid #e5e7eb;
+      background: #f8fafc;
+      padding: .85rem;
+    }
+
+    .onboarding-highlight-icon {
+      width: 2.1rem;
+      height: 2.1rem;
+      flex: 0 0 auto;
+      border-radius: .85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ecfdf5;
+      color: #059669;
+      font-size: 1rem;
+    }
+
+    .onboarding-highlight strong {
+      display: block;
+      color: #0f172a;
+      font-size: .86rem;
+      font-weight: 900;
+      line-height: 1.35;
+    }
+
+    .onboarding-highlight span {
+      display: block;
+      margin-top: .18rem;
+      color: #64748b;
+      font-size: .78rem;
+      line-height: 1.55;
+      font-weight: 600;
+    }
+
+    .onboarding-tip {
+      margin-top: 1rem;
+      border-radius: 1.2rem;
+      padding: .85rem;
+      background: linear-gradient(135deg, #fffbeb, #fff7ed);
+      border: 1px solid #fde68a;
+      color: #92400e;
+      font-size: .82rem;
+      line-height: 1.65;
+      font-weight: 700;
+    }
+
+    .onboarding-progress-wrap {
+      margin-top: auto;
+      padding-top: 1.4rem;
+    }
+
+    .onboarding-progress-track {
+      height: .55rem;
+      width: 100%;
+      border-radius: 999px;
+      background: #e5e7eb;
+      overflow: hidden;
+    }
+
+    .onboarding-progress-fill {
+      height: 100%;
+      width: 20%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #059669, #34d399);
+      transition: width .34s cubic-bezier(.2, .9, .2, 1);
+    }
+
+    .onboarding-dots {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .4rem;
+      margin-top: .9rem;
+    }
+
+    .onboarding-dot {
+      width: .48rem;
+      height: .48rem;
+      border-radius: 999px;
+      background: #cbd5e1;
+      transition: width .24s ease, background .24s ease, transform .24s ease;
+    }
+
+    .onboarding-dot.is-active {
+      width: 1.5rem;
+      background: #059669;
+      transform: translateY(-1px);
+    }
+
+    .onboarding-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: .75rem;
+      margin-top: 1.1rem;
+    }
+
+    .onboarding-secondary,
+    .onboarding-primary {
+      border-radius: 1rem;
+      padding: .85rem 1rem;
+      font-size: .85rem;
+      font-weight: 900;
+      transition: transform .18s ease, background .18s ease, box-shadow .18s ease, opacity .18s ease;
+    }
+
+    .onboarding-secondary {
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    .onboarding-secondary:hover {
+      background: #e2e8f0;
+      transform: translateY(-1px);
+    }
+
+    .onboarding-primary {
+      min-width: 9rem;
+      background: linear-gradient(135deg, #059669, #047857);
+      color: white;
+      box-shadow: 0 14px 28px rgba(5, 150, 105, .22);
+    }
+
+    .onboarding-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 34px rgba(5, 150, 105, .28);
+    }
+
+    .onboarding-step-enter {
+      animation: onboardingStepIn .26s cubic-bezier(.2, .9, .2, 1) both;
+    }
+
+    .onboarding-visual-pulse {
+      animation: onboardingPulse .38s cubic-bezier(.2, .9, .2, 1) both;
+    }
+
+    @keyframes onboardingPop {
+      from { opacity: 0; transform: translateY(14px) scale(.975); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes onboardingStepIn {
+      from { opacity: 0; transform: translateY(10px); filter: blur(3px); }
+      to { opacity: 1; transform: translateY(0); filter: blur(0); }
+    }
+
+    @keyframes onboardingPulse {
+      0% { transform: scale(.94) rotate(-2deg); }
+      70% { transform: scale(1.04) rotate(1deg); }
+      100% { transform: scale(1) rotate(0); }
+    }
+
+    body.dark .onboarding-shell {
+      background: rgba(15, 23, 42, .97) !important;
+      border-color: #1e293b !important;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, .45) !important;
+    }
+
+    body.dark .onboarding-close,
+    body.dark .onboarding-secondary {
+      background: #111827 !important;
+      border-color: #1e293b !important;
+      color: #cbd5e1 !important;
+    }
+
+    body.dark .onboarding-close:hover,
+    body.dark .onboarding-secondary:hover {
+      background: #1e293b !important;
+      color: #f8fafc !important;
+    }
+
+    body.dark .onboarding-step-badge {
+      background: rgba(6, 95, 70, .26) !important;
+      color: #86efac !important;
+    }
+
+    body.dark .onboarding-title,
+    body.dark .onboarding-highlight strong {
+      color: #f8fafc !important;
+    }
+
+    body.dark .onboarding-desc,
+    body.dark .onboarding-highlight span {
+      color: #94a3b8 !important;
+    }
+
+    body.dark .onboarding-highlight {
+      background: #111827 !important;
+      border-color: #1e293b !important;
+    }
+
+    body.dark .onboarding-highlight-icon {
+      background: rgba(6, 95, 70, .28) !important;
+      color: #34d399 !important;
+    }
+
+    body.dark .onboarding-tip {
+      background: rgba(120, 53, 15, .20) !important;
+      border-color: rgba(251, 191, 36, .26) !important;
+      color: #fbbf24 !important;
+    }
+
+    body.dark .onboarding-progress-track,
+    body.dark .onboarding-dot {
+      background: #334155 !important;
+    }
+
+    body.dark .onboarding-dot.is-active {
+      background: #34d399 !important;
+    }
+
+    @media (max-width: 760px) {
+      .onboarding-shell {
+        width: min(94vw, 520px);
+        max-height: 92vh;
+        overflow-y: auto;
+        border-radius: 1.65rem;
+      }
+
+      .onboarding-grid {
+        display: block;
+        min-height: auto;
+      }
+
+      .onboarding-visual {
+        padding: 1.1rem;
+        min-height: 185px;
+      }
+
+      .onboarding-hero-icon {
+        width: 4.4rem;
+        height: 4.4rem;
+        margin-top: 1.4rem;
+        border-radius: 1.35rem;
+        font-size: 2.25rem;
+      }
+
+      .onboarding-hero-copy h3 {
+        font-size: 1.25rem;
+      }
+
+      .onboarding-phone {
+        display: none;
+      }
+
+      .onboarding-content {
+        padding: 1.15rem;
+      }
+
+      .onboarding-close {
+        top: .75rem;
+        right: .75rem;
+      }
+
+      .onboarding-title {
+        font-size: 1.65rem;
+      }
+
+      .onboarding-desc {
+        font-size: .92rem;
+        line-height: 1.75;
+      }
+
+      .onboarding-actions {
+        flex-direction: column-reverse;
+      }
+
+      .onboarding-primary,
+      .onboarding-secondary {
+        width: 100%;
+      }
+    }
+
+
+    /* v91: Mobile compact onboarding, disesuaikan untuk tinggi HP normal */
+    @media (max-width: 760px) {
+      #onboardingModal {
+        align-items: center !important;
+        padding: .75rem !important;
+      }
+
+      .onboarding-backdrop {
+        background:
+          radial-gradient(circle at 20% 10%, rgba(16, 185, 129, .22), transparent 28%),
+          rgba(15, 23, 42, .68) !important;
+      }
+
+      .onboarding-shell {
+        width: min(94vw, 420px) !important;
+        height: min(92dvh, 680px) !important;
+        max-height: 680px !important;
+        overflow: hidden !important;
+        border-radius: 1.45rem !important;
+      }
+
+      .onboarding-grid {
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+      }
+
+      .onboarding-visual {
+        min-height: 112px !important;
+        height: 112px !important;
+        padding: .85rem 1rem !important;
+        display: grid !important;
+        grid-template-columns: auto minmax(0, 1fr) !important;
+        align-items: center !important;
+        gap: .85rem !important;
+        flex: 0 0 auto !important;
+      }
+
+      .onboarding-brand-chip,
+      .onboarding-phone {
+        display: none !important;
+      }
+
+      .onboarding-visual::before {
+        width: 8rem !important;
+        height: 8rem !important;
+        left: -3rem !important;
+        top: -3rem !important;
+      }
+
+      .onboarding-visual::after {
+        width: 8rem !important;
+        height: 8rem !important;
+        right: -3rem !important;
+        bottom: -3rem !important;
+      }
+
+      .onboarding-hero-icon {
+        width: 4.25rem !important;
+        height: 4.25rem !important;
+        margin: 0 !important;
+        border-radius: 1.25rem !important;
+        font-size: 2.15rem !important;
+      }
+
+      .onboarding-hero-copy {
+        margin: 0 !important;
+        min-width: 0 !important;
+      }
+
+      .onboarding-hero-copy h3 {
+        font-size: 1.08rem !important;
+        line-height: 1.2 !important;
+        letter-spacing: -.025em !important;
+        display: -webkit-box !important;
+        -webkit-line-clamp: 2 !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+      }
+
+      .onboarding-hero-copy p {
+        margin-top: .25rem !important;
+        font-size: .72rem !important;
+        line-height: 1.45 !important;
+        display: -webkit-box !important;
+        -webkit-line-clamp: 2 !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+      }
+
+      .onboarding-content {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        padding: .95rem !important;
+        overflow: hidden !important;
+      }
+
+      .onboarding-close {
+        top: .65rem !important;
+        right: .65rem !important;
+        width: 2.25rem !important;
+        height: 2.25rem !important;
+        border-radius: .85rem !important;
+      }
+
+      .onboarding-step-badge {
+        padding: .35rem .6rem !important;
+        font-size: .62rem !important;
+        letter-spacing: .08em !important;
+      }
+
+      .onboarding-title {
+        margin-top: .65rem !important;
+        font-size: 1.28rem !important;
+        line-height: 1.15 !important;
+        letter-spacing: -.03em !important;
+        max-width: calc(100% - 2.6rem) !important;
+        display: -webkit-box !important;
+        -webkit-line-clamp: 2 !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+      }
+
+      .onboarding-desc {
+        margin-top: .5rem !important;
+        font-size: .82rem !important;
+        line-height: 1.55 !important;
+        display: -webkit-box !important;
+        -webkit-line-clamp: 3 !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+      }
+
+      .onboarding-highlight-grid {
+        margin-top: .75rem !important;
+        gap: .5rem !important;
+      }
+
+      .onboarding-highlight {
+        gap: .55rem !important;
+        border-radius: .95rem !important;
+        padding: .62rem !important;
+      }
+
+      .onboarding-highlight:nth-child(n+3) {
+        display: none !important;
+      }
+
+      .onboarding-highlight-icon {
+        width: 1.75rem !important;
+        height: 1.75rem !important;
+        border-radius: .7rem !important;
+        font-size: .88rem !important;
+      }
+
+      .onboarding-highlight strong {
+        font-size: .78rem !important;
+        line-height: 1.25 !important;
+      }
+
+      .onboarding-highlight span {
+        margin-top: .08rem !important;
+        font-size: .69rem !important;
+        line-height: 1.35 !important;
+        display: -webkit-box !important;
+        -webkit-line-clamp: 2 !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+      }
+
+      .onboarding-tip {
+        margin-top: .55rem !important;
+        padding: .58rem .65rem !important;
+        border-radius: .9rem !important;
+        font-size: .68rem !important;
+        line-height: 1.38 !important;
+        display: -webkit-box !important;
+        -webkit-line-clamp: 2 !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+      }
+
+      .onboarding-progress-wrap {
+        padding-top: .75rem !important;
+        margin-top: auto !important;
+        flex: 0 0 auto !important;
+      }
+
+      .onboarding-progress-track {
+        height: .42rem !important;
+      }
+
+      .onboarding-dots {
+        margin-top: .55rem !important;
+        gap: .32rem !important;
+      }
+
+      .onboarding-dot {
+        width: .4rem !important;
+        height: .4rem !important;
+      }
+
+      .onboarding-dot.is-active {
+        width: 1.15rem !important;
+      }
+
+      .onboarding-actions {
+        margin-top: .7rem !important;
+        gap: .5rem !important;
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+      }
+
+      .onboarding-actions > .flex {
+        display: grid !important;
+        grid-template-columns: .82fr 1.18fr !important;
+        gap: .5rem !important;
+      }
+
+      .onboarding-primary,
+      .onboarding-secondary {
+        width: 100% !important;
+        min-width: 0 !important;
+        padding: .72rem .75rem !important;
+        border-radius: .9rem !important;
+        font-size: .76rem !important;
+      }
+
+      #onboardingBackBtn {
+        order: 2 !important;
+      }
+    }
+
+    @media (max-width: 380px), (max-height: 720px) {
+      .onboarding-shell {
+        height: min(94dvh, 620px) !important;
+      }
+
+      .onboarding-visual {
+        height: 92px !important;
+        min-height: 92px !important;
+        padding: .7rem .85rem !important;
+      }
+
+      .onboarding-hero-icon {
+        width: 3.55rem !important;
+        height: 3.55rem !important;
+        border-radius: 1rem !important;
+        font-size: 1.8rem !important;
+      }
+
+      .onboarding-hero-copy h3 {
+        font-size: .98rem !important;
+        -webkit-line-clamp: 1 !important;
+      }
+
+      .onboarding-hero-copy p {
+        font-size: .66rem !important;
+        -webkit-line-clamp: 1 !important;
+      }
+
+      .onboarding-content {
+        padding: .78rem !important;
+      }
+
+      .onboarding-title {
+        font-size: 1.12rem !important;
+        margin-top: .48rem !important;
+      }
+
+      .onboarding-desc {
+        font-size: .76rem !important;
+        line-height: 1.45 !important;
+        -webkit-line-clamp: 2 !important;
+      }
+
+      .onboarding-highlight-grid {
+        margin-top: .55rem !important;
+      }
+
+      .onboarding-highlight {
+        padding: .5rem !important;
+      }
+
+      .onboarding-highlight span {
+        -webkit-line-clamp: 1 !important;
+      }
+
+      .onboarding-tip {
+        display: none !important;
+      }
+
+      .onboarding-progress-wrap {
+        padding-top: .55rem !important;
+      }
+
+      .onboarding-actions {
+        margin-top: .55rem !important;
+      }
+
+      .onboarding-primary,
+      .onboarding-secondary {
+        padding: .62rem .7rem !important;
+        font-size: .72rem !important;
+      }
+    }
+
+
+    /* v92: Onboarding mobile tanpa teks terpotong */
+    @media (max-width: 760px) {
+      .onboarding-shell {
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        height: auto !important;
+        max-height: 92dvh !important;
+      }
+
+      .onboarding-grid {
+        min-height: auto !important;
+      }
+
+      .onboarding-hero-copy h3,
+      .onboarding-hero-copy p,
+      .onboarding-title,
+      .onboarding-desc,
+      .onboarding-highlight span,
+      .onboarding-tip {
+        display: block !important;
+        -webkit-line-clamp: unset !important;
+        -webkit-box-orient: initial !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+      }
+
+      .onboarding-hero-copy h3 {
+        font-size: 1rem !important;
+        line-height: 1.22 !important;
+      }
+
+      .onboarding-hero-copy p {
+        font-size: .68rem !important;
+        line-height: 1.38 !important;
+      }
+
+      .onboarding-title {
+        max-width: calc(100% - 2.7rem) !important;
+        font-size: 1.18rem !important;
+        line-height: 1.22 !important;
+      }
+
+      .onboarding-desc {
+        font-size: .78rem !important;
+        line-height: 1.5 !important;
+      }
+
+      .onboarding-highlight strong {
+        font-size: .74rem !important;
+      }
+
+      .onboarding-highlight span {
+        font-size: .66rem !important;
+        line-height: 1.32 !important;
+      }
+
+      .onboarding-tip {
+        font-size: .66rem !important;
+        line-height: 1.34 !important;
+      }
+    }
+
+    @media (max-width: 380px), (max-height: 720px) {
+      .onboarding-shell {
+        max-height: 94dvh !important;
+        overflow-y: auto !important;
+      }
+
+      .onboarding-visual {
+        height: 88px !important;
+        min-height: 88px !important;
+      }
+
+      .onboarding-title {
+        font-size: 1.06rem !important;
+      }
+
+      .onboarding-desc {
+        font-size: .72rem !important;
+        line-height: 1.42 !important;
+      }
+
+      .onboarding-highlight span {
+        display: block !important;
+        -webkit-line-clamp: unset !important;
+        overflow: visible !important;
+      }
+
+      .onboarding-tip {
+        display: block !important;
+        -webkit-line-clamp: unset !important;
+        overflow: visible !important;
+      }
+    }
+
+
+    /* v93: Onboarding desktop disamakan dengan gaya mobile */
+    #onboardingModal {
+      align-items: center !important;
+      padding: 1rem !important;
+    }
+
+    .onboarding-shell {
+      width: min(94vw, 540px) !important;
+      height: auto !important;
+      max-height: 92dvh !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      border-radius: 1.55rem !important;
+    }
+
+    .onboarding-grid {
+      display: flex !important;
+      flex-direction: column !important;
+      min-height: auto !important;
+      height: auto !important;
+    }
+
+    .onboarding-visual {
+      min-height: 118px !important;
+      height: 118px !important;
+      padding: .9rem 1rem !important;
+      display: grid !important;
+      grid-template-columns: auto minmax(0, 1fr) !important;
+      align-items: center !important;
+      gap: .9rem !important;
+      flex: 0 0 auto !important;
+    }
+
+    .onboarding-brand-chip,
+    .onboarding-phone {
+      display: none !important;
+    }
+
+    .onboarding-visual::before {
+      width: 9rem !important;
+      height: 9rem !important;
+      left: -3.25rem !important;
+      top: -3.25rem !important;
+    }
+
+    .onboarding-visual::after {
+      width: 9rem !important;
+      height: 9rem !important;
+      right: -3.25rem !important;
+      bottom: -3.25rem !important;
+    }
+
+    .onboarding-hero-icon {
+      width: 4.45rem !important;
+      height: 4.45rem !important;
+      margin: 0 !important;
+      border-radius: 1.25rem !important;
+      font-size: 2.2rem !important;
+    }
+
+    .onboarding-hero-copy {
+      margin: 0 !important;
+      min-width: 0 !important;
+    }
+
+    .onboarding-hero-copy h3 {
+      font-size: 1.08rem !important;
+      line-height: 1.24 !important;
+      letter-spacing: -.025em !important;
+      display: block !important;
+      overflow: visible !important;
+    }
+
+    .onboarding-hero-copy p {
+      margin-top: .28rem !important;
+      font-size: .72rem !important;
+      line-height: 1.45 !important;
+      display: block !important;
+      overflow: visible !important;
+    }
+
+    .onboarding-content {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      padding: 1rem !important;
+      overflow: visible !important;
+    }
+
+    .onboarding-close {
+      top: .72rem !important;
+      right: .72rem !important;
+      width: 2.35rem !important;
+      height: 2.35rem !important;
+      border-radius: .9rem !important;
+    }
+
+    .onboarding-step-badge {
+      padding: .35rem .65rem !important;
+      font-size: .64rem !important;
+      letter-spacing: .08em !important;
+    }
+
+    .onboarding-title {
+      margin-top: .65rem !important;
+      max-width: calc(100% - 2.8rem) !important;
+      font-size: 1.24rem !important;
+      line-height: 1.2 !important;
+      letter-spacing: -.03em !important;
+      display: block !important;
+      overflow: visible !important;
+    }
+
+    .onboarding-desc {
+      margin-top: .5rem !important;
+      font-size: .8rem !important;
+      line-height: 1.55 !important;
+      display: block !important;
+      overflow: visible !important;
+    }
+
+    .onboarding-highlight-grid {
+      margin-top: .78rem !important;
+      gap: .55rem !important;
+    }
+
+    .onboarding-highlight {
+      gap: .58rem !important;
+      border-radius: .98rem !important;
+      padding: .66rem !important;
+    }
+
+    .onboarding-highlight-icon {
+      width: 1.85rem !important;
+      height: 1.85rem !important;
+      border-radius: .72rem !important;
+      font-size: .92rem !important;
+    }
+
+    .onboarding-highlight strong {
+      font-size: .78rem !important;
+      line-height: 1.28 !important;
+    }
+
+    .onboarding-highlight span {
+      margin-top: .1rem !important;
+      font-size: .68rem !important;
+      line-height: 1.35 !important;
+      display: block !important;
+      overflow: visible !important;
+    }
+
+    .onboarding-tip {
+      margin-top: .58rem !important;
+      padding: .62rem .68rem !important;
+      border-radius: .95rem !important;
+      font-size: .68rem !important;
+      line-height: 1.4 !important;
+      display: block !important;
+      overflow: visible !important;
+    }
+
+    .onboarding-progress-wrap {
+      padding-top: .78rem !important;
+      margin-top: auto !important;
+      flex: 0 0 auto !important;
+    }
+
+    .onboarding-progress-track {
+      height: .42rem !important;
+    }
+
+    .onboarding-dots {
+      margin-top: .55rem !important;
+      gap: .32rem !important;
+    }
+
+    .onboarding-dot {
+      width: .4rem !important;
+      height: .4rem !important;
+    }
+
+    .onboarding-dot.is-active {
+      width: 1.15rem !important;
+    }
+
+    .onboarding-actions {
+      margin-top: .72rem !important;
+      gap: .5rem !important;
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+    }
+
+    .onboarding-actions > .flex {
+      display: grid !important;
+      grid-template-columns: .82fr 1.18fr !important;
+      gap: .5rem !important;
+    }
+
+    .onboarding-primary,
+    .onboarding-secondary {
+      width: 100% !important;
+      min-width: 0 !important;
+      padding: .74rem .75rem !important;
+      border-radius: .92rem !important;
+      font-size: .78rem !important;
+    }
+
+    #onboardingBackBtn {
+      order: 2 !important;
+    }
+
+    @media (min-width: 761px) {
+      .onboarding-shell {
+        width: min(90vw, 560px) !important;
+      }
+
+      .onboarding-visual {
+        height: 126px !important;
+        min-height: 126px !important;
+      }
+
+      .onboarding-title {
+        font-size: 1.32rem !important;
+      }
+
+      .onboarding-desc {
+        font-size: .84rem !important;
+      }
+
+      .onboarding-highlight strong {
+        font-size: .82rem !important;
+      }
+
+      .onboarding-highlight span,
+      .onboarding-tip {
+        font-size: .72rem !important;
+      }
+    }
+
+
+    /* v94: Tombol onboarding lebih simpel dan hemat ruang */
+    .onboarding-actions {
+      display: grid !important;
+      grid-template-columns: auto 1fr auto !important;
+      align-items: center !important;
+      gap: .55rem !important;
+      margin-top: .72rem !important;
+    }
+
+    .onboarding-actions > .flex {
+      display: contents !important;
+    }
+
+    .onboarding-secondary,
+    .onboarding-primary {
+      width: auto !important;
+      min-width: 0 !important;
+      border-radius: .95rem !important;
+      font-size: .76rem !important;
+      font-weight: 900 !important;
+      line-height: 1 !important;
+      white-space: nowrap !important;
+      box-shadow: none !important;
+    }
+
+    #onboardingBackBtn {
+      order: initial !important;
+      padding: .68rem .82rem !important;
+      background: transparent !important;
+      border: 1px solid #e5e7eb !important;
+      color: #64748b !important;
+    }
+
+    #onboardingSkipBtn {
+      padding: .45rem .25rem !important;
+      background: transparent !important;
+      border: 0 !important;
+      color: #94a3b8 !important;
+      justify-self: center !important;
+      text-decoration: none !important;
+    }
+
+    #onboardingSkipBtn:hover {
+      color: #059669 !important;
+      background: transparent !important;
+      transform: none !important;
+    }
+
+    #onboardingNextBtn {
+      padding: .78rem 1.1rem !important;
+      min-width: 5.9rem !important;
+      background: linear-gradient(135deg, #059669, #047857) !important;
+      box-shadow: 0 10px 22px rgba(5, 150, 105, .20) !important;
+    }
+
+    #onboardingNextBtn:hover {
+      box-shadow: 0 13px 26px rgba(5, 150, 105, .25) !important;
+    }
+
+    body.dark #onboardingBackBtn {
+      background: transparent !important;
+      border-color: #334155 !important;
+      color: #cbd5e1 !important;
+    }
+
+    body.dark #onboardingBackBtn:hover {
+      background: #111827 !important;
+      color: #f8fafc !important;
+    }
+
+    body.dark #onboardingSkipBtn {
+      background: transparent !important;
+      color: #64748b !important;
+    }
+
+    body.dark #onboardingSkipBtn:hover {
+      color: #34d399 !important;
+    }
+
+    @media (max-width: 760px) {
+      .onboarding-actions {
+        grid-template-columns: auto 1fr auto !important;
+        gap: .45rem !important;
+        margin-top: .58rem !important;
+      }
+
+      #onboardingBackBtn {
+        padding: .62rem .72rem !important;
+        font-size: .72rem !important;
+      }
+
+      #onboardingSkipBtn {
+        padding: .35rem .18rem !important;
+        font-size: .70rem !important;
+      }
+
+      #onboardingNextBtn {
+        padding: .72rem .92rem !important;
+        min-width: 5.25rem !important;
+        font-size: .74rem !important;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .onboarding-actions {
+        gap: .35rem !important;
+      }
+
+      #onboardingBackBtn {
+        padding: .58rem .62rem !important;
+      }
+
+      #onboardingNextBtn {
+        min-width: 4.9rem !important;
+        padding: .68rem .78rem !important;
+      }
+    }
+
+
+    /* v95: Kontainer onboarding konsisten + tombol X dihilangkan */
+    .onboarding-close {
+      display: none !important;
+    }
+
+    #onboardingModal {
+      align-items: center !important;
+      padding: 1rem !important;
+    }
+
+    .onboarding-shell {
+      width: min(94vw, 540px) !important;
+      height: min(92dvh, 620px) !important;
+      max-height: 620px !important;
+      overflow: hidden !important;
+      display: flex !important;
+      flex-direction: column !important;
+      border-radius: 1.55rem !important;
+    }
+
+    .onboarding-grid {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      height: 100% !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+
+    .onboarding-visual {
+      flex: 0 0 118px !important;
+      height: 118px !important;
+      min-height: 118px !important;
+    }
+
+    .onboarding-content {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      height: auto !important;
+      overflow: hidden !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+
+    #onboardingStepContent {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      padding-right: .15rem !important;
+      scrollbar-width: thin;
+    }
+
+    #onboardingStepContent::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    #onboardingStepContent::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, .42);
+      border-radius: 999px;
+    }
+
+    .onboarding-title {
+      max-width: 100% !important;
+    }
+
+    .onboarding-progress-wrap {
+      flex: 0 0 auto !important;
+      margin-top: 0 !important;
+      padding-top: .72rem !important;
+      background: inherit !important;
+    }
+
+    .onboarding-actions {
+      flex: 0 0 auto !important;
+    }
+
+    @media (min-width: 761px) {
+      .onboarding-shell {
+        width: min(90vw, 540px) !important;
+        height: 620px !important;
+        max-height: 88vh !important;
+      }
+
+      .onboarding-visual {
+        flex-basis: 126px !important;
+        height: 126px !important;
+        min-height: 126px !important;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .onboarding-shell {
+        width: min(94vw, 420px) !important;
+        height: min(92dvh, 640px) !important;
+        max-height: 640px !important;
+      }
+
+      .onboarding-visual {
+        flex-basis: 112px !important;
+        height: 112px !important;
+        min-height: 112px !important;
+      }
+
+      .onboarding-content {
+        padding-bottom: .85rem !important;
+      }
+    }
+
+    @media (max-width: 380px), (max-height: 720px) {
+      .onboarding-shell {
+        height: min(94dvh, 600px) !important;
+        max-height: 600px !important;
+      }
+
+      .onboarding-visual {
+        flex-basis: 88px !important;
+        height: 88px !important;
+        min-height: 88px !important;
+      }
+    }
+
+
+    /* v96: Animasi onboarding lebih smooth + header proporsional */
+    .onboarding-visual {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      gap: .9rem !important;
+      padding: .95rem 1rem !important;
+    }
+
+    .onboarding-hero-icon {
+      flex: 0 0 auto !important;
+      width: 4rem !important;
+      height: 4rem !important;
+      margin: 0 !important;
+      border-radius: 1.2rem !important;
+      font-size: 2rem !important;
+      transform: translateZ(0);
+      will-change: transform, opacity;
+    }
+
+    .onboarding-hero-copy {
+      margin: 0 !important;
+      min-width: 0 !important;
+      flex: 1 1 auto !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: center !important;
+    }
+
+    .onboarding-hero-copy h3 {
+      margin: 0 !important;
+      font-size: 1.05rem !important;
+      line-height: 1.22 !important;
+      letter-spacing: -.025em !important;
+    }
+
+    .onboarding-hero-copy p {
+      margin-top: .25rem !important;
+      font-size: .72rem !important;
+      line-height: 1.42 !important;
+    }
+
+    .onboarding-step-enter {
+      animation: onboardingSoftStepIn .24s ease-out both !important;
+    }
+
+    .onboarding-visual-pulse {
+      animation: onboardingSoftIconIn .28s ease-out both !important;
+    }
+
+    @keyframes onboardingSoftStepIn {
+      from {
+        opacity: .72;
+        transform: translateY(5px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes onboardingSoftIconIn {
+      from {
+        opacity: .82;
+        transform: scale(.98);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @media (min-width: 761px) {
+      .onboarding-visual {
+        justify-content: flex-start !important;
+        gap: 1rem !important;
+        padding: 1rem 1.05rem !important;
+      }
+
+      .onboarding-hero-icon {
+        width: 4.35rem !important;
+        height: 4.35rem !important;
+        border-radius: 1.3rem !important;
+        font-size: 2.18rem !important;
+      }
+
+      .onboarding-hero-copy h3 {
+        font-size: 1.12rem !important;
+      }
+
+      .onboarding-hero-copy p {
+        font-size: .76rem !important;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .onboarding-visual {
+        gap: .75rem !important;
+        padding: .78rem .85rem !important;
+      }
+
+      .onboarding-hero-icon {
+        width: 3.7rem !important;
+        height: 3.7rem !important;
+        border-radius: 1.05rem !important;
+        font-size: 1.85rem !important;
+      }
+
+      .onboarding-hero-copy h3 {
+        font-size: .96rem !important;
+        line-height: 1.22 !important;
+      }
+
+      .onboarding-hero-copy p {
+        font-size: .66rem !important;
+        line-height: 1.36 !important;
+      }
+    }
+
+    @media (max-width: 380px), (max-height: 720px) {
+      .onboarding-visual {
+        gap: .65rem !important;
+        padding: .62rem .75rem !important;
+      }
+
+      .onboarding-hero-icon {
+        width: 3.25rem !important;
+        height: 3.25rem !important;
+        border-radius: .95rem !important;
+        font-size: 1.65rem !important;
+      }
+
+      .onboarding-hero-copy h3 {
+        font-size: .88rem !important;
+      }
+
+      .onboarding-hero-copy p {
+        font-size: .62rem !important;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .onboarding-step-enter,
+      .onboarding-visual-pulse {
+        animation: none !important;
+      }
+    }
+
+
+    /* v97: Onboarding tanpa animasi, kecuali dot halaman */
+    #onboardingModal,
+    #onboardingModal *,
+    .onboarding-shell,
+    .onboarding-visual,
+    .onboarding-content,
+    .onboarding-hero-icon,
+    .onboarding-hero-copy,
+    .onboarding-highlight,
+    .onboarding-tip,
+    .onboarding-primary,
+    .onboarding-secondary {
+      animation: none !important;
+      transition: none !important;
+      transform: none !important;
+      filter: none !important;
+    }
+
+    .onboarding-shell {
+      animation: none !important;
+    }
+
+    .onboarding-step-enter,
+    .onboarding-visual-pulse {
+      animation: none !important;
+    }
+
+    .onboarding-progress-track,
+    .onboarding-progress-fill {
+      display: none !important;
+    }
+
+    .onboarding-dots {
+      margin-top: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: .38rem !important;
+      min-height: 1.2rem !important;
+    }
+
+    .onboarding-dot {
+      width: .46rem !important;
+      height: .46rem !important;
+      border-radius: 999px !important;
+      background: #cbd5e1 !important;
+      opacity: .9 !important;
+      transition:
+        width .28s cubic-bezier(.2, .85, .2, 1),
+        background-color .22s ease,
+        opacity .22s ease !important;
+      transform: none !important;
+    }
+
+    .onboarding-dot.is-active {
+      width: 1.55rem !important;
+      height: .46rem !important;
+      background: #059669 !important;
+      opacity: 1 !important;
+    }
+
+    body.dark .onboarding-dot {
+      background: #334155 !important;
+    }
+
+    body.dark .onboarding-dot.is-active {
+      background: #34d399 !important;
+    }
+
+    .onboarding-progress-wrap {
+      padding-top: .62rem !important;
+    }
+
+    @media (max-width: 760px) {
+      .onboarding-dots {
+        gap: .34rem !important;
+        min-height: 1.05rem !important;
+      }
+
+      .onboarding-dot {
+        width: .42rem !important;
+        height: .42rem !important;
+      }
+
+      .onboarding-dot.is-active {
+        width: 1.38rem !important;
+        height: .42rem !important;
+      }
+
+      .onboarding-progress-wrap {
+        padding-top: .52rem !important;
+      }
+    }
+
+
+    /* v100: Input nominal dengan prefix Rp */
+    .rupiah-field {
+      position: relative;
+      width: 100%;
+    }
+
+    .rupiah-prefix {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 1;
+      pointer-events: none;
+      color: #94a3b8;
+      font-weight: 900;
+      font-size: .86rem;
+      letter-spacing: -.02em;
+    }
+
+    .rupiah-field.is-compact .rupiah-prefix {
+      left: .78rem;
+      font-size: .76rem;
+    }
+
+    .rupiah-input {
+      padding-left: 3.05rem !important;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .rupiah-field.is-compact .rupiah-input {
+      padding-left: 2.55rem !important;
+    }
+
+    body.dark .rupiah-prefix {
+      color: #64748b !important;
+    }
+
+
+    /* v101: Mobile kategori + nominal tetap 1 baris dan tidak kejepit */
+    .setting-row {
+      grid-template-columns: minmax(0, 1.35fr) minmax(7.4rem, .85fr) 2.5rem !important;
+      align-items: center !important;
+      gap: .55rem !important;
+    }
+
+    .setting-row input[data-field="name"] {
+      min-width: 0 !important;
+      width: 100% !important;
+    }
+
+    .setting-row .rupiah-field.is-compact {
+      min-width: 7.4rem !important;
+      width: 100% !important;
+    }
+
+    .setting-row .rupiah-field.is-compact .rupiah-prefix {
+      left: .62rem !important;
+      font-size: .68rem !important;
+    }
+
+    .setting-row .rupiah-field.is-compact .rupiah-input {
+      width: 100% !important;
+      min-width: 0 !important;
+      padding-left: 2.05rem !important;
+      padding-right: .55rem !important;
+      font-size: .78rem !important;
+      letter-spacing: -.02em !important;
+    }
+
+    .setting-row > button {
+      width: 2.5rem !important;
+      min-width: 2.5rem !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+    }
+
+    @media (max-width: 760px) {
+      .setting-row {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1.28fr) minmax(7rem, .82fr) 2.25rem !important;
+        gap: .42rem !important;
+        padding: .62rem !important;
+      }
+
+      .setting-row input[data-field="name"] {
+        height: 2.45rem !important;
+        padding-left: .62rem !important;
+        padding-right: .5rem !important;
+        font-size: .78rem !important;
+      }
+
+      .setting-row .rupiah-field.is-compact {
+        min-width: 7rem !important;
+      }
+
+      .setting-row .rupiah-field.is-compact .rupiah-input {
+        height: 2.45rem !important;
+        padding-left: 1.9rem !important;
+        padding-right: .42rem !important;
+        font-size: .76rem !important;
+      }
+
+      .setting-row .rupiah-field.is-compact .rupiah-prefix {
+        left: .55rem !important;
+        font-size: .64rem !important;
+      }
+
+      .setting-row > button {
+        width: 2.25rem !important;
+        min-width: 2.25rem !important;
+        height: 2.45rem !important;
+        border-radius: .75rem !important;
+      }
+
+      .setting-row > button svg {
+        width: 1rem !important;
+        height: 1rem !important;
+      }
+
+      #expenseAddRow.setting-row,
+      #incomeAddRow.setting-row {
+        grid-template-columns: minmax(0, 1.28fr) minmax(7rem, .82fr) 2.25rem !important;
+      }
+
+      #expenseAddRow .rupiah-field.is-compact,
+      #incomeAddRow .rupiah-field.is-compact {
+        min-width: 7rem !important;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .setting-row {
+        grid-template-columns: minmax(0, 1.15fr) minmax(6.45rem, .85fr) 2.1rem !important;
+        gap: .34rem !important;
+        padding: .55rem !important;
+      }
+
+      .setting-row input[data-field="name"] {
+        font-size: .72rem !important;
+        padding-left: .52rem !important;
+      }
+
+      .setting-row .rupiah-field.is-compact {
+        min-width: 6.45rem !important;
+      }
+
+      .setting-row .rupiah-field.is-compact .rupiah-input {
+        padding-left: 1.75rem !important;
+        padding-right: .35rem !important;
+        font-size: .70rem !important;
+      }
+
+      .setting-row .rupiah-field.is-compact .rupiah-prefix {
+        left: .48rem !important;
+        font-size: .60rem !important;
+      }
+
+      .setting-row > button {
+        width: 2.1rem !important;
+        min-width: 2.1rem !important;
+      }
+
+      #expenseAddRow.setting-row,
+      #incomeAddRow.setting-row {
+        grid-template-columns: minmax(0, 1.15fr) minmax(6.45rem, .85fr) 2.1rem !important;
+      }
+    }
+
+
+    /* v102: Pengaturan dibuat bertahap dengan poin utama */
+    .settings-menu-card {
+      position: relative;
+      overflow: hidden;
+      min-height: 7.4rem;
+      border-radius: 1.45rem;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      padding: 1rem;
+      text-align: left;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, .05);
+      cursor: pointer;
+      transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease, background .18s ease;
+    }
+
+    .settings-menu-card:hover {
+      transform: translateY(-1px);
+      border-color: #a7f3d0;
+      box-shadow: 0 16px 38px rgba(15, 23, 42, .08);
+    }
+
+    .settings-menu-card.is-active {
+      border-color: #10b981;
+      background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%);
+      box-shadow: 0 18px 42px rgba(16, 185, 129, .14);
+    }
+
+    .settings-menu-card.is-active::after {
+      content: "";
+      position: absolute;
+      inset-inline: 1rem;
+      bottom: 0;
+      height: 3px;
+      border-radius: 999px 999px 0 0;
+      background: linear-gradient(90deg, #10b981, #34d399);
+    }
+
+    .settings-menu-icon {
+      width: 2.35rem;
+      height: 2.35rem;
+      border-radius: 1rem;
+      display: grid;
+      place-items: center;
+      background: #ecfdf5;
+      color: #047857;
+      font-size: 1.25rem;
+      margin-bottom: .78rem;
+    }
+
+    .settings-menu-card.is-active .settings-menu-icon {
+      background: #10b981;
+      color: #ffffff;
+    }
+
+    .settings-panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: .85rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .settings-subtitle-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .42rem .65rem;
+      border-radius: 999px;
+      background: #f0fdf4;
+      color: #047857;
+      font-size: .68rem;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .settings-help-card {
+      border-radius: 1.25rem;
+      border: 1px solid #e5e7eb;
+      background: #f8fafc;
+      padding: 1rem;
+    }
+
+    .settings-detail-panel {
+      animation: none !important;
+    }
+
+    body.dark .settings-menu-card {
+      background: #0f172a;
+      border-color: #1e293b;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, .22);
+    }
+
+    body.dark .settings-menu-card:hover {
+      border-color: #065f46;
+      background: #111827;
+    }
+
+    body.dark .settings-menu-card.is-active {
+      background: linear-gradient(180deg, #0f172a 0%, #052e2b 100%);
+      border-color: #34d399;
+      box-shadow: 0 18px 42px rgba(16, 185, 129, .12);
+    }
+
+    body.dark .settings-menu-icon {
+      background: #064e3b;
+      color: #a7f3d0;
+    }
+
+    body.dark .settings-menu-card.is-active .settings-menu-icon {
+      background: #10b981;
+      color: #ecfdf5;
+    }
+
+    body.dark .settings-help-card {
+      background: #111827;
+      border-color: #1e293b;
+    }
+
+    body.dark .settings-subtitle-pill {
+      background: #064e3b;
+      color: #a7f3d0;
+    }
+
+    @media (max-width: 760px) {
+      .settings-menu-card {
+        min-height: 6.85rem;
+        padding: .82rem;
+        border-radius: 1.2rem;
+      }
+
+      .settings-menu-icon {
+        width: 2.05rem;
+        height: 2.05rem;
+        border-radius: .82rem;
+        font-size: 1.05rem;
+        margin-bottom: .62rem;
+      }
+
+      .settings-menu-card h3 {
+        font-size: .82rem !important;
+      }
+
+      .settings-menu-card p {
+        font-size: .66rem !important;
+        line-height: 1.35 !important;
+      }
+
+      .settings-panel-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .settings-panel-header .flex {
+        justify-content: flex-start;
+      }
+
+      .settings-subtitle-pill {
+        width: fit-content;
+      }
+    }
+
+
+    /* v103: Hapus akun di Bantuan & Akun */
+    .settings-danger-card {
+      border-radius: 1.25rem;
+      border: 1px solid #fecdd3;
+      background: linear-gradient(180deg, #fff1f2 0%, #ffffff 100%);
+      padding: 1rem;
+    }
+
+    body.dark .settings-danger-card {
+      background: linear-gradient(180deg, rgba(127, 29, 29, .24) 0%, #111827 100%);
+      border-color: #7f1d1d;
+    }
+
+    .danger-list {
+      margin-top: .75rem;
+      padding-left: 1rem;
+      color: #64748b;
+      font-size: .72rem;
+      line-height: 1.55;
+    }
+
+    body.dark .danger-list {
+      color: #94a3b8;
+    }
+
+
+    /* v105: Toggle tampil/sembunyikan total saldo */
+    .balance-main-card {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .balance-card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: .75rem;
+      margin-bottom: .5rem;
+    }
+
+    .balance-visibility-btn {
+      width: 2.45rem;
+      height: 2.45rem;
+      border-radius: 1rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      background: rgba(255, 255, 255, .16);
+      border: 1px solid rgba(255, 255, 255, .22);
+      color: #ffffff;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, .13);
+      transition: background .18s ease, transform .18s ease, border-color .18s ease;
+    }
+
+    .balance-visibility-btn:hover {
+      transform: translateY(-1px);
+      background: rgba(255, 255, 255, .24);
+      border-color: rgba(255, 255, 255, .34);
+    }
+
+    .balance-visibility-btn svg {
+      width: 1.15rem;
+      height: 1.15rem;
+      stroke-width: 2.25;
+    }
+
+    #totalBalance.balance-hidden {
+      letter-spacing: .055em;
+      word-spacing: .12em;
+    }
+
+    @media (max-width: 760px) {
+      .balance-main-card {
+        padding: 1.2rem !important;
+      }
+
+      .balance-visibility-btn {
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: .9rem;
+      }
+
+      .balance-visibility-btn svg {
+        width: 1.05rem;
+        height: 1.05rem;
+      }
+
+      #totalBalance {
+        font-size: clamp(2rem, 10vw, 2.65rem) !important;
+        line-height: 1.05 !important;
+      }
+    }
+
+
+    /* v109: Notifikasi ringkasan harian jam 22.00 */
+    .notification-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      width: fit-content;
+      padding: .42rem .65rem;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: #64748b;
+      font-size: .68rem;
+      font-weight: 900;
+      margin-bottom: .8rem;
+    }
+    .notification-status-pill.is-active { background: #ecfdf5; color: #047857; }
+    .notification-status-pill.is-blocked { background: #fff1f2; color: #be123c; }
+    body.dark .notification-status-pill { background: #1e293b; color: #cbd5e1; }
+    body.dark .notification-status-pill.is-active { background: #064e3b; color: #a7f3d0; }
+    body.dark .notification-status-pill.is-blocked { background: rgba(127, 29, 29, .35); color: #fecdd3; }
+
+
+    /* v110: Bantuan & Akun lebih rapi dan tombol konsisten */
+    #accountHelpSettingsPanel .settings-help-grid {
+      align-items: stretch;
+    }
+
+    #accountHelpSettingsPanel .settings-help-card,
+    #accountHelpSettingsPanel .settings-danger-card {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 1rem;
+    }
+
+    #accountHelpSettingsPanel .settings-help-card .help-card-icon,
+    #accountHelpSettingsPanel .settings-danger-card .help-card-icon {
+      width: 2.6rem;
+      height: 2.6rem;
+      display: grid;
+      place-items: center;
+      border-radius: 1rem;
+      background: #f1f5f9;
+      margin-bottom: .75rem;
+      font-size: 1.35rem;
+      line-height: 1;
+    }
+
+    #accountHelpSettingsPanel .settings-danger-card .help-card-icon {
+      background: #ffe4e6;
+    }
+
+    #accountHelpSettingsPanel .help-card-title {
+      min-height: 1.25rem;
+      line-height: 1.2;
+    }
+
+    #accountHelpSettingsPanel .help-card-desc {
+      min-height: 2.65rem;
+      line-height: 1.45;
+      margin-top: .35rem;
+      margin-bottom: .85rem;
+    }
+
+    #accountHelpSettingsPanel .help-card-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #accountHelpSettingsPanel .help-card-actions {
+      margin-top: auto;
+      display: grid;
+      gap: .55rem;
+    }
+
+    #accountHelpSettingsPanel .help-action-btn,
+    #accountHelpSettingsPanel .setting-action-btn.help-action-btn {
+      width: 100%;
+      min-height: 2.85rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      border-radius: 1rem;
+      padding: .75rem 1rem;
+      font-size: .78rem;
+      font-weight: 900;
+      line-height: 1.2;
+    }
+
+    #accountHelpSettingsPanel #dailyPushStatus {
+      margin-top: .55rem;
+      margin-bottom: .75rem;
+    }
+
+    #accountHelpSettingsPanel .daily-push-copy {
+      min-height: 2.65rem;
+      line-height: 1.45;
+      margin-bottom: .85rem;
+    }
+
+    #accountHelpSettingsPanel .danger-list {
+      min-height: 4.1rem;
+      margin-bottom: .85rem;
+    }
+
+    body.dark #accountHelpSettingsPanel .settings-help-card .help-card-icon {
+      background: #1e293b;
+    }
+
+    body.dark #accountHelpSettingsPanel .settings-danger-card .help-card-icon {
+      background: rgba(127, 29, 29, .36);
+    }
+
+    @media (max-width: 760px) {
+      #accountHelpSettingsPanel .settings-help-card,
+      #accountHelpSettingsPanel .settings-danger-card {
+        padding: .9rem;
+      }
+
+      #accountHelpSettingsPanel .settings-help-card .help-card-icon,
+      #accountHelpSettingsPanel .settings-danger-card .help-card-icon {
+        width: 2.35rem;
+        height: 2.35rem;
+        border-radius: .9rem;
+        font-size: 1.18rem;
+        margin-bottom: .65rem;
+      }
+
+      #accountHelpSettingsPanel .help-card-desc,
+      #accountHelpSettingsPanel .daily-push-copy,
+      #accountHelpSettingsPanel .danger-list {
+        min-height: auto;
+      }
+
+      #accountHelpSettingsPanel .help-action-btn,
+      #accountHelpSettingsPanel .setting-action-btn.help-action-btn {
+        min-height: 2.75rem;
+        border-radius: .95rem;
+        font-size: .76rem;
+      }
+    }
+
+
+    /* v111: Final polish Bantuan & Akun */
+    #accountHelpSettingsPanel .settings-help-grid {
+      grid-auto-rows: 1fr;
+    }
+
+    #accountHelpSettingsPanel .settings-help-card,
+    #accountHelpSettingsPanel .settings-danger-card {
+      min-height: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #accountHelpSettingsPanel .help-card-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #accountHelpSettingsPanel .help-card-main {
+      flex: 1;
+    }
+
+    #accountHelpSettingsPanel .help-card-actions {
+      margin-top: auto;
+      padding-top: 1rem;
+      display: grid;
+      gap: .6rem;
+    }
+
+    #accountHelpSettingsPanel .help-action-btn.hidden,
+    #accountHelpSettingsPanel .setting-action-btn.help-action-btn.hidden,
+    #accountHelpSettingsPanel button.hidden {
+      display: none !important;
+    }
+
+    #accountHelpSettingsPanel .help-action-btn {
+      min-height: 3rem;
+      border-radius: 1rem;
+    }
+
+    #accountHelpSettingsPanel .help-card-icon {
+      width: 2.65rem !important;
+      height: 2.65rem !important;
+      min-width: 2.65rem;
+      min-height: 2.65rem;
+      display: grid !important;
+      place-items: center !important;
+      border-radius: 1rem !important;
+      font-size: 1.28rem !important;
+      line-height: 1 !important;
+      margin-bottom: 1rem !important;
+    }
+
+    #accountHelpSettingsPanel .settings-danger-card .help-card-icon {
+      background: rgba(225, 29, 72, .12) !important;
+      color: #fb7185;
+    }
+
+    body.dark #accountHelpSettingsPanel .settings-danger-card .help-card-icon {
+      background: rgba(225, 29, 72, .16) !important;
+      color: #fb7185;
+    }
+
+    #accountHelpSettingsPanel .help-card-title {
+      margin-bottom: .55rem;
+    }
+
+    #accountHelpSettingsPanel .help-card-desc,
+    #accountHelpSettingsPanel .daily-push-copy {
+      min-height: auto !important;
+      margin: 0;
+      line-height: 1.45;
+    }
+
+    #accountHelpSettingsPanel .help-warning-list {
+      margin-top: .85rem;
+      display: grid;
+      gap: .35rem;
+      font-size: .74rem;
+      line-height: 1.35;
+      color: #94a3b8;
+    }
+
+    #accountHelpSettingsPanel .help-warning-list li {
+      display: flex;
+      gap: .45rem;
+      align-items: flex-start;
+    }
+
+    #accountHelpSettingsPanel .help-warning-list li::before {
+      content: "•";
+      color: #fb7185;
+      font-weight: 900;
+      line-height: 1.1;
+    }
+
+    #accountHelpSettingsPanel .notification-status-pill {
+      margin-top: .2rem;
+      margin-bottom: .85rem;
+    }
+
+    @media (min-width: 1280px) {
+      #accountHelpSettingsPanel .settings-help-card,
+      #accountHelpSettingsPanel .settings-danger-card {
+        min-height: 24rem;
+      }
+    }
+
+    @media (max-width: 760px) {
+      #accountHelpSettingsPanel .settings-help-grid {
+        grid-auto-rows: auto;
+      }
+
+      #accountHelpSettingsPanel .settings-help-card,
+      #accountHelpSettingsPanel .settings-danger-card {
+        min-height: auto;
+      }
+
+      #accountHelpSettingsPanel .help-card-actions {
+        padding-top: .85rem;
+      }
+
+      #accountHelpSettingsPanel .help-card-icon {
+        width: 2.4rem !important;
+        height: 2.4rem !important;
+        min-width: 2.4rem;
+        min-height: 2.4rem;
+        font-size: 1.12rem !important;
+        margin-bottom: .8rem !important;
+      }
+    }
+
+
+    /* v112: Paksa tombol semua card Bantuan & Akun rata bawah */
+    #accountHelpSettingsPanel .settings-help-grid {
+      align-items: stretch !important;
+      grid-auto-rows: 1fr !important;
+    }
+
+    #accountHelpSettingsPanel .settings-help-card,
+    #accountHelpSettingsPanel .settings-danger-card {
+      height: 100% !important;
+      min-height: 24rem !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+
+    #accountHelpSettingsPanel .help-card-body {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+
+    #accountHelpSettingsPanel .help-card-main {
+      flex: 1 1 auto !important;
+    }
+
+    #accountHelpSettingsPanel .help-card-actions {
+      margin-top: auto !important;
+      padding-top: 1rem !important;
+      display: grid !important;
+      gap: .6rem !important;
+    }
+
+    #accountHelpSettingsPanel .help-action-btn.hidden,
+    #accountHelpSettingsPanel .setting-action-btn.help-action-btn.hidden,
+    #accountHelpSettingsPanel #dailyPushDisableBtn.hidden,
+    #accountHelpSettingsPanel #dailyPushEnableBtn.hidden {
+      display: none !important;
+    }
+
+    #accountHelpSettingsPanel .help-action-btn {
+      min-height: 3rem !important;
+      border-radius: 1rem !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+
+    #accountHelpSettingsPanel .help-card-icon {
+      width: 2.65rem !important;
+      height: 2.65rem !important;
+      min-width: 2.65rem !important;
+      min-height: 2.65rem !important;
+      display: grid !important;
+      place-items: center !important;
+      border-radius: 1rem !important;
+      font-size: 1.28rem !important;
+      line-height: 1 !important;
+      margin-bottom: 1rem !important;
+    }
+
+    #accountHelpSettingsPanel .settings-danger-card .help-card-icon {
+      background: rgba(225, 29, 72, .12) !important;
+      color: #fb7185 !important;
+    }
+
+    #accountHelpSettingsPanel .help-warning-list {
+      margin-top: .85rem !important;
+      padding-left: 0 !important;
+      list-style: none !important;
+      display: grid !important;
+      gap: .35rem !important;
+      color: #94a3b8 !important;
+      font-size: .74rem !important;
+      line-height: 1.35 !important;
+    }
+
+    #accountHelpSettingsPanel .help-warning-list li {
+      display: flex !important;
+      gap: .45rem !important;
+      align-items: flex-start !important;
+    }
+
+    #accountHelpSettingsPanel .help-warning-list li::before {
+      content: "•";
+      color: #e11d48;
+      font-weight: 900;
+    }
+
+    @media (max-width: 760px) {
+      #accountHelpSettingsPanel .settings-help-grid {
+        grid-auto-rows: auto !important;
+      }
+
+      #accountHelpSettingsPanel .settings-help-card,
+      #accountHelpSettingsPanel .settings-danger-card {
+        min-height: auto !important;
+      }
+    }
+
+  </style>
+</head>
+<body data-page="dashboard-user" class="bg-gray-50 text-gray-800 antialiased min-h-screen pb-28 md:pb-10">
+  <header class="app-header border-b border-gray-100">
+    <div class="w-full max-w-6xl mx-auto px-4 py-4 flex items-center gap-4">
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2 min-w-0">
+          <p class="text-base md:text-lg text-gray-900 truncate"><span class="font-extrabold">Halo,</span> <span id="userNama">Pengguna</span></p>
+          <button onclick="toggleDarkMode()" id="darkModeToggle" class="w-9 h-9 md:w-10 md:h-10 bg-white border border-gray-100 text-gray-700 text-base font-bold rounded-2xl soft-card cursor-pointer flex items-center justify-center shrink-0" title="Dark mode" aria-label="Dark mode">🌕</button>
+        </div>
+        <p class="text-xs md:text-sm text-gray-400 mt-0.5">Ayo mulai olah keuanganmu sekarang!</p>
+      </div>
+
+      <nav id="desktopNav" class="desktop-nav-wrap hidden md:flex items-center justify-end gap-2 ml-auto">
+        <span id="desktopNavIndicator" class="desktop-nav-indicator" aria-hidden="true"></span>
+        <button type="button" data-nav="beranda" aria-label="Beranda" onclick="showAppView('beranda')" class="desktop-nav-link active">Beranda</button>
+        <button type="button" data-nav="riwayat" aria-label="Riwayat" onclick="showAppView('riwayat')" class="desktop-nav-link">Riwayat</button>
+        <button type="button" data-nav="analisis" aria-label="Analisis" onclick="showAppView('analisis')" class="desktop-nav-link">Analisis</button>
+        <button type="button" data-nav="setting" aria-label="Setting" onclick="showAppView('setting')" class="icon-nav-btn" title="Pengaturan" aria-label="Pengaturan">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.607 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="w-full max-w-6xl mx-auto px-4 py-5">
+    <section data-view="beranda" class="app-view space-y-5">
+      <section class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div class="balance-main-card col-span-2 md:col-span-2 bg-gradient-to-br from-emerald-600 to-emerald-800 p-6 rounded-3xl soft-card text-white">
+          <div class="balance-card-head">
+            <p class="text-xs font-semibold uppercase tracking-wider text-emerald-100">Total saldo saat ini</p>
+            <button type="button" id="balanceVisibilityBtn" onclick="toggleTotalBalanceVisibility()" class="balance-visibility-btn" title="Sembunyikan saldo" aria-label="Sembunyikan saldo" aria-pressed="false">
+              <span id="balanceVisibilityIcon" aria-hidden="true">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12s3.75-6.75 9.75-6.75S21.75 12 21.75 12 18 18.75 12 18.75 2.25 12 2.25 12z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 15.25A3.25 3.25 0 1012 8.75a3.25 3.25 0 000 6.5z"/></svg>
+              </span>
+            </button>
+          </div>
+          <h1 class="text-4xl md:text-5xl font-extrabold" id="totalBalance" aria-live="polite">Rp 0</h1>
+          <p id="balancePrivacyText" class="text-xs text-emerald-100 mt-3">Akumulasi seluruh transaksi yang sudah dicatat.</p>
+        </div>
+        <div class="col-span-1 bg-white p-4 sm:p-5 rounded-3xl border border-gray-100 soft-card min-w-0">
+          <p class="text-[10px] sm:text-xs text-gray-400 font-bold uppercase mb-2 leading-tight">Total Pemasukan</p>
+          <p id="summaryIncomePeriod" class="text-[clamp(1.05rem,4.7vw,1.5rem)] leading-tight tracking-tight font-extrabold text-emerald-600 break-words">Rp 0</p>
+          <p class="text-[11px] sm:text-xs text-gray-400 mt-2 leading-snug">Akumulasi semua uang yang masuk.</p>
+        </div>
+        <div class="col-span-1 bg-white p-4 sm:p-5 rounded-3xl border border-gray-100 soft-card min-w-0">
+          <p class="text-[10px] sm:text-xs text-gray-400 font-bold uppercase mb-2 leading-tight">Total Pengeluaran</p>
+          <p id="summaryExpensePeriod" class="text-[clamp(1.05rem,4.7vw,1.5rem)] leading-tight tracking-tight font-extrabold text-rose-600 break-words">Rp 0</p>
+          <p class="text-[11px] sm:text-xs text-gray-400 mt-2 leading-snug">Akumulasi semua uang yang keluar.</p>
+        </div>
+      </section>
+
+      <section class="grid md:grid-cols-2 gap-5">
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 class="font-extrabold text-gray-900">Target Tabungan</h2>
+              <p class="text-xs text-gray-400 mt-1">Dihitung dari pemasukan - pengeluaran periode aktif.</p>
+            </div>
+            <span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold" id="targetSavingsStatus">0%</span>
+          </div>
+          <p class="text-3xl font-extrabold text-gray-900" id="targetSavingsAmount">Rp 0</p>
+          <p id="targetSavingsLabel" class="text-xs text-gray-400 mt-1">Target: Rp5.000.000 / bulan</p>
+          <div class="w-full bg-gray-200 rounded-full h-3 mt-4">
+            <div id="targetSavingsProgress" class="bg-emerald-500 h-3 rounded-full transition-all" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 class="font-extrabold text-gray-900">Insight Bulanan</h2>
+              <p class="text-xs text-gray-400 mt-1">Ringkasan cepat agar tidak cuma merasa hemat.</p>
+            </div>
+            <span class="text-xl">💡</span>
+          </div>
+          <div id="insightList" class="space-y-3 text-sm"></div>
+        </div>
+      </section>
+
+      <section class="bg-white p-5 md:p-6 rounded-3xl border border-gray-100 soft-card flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h2 class="font-extrabold text-gray-900">Jangan tunggu lupa</h2>
+          <p class="text-sm text-gray-400 mt-1">Catat transaksi sekarang, sebelum nominalnya berubah jadi legenda.</p>
+        </div>
+        <button type="button" onclick="handleCatatSekarang()" class="w-full md:w-auto inline-flex items-center justify-center gap-2 px-5 py-4 bg-red-600 hover:bg-red-700 text-white rounded-3xl font-extrabold soft-card cursor-pointer transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M12 5v14m7-7H5"/></svg>
+          Catat Sekarang
+        </button>
+      </section>
+    </section>
+
+    <section data-view="riwayat" class="app-view hidden bg-white p-5 md:p-6 rounded-3xl border border-gray-100 soft-card">
+      <div class="flex items-start justify-between gap-3 mb-4">
+        <div class="min-w-0">
+          <h2 class="font-extrabold text-gray-900">Riwayat Transaksi</h2>
+          <p class="text-xs text-gray-400 mt-1">Lihat, filter, dan hapus transaksi.</p>
+        </div>
+        <div class="grid grid-cols-2 md:flex md:items-center md:justify-end md:flex-nowrap gap-2 shrink-0 w-[156px] md:w-auto">
+          <select id="filterBulan" onchange="currentPage=1; updateUI()" class="w-full text-xs md:text-sm bg-gray-50 border border-gray-200 text-gray-700 rounded-xl px-2 md:px-3 py-2 outline-none cursor-pointer">
+            <option value="Semua">Semua Bulan</option>
+            <option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option>
+            <option value="3">Apr</option><option value="4">Mei</option><option value="5">Jun</option>
+            <option value="6">Jul</option><option value="7">Agt</option><option value="8">Sep</option>
+            <option value="9">Okt</option><option value="10">Nov</option><option value="11">Des</option>
+          </select>
+          <select id="filterTahunRiwayat" onchange="syncYearFilterFromRiwayat()" class="w-full text-xs md:text-sm bg-gray-50 border border-gray-200 text-gray-700 rounded-xl px-2 md:px-3 py-2 outline-none cursor-pointer">
+            <option value="Semua">Semua Tahun</option>
+          </select>
+          <button onclick="exportToExcel()" title="Export Excel sesuai filter, lengkap dengan kategori dan budget/target" class="hidden md:inline-flex items-center justify-center h-10 px-4 bg-emerald-600 text-white text-xs font-bold rounded-xl soft-card cursor-pointer whitespace-nowrap">Excel</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left mb-4"><tbody id="historyBody"></tbody></table>
+      </div>
+      <div class="flex justify-between items-center mb-6 border-t border-gray-100 pt-4">
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-gray-500">Tampilkan:</span>
+          <select id="itemsPerPage" onchange="changeItemsPerPage()" class="text-xs bg-gray-50 border border-gray-200 text-gray-700 rounded-md px-2 py-1 outline-none cursor-pointer">
+            <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+          </select>
+        </div>
+        <div id="paginationContainer" class="flex gap-1 text-xs"></div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="summary-period-card p-4 bg-gray-50 rounded-2xl border border-gray-100">
+          <p class="text-[10px] uppercase font-bold text-gray-400 mb-1">Pemasukan Bulan Ini</p>
+          <p id="totalPemasukanRiwayat" class="font-extrabold text-emerald-600">Rp 0</p>
+        </div>
+        <div class="summary-period-card p-4 bg-gray-50 rounded-2xl border border-gray-100">
+          <p class="text-[10px] uppercase font-bold text-gray-400 mb-1">Pengeluaran Bulan Ini</p>
+          <p id="totalPengeluaranRiwayat" class="font-extrabold text-rose-600">Rp 0</p>
+        </div>
+      </div>
+    </section>
+
+    <section data-view="catat" class="app-view hidden">
+      <div class="max-w-xl mx-auto bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+        <div class="mb-5">
+          <h2 class="text-2xl font-extrabold text-gray-900">Catat Transaksi</h2>
+          <p class="text-sm text-gray-400 mt-1">Pencatatan cepat agar transaksi harian tidak hilang ditelan ingatan manusia yang rapuh.</p>
+        </div>
+        <div class="space-y-4">
+          <div class="flex bg-gray-100 p-1 rounded-2xl">
+            <button type="button" id="btnMasuk" onclick="setJenis('masuk')" class="w-1/2 py-2.5 text-sm font-bold rounded-xl text-gray-500 transition cursor-pointer">Pemasukan</button>
+            <button type="button" id="btnKeluar" onclick="setJenis('keluar')" class="w-1/2 py-2.5 text-sm font-bold rounded-xl bg-white shadow text-rose-600 transition cursor-pointer">Pengeluaran</button>
+          </div>
+          <div>
+            <label for="kategori" class="block text-xs font-bold text-gray-500 mb-2">Kategori Transaksi</label>
+            <select id="kategori" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-600 transition cursor-pointer"></select>
+          </div>
+          <div>
+            <label for="amount" class="block text-xs font-bold text-gray-500 mb-2">Nominal</label>
+            <div class="rupiah-field">
+              <span class="rupiah-prefix">Rp</span>
+              <input type="text" id="amount" data-format="nominal" inputmode="numeric" placeholder="0" class="rupiah-input w-full px-4 py-4 text-lg bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-600 transition" onkeydown="if(event.key==='Enter') addTransaction()" />
+            </div>
+          </div>
+          <button type="button" onclick="addTransaction()" class="w-full py-4 bg-gray-800 text-white font-extrabold rounded-2xl hover:bg-gray-900 transition soft-card cursor-pointer">Simpan Transaksi</button>
+        </div>
+      </div>
+    </section>
+
+    <section data-view="analisis" class="app-view hidden space-y-5">
+      <section class="grid lg:grid-cols-5 gap-5">
+        <div class="lg:col-span-3 bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+          <div class="flex justify-between items-center mb-4 gap-3">
+            <div>
+              <h2 class="font-extrabold text-gray-900">Tren Keuangan</h2>
+              <p class="text-xs text-gray-400 mt-1">Perbandingan pemasukan dan pengeluaran.</p>
+            </div>
+            <select id="filterTahunChart" onchange="ubahFilterTahun()" class="text-sm bg-gray-50 border border-gray-200 text-gray-700 rounded-xl px-3 py-2 outline-none focus:border-emerald-500 cursor-pointer shadow-sm"><option value="Semua">Semua Tahun</option></select>
+          </div>
+          <div id="monthlyChartEmpty" class="hidden h-64 rounded-2xl bg-gray-50 border border-dashed border-gray-200 flex flex-col items-center justify-center text-center p-6">
+            <p class="text-4xl mb-3">📊</p><p class="font-bold text-gray-700">Belum ada grafik</p><p class="text-sm text-gray-400 mt-1">Tambahkan transaksi untuk melihat grafik.</p>
+          </div>
+          <div class="chart-box relative w-full" id="monthlyChartWrap"><canvas id="monthlyChart"></canvas></div>
+        </div>
+        <div class="lg:col-span-2 bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+          <h2 class="font-extrabold text-gray-900 mb-1">Kategori Terbesar</h2>
+          <p class="text-xs text-gray-400 mb-4">Kategori pengeluaran terbesar pada periode aktif.</p>
+          <div id="categorySummaryList" class="space-y-3"></div>
+        </div>
+      </section>
+      <section class="grid lg:grid-cols-2 gap-5">
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+          <div class="flex items-center justify-between gap-3 mb-4"><div><h2 class="font-extrabold text-gray-900">Progress Budget</h2><p class="text-xs text-gray-400 mt-1">Persentase pemakaian budget per kategori.</p></div></div>
+          <div id="budgetAlertList" class="mb-4"></div><div id="budgetList" class="space-y-4"></div>
+        </div>
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+          <div class="flex items-center justify-between gap-3 mb-4"><div><h2 class="font-extrabold text-gray-900">Pantauan Pemasukan</h2><p class="text-xs text-gray-400 mt-1">Target pemasukan utama per periode.</p></div></div>
+          <div id="incomeList" class="space-y-4"></div>
+        </div>
+      </section>
+    </section>
+
+    <section data-view="setting" class="app-view hidden space-y-5">
+      <section class="bg-white p-5 md:p-6 rounded-3xl border border-gray-100 soft-card">
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-5">
+          <div>
+            <p class="text-xs font-extrabold text-emerald-600 uppercase tracking-[.18em]">Pengaturan</p>
+            <h2 class="text-xl md:text-2xl font-black text-gray-900 mt-1">Atur aplikasi sesuai kebutuhanmu</h2>
+            <p class="text-sm text-gray-400 mt-1">Pilih salah satu bagian utama, lalu kelola detailnya di bawah.</p>
+          </div>
+          <span class="settings-subtitle-pill">⚙️ Pengaturan bertahap</span>
+        </div>
+
+        <div id="settingsSectionMenu" class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <button type="button" data-settings-tab="profile" onclick="showSettingsSection('profile')" class="settings-menu-card is-active">
+            <div class="settings-menu-icon">👤</div>
+            <h3 class="font-black text-gray-900 text-sm">Profil Akun</h3>
+            <p class="text-xs text-gray-400 mt-1">Nama, nomor HP, email, dan password.</p>
+          </button>
+
+          <button type="button" data-settings-tab="expense" onclick="showSettingsSection('expense')" class="settings-menu-card">
+            <div class="settings-menu-icon">📉</div>
+            <h3 class="font-black text-gray-900 text-sm">Pengeluaran</h3>
+            <p class="text-xs text-gray-400 mt-1">Kategori keluar, budget, dan target tabungan.</p>
+          </button>
+
+          <button type="button" data-settings-tab="income" onclick="showSettingsSection('income')" class="settings-menu-card">
+            <div class="settings-menu-icon">📈</div>
+            <h3 class="font-black text-gray-900 text-sm">Pemasukan</h3>
+            <p class="text-xs text-gray-400 mt-1">Sumber pemasukan dan target bulanan.</p>
+          </button>
+
+          <button type="button" data-settings-tab="help" onclick="showSettingsSection('help')" class="settings-menu-card">
+            <div class="settings-menu-icon">🛟</div>
+            <h3 class="font-black text-gray-900 text-sm">Bantuan & Akun</h3>
+            <p class="text-xs text-gray-400 mt-1">Panduan penggunaan dan keluar akun.</p>
+          </button>
+        </div>
+      </section>
+
+      <section id="profileSettingsPanel" data-settings-panel="profile" class="settings-detail-panel setting-panel bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+        <div class="settings-panel-header">
+          <div>
+            <p class="settings-subtitle-pill mb-3">👤 Pengaturan Profil</p>
+            <h2 class="font-extrabold text-gray-900">Data Profil & Keamanan</h2>
+            <p class="text-xs text-gray-400 mt-1">Kelola identitas akun dan password. Email tetap dikunci agar akun tidak tersesat ke alam lain.</p>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" id="profileEditBtn" onclick="toggleProfileEdit(true)" class="px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-extrabold cursor-pointer">Edit</button>
+            <button type="button" id="profileCancelBtn" onclick="toggleProfileEdit(false)" class="hidden px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-extrabold cursor-pointer">Batal</button>
+          </div>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-500 mb-2">Nama</label>
+            <input id="profileNama" disabled class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-500 mb-2">Email</label>
+            <input id="profileEmail" disabled class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-500 mb-2">Nomor HP</label>
+            <input id="profilePhone" disabled inputmode="tel" placeholder="Contoh: 08123456789" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-500 mb-2">Password Baru</label>
+            <input id="profilePassword" disabled type="password" placeholder="Kosongkan jika tidak diganti" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl" />
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-gray-500 mb-2">Ulangi Password Baru</label>
+            <input id="profilePasswordConfirm" disabled type="password" placeholder="Ulangi password baru" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl" />
+          </div>
+        </div>
+
+        <button type="button" id="profileSaveBtn" onclick="saveProfileSettings()" class="setting-bottom-save setting-action-btn hidden w-full md:w-auto px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold cursor-pointer">Simpan</button>
+      </section>
+
+      <section id="financeSettingsPanel" class="contents">
+        <section id="expenseSettingsPanel" data-settings-panel="expense" class="settings-detail-panel hidden setting-panel bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+          <div class="settings-panel-header">
+            <div>
+              <p class="settings-subtitle-pill mb-3">📉 Pengaturan Pengeluaran</p>
+              <h2 class="font-extrabold text-gray-900">Kategori Pengeluaran & Budget</h2>
+              <p class="text-xs text-gray-400 mt-1">Kelola budget, kategori pengeluaran, dan target tabungan bulanan.</p>
+            </div>
+            <div class="flex gap-2">
+              <button type="button" id="expenseEditBtn" onclick="toggleFinanceEdit('keluar', true)" class="px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-extrabold cursor-pointer">Edit</button>
+              <button type="button" id="expenseCancelBtn" onclick="toggleFinanceEdit('keluar', false)" class="hidden px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-extrabold cursor-pointer">Batal</button>
+            </div>
+          </div>
+
+          <div class="rounded-2xl bg-gray-50 border border-gray-100 p-4 mb-4">
+            <label for="settingTargetSavings" class="block text-xs font-bold text-gray-500 mb-2">Target Tabungan Bulanan</label>
+            <div class="rupiah-field">
+              <span class="rupiah-prefix">Rp</span>
+              <input id="settingTargetSavings" disabled data-format="nominal" type="text" inputmode="numeric" placeholder="0" class="rupiah-input w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl" />
+            </div>
+          </div>
+
+          <div id="budgetSettingList" class="space-y-2 mb-3"></div>
+          <div id="expenseAddRow" class="hidden setting-row">
+            <input id="newExpenseCategoryName" type="text" placeholder="Kategori baru" class="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm" />
+            <div class="rupiah-field is-compact">
+              <span class="rupiah-prefix">Rp</span>
+              <input id="newExpenseCategoryAmount" data-format="nominal" type="text" inputmode="numeric" placeholder="0" class="rupiah-input w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-right" />
+            </div>
+            <button type="button" onclick="addFinanceCategory('keluar')" class="h-10 rounded-xl bg-gray-800 text-white font-bold cursor-pointer" title="Tambah kategori">+</button>
+          </div>
+
+          <button type="button" id="expenseSaveBtn" onclick="saveFinanceSettings('keluar')" class="setting-bottom-save setting-action-btn hidden w-full md:w-auto px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold cursor-pointer">Simpan</button>
+        </section>
+
+        <section id="incomeSettingsPanel" data-settings-panel="income" class="settings-detail-panel hidden setting-panel bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+          <div class="settings-panel-header">
+            <div>
+              <p class="settings-subtitle-pill mb-3">📈 Pengaturan Pemasukan</p>
+              <h2 class="font-extrabold text-gray-900">Kategori Pemasukan & Target</h2>
+              <p class="text-xs text-gray-400 mt-1">Kelola sumber pemasukan dan target bulanannya.</p>
+            </div>
+            <div class="flex gap-2">
+              <button type="button" id="incomeEditBtn" onclick="toggleFinanceEdit('masuk', true)" class="px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-extrabold cursor-pointer">Edit</button>
+              <button type="button" id="incomeCancelBtn" onclick="toggleFinanceEdit('masuk', false)" class="hidden px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-extrabold cursor-pointer">Batal</button>
+            </div>
+          </div>
+
+          <div id="incomeSettingList" class="space-y-2 mb-3"></div>
+          <div id="incomeAddRow" class="hidden setting-row">
+            <input id="newIncomeCategoryName" type="text" placeholder="Sumber pemasukan baru" class="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm" />
+            <div class="rupiah-field is-compact">
+              <span class="rupiah-prefix">Rp</span>
+              <input id="newIncomeCategoryAmount" data-format="nominal" type="text" inputmode="numeric" placeholder="0" class="rupiah-input w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-right" />
+            </div>
+            <button type="button" onclick="addFinanceCategory('masuk')" class="h-10 rounded-xl bg-gray-800 text-white font-bold cursor-pointer" title="Tambah pemasukan">+</button>
+          </div>
+
+          <button type="button" id="incomeSaveBtn" onclick="saveFinanceSettings('masuk')" class="setting-bottom-save setting-action-btn hidden w-full md:w-auto px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold cursor-pointer">Simpan</button>
+        </section>
+      </section>
+
+      <section id="accountHelpSettingsPanel" data-settings-panel="help" class="settings-detail-panel hidden setting-panel bg-white p-6 rounded-3xl border border-gray-100 soft-card">
+        <div class="settings-panel-header">
+          <div>
+            <p class="settings-subtitle-pill mb-3">🛟 Bantuan & Akun</p>
+            <h2 class="font-extrabold text-gray-900">Bantuan & Kontrol Akun</h2>
+            <p class="text-xs text-gray-400 mt-1">Kelola panduan, notifikasi harian, dan akses akun kamu dalam satu tempat.</p>
+          </div>
+        </div>
+
+        <div class="settings-help-grid grid md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div class="settings-help-card">
+            <div class="help-card-icon">📘</div>
+            <div class="help-card-body">
+              <div class="help-card-main">
+                <h3 class="help-card-title font-black text-gray-900">Panduan Penggunaan</h3>
+                <p class="help-card-desc text-xs text-gray-400">Lihat ulang panduan singkat untuk memahami fitur utama Olah Uang.</p>
+              </div>
+              <div class="help-card-actions">
+                <button type="button" onclick="openOnboardingGuide(false)" class="help-action-btn setting-action-btn bg-gray-900 hover:bg-gray-800 text-white cursor-pointer">
+                  Lihat Panduan
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-help-card">
+            <div class="help-card-icon">🔔</div>
+            <div class="help-card-body">
+              <div class="help-card-main">
+                <h3 class="help-card-title font-black text-gray-900">Notifikasi Harian</h3>
+                <p id="dailyPushStatus" class="notification-status-pill">Status: belum dicek</p>
+                <p class="daily-push-copy text-xs text-gray-400">Kirim ringkasan catatan hari ini setiap pukul 22.00 WIB ke perangkat yang mengizinkan notifikasi.</p>
+              </div>
+              <div class="help-card-actions">
+                <button type="button" id="dailyPushEnableBtn" onclick="enableDailyPushNotification()" class="help-action-btn setting-action-btn bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer">Aktifkan Notifikasi</button>
+                <button type="button" id="dailyPushDisableBtn" onclick="disableDailyPushNotification()" class="help-action-btn setting-action-btn hidden bg-gray-100 hover:bg-gray-200 text-gray-700 cursor-pointer">Matikan Notifikasi</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-help-card">
+            <div class="help-card-icon">🚪</div>
+            <div class="help-card-body">
+              <div class="help-card-main">
+                <h3 class="help-card-title font-black text-gray-900">Keluar dari Akun</h3>
+                <p class="help-card-desc text-xs text-gray-400">Gunakan ini kalau aplikasi dipakai di perangkat bersama. Peradaban kecil bernama keamanan.</p>
+              </div>
+              <div class="help-card-actions">
+                <button type="button" onclick="doLogout()" class="help-action-btn setting-action-btn bg-rose-600 hover:bg-rose-700 text-white cursor-pointer">
+                  Keluar dari Akun
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-danger-card">
+            <div class="help-card-icon">🗑️</div>
+            <div class="help-card-body">
+              <div class="help-card-main">
+                <h3 class="help-card-title font-black text-rose-700">Hapus Akun</h3>
+                <p class="help-card-desc text-xs text-gray-500">Akun kamu akan dihapus termasuk seluruh data yang ada pada akun.</p>
+                <ul class="help-warning-list">
+                  <li>Transaksi akun akan dihapus.</li>
+                  <li>Profil ditandai sebagai terhapus.</li>
+                  <li>Kamu akan otomatis keluar.</li>
+                </ul>
+              </div>
+              <div class="help-card-actions">
+                <button type="button" onclick="deleteMyAccount()" class="help-action-btn setting-action-btn bg-rose-700 hover:bg-rose-800 text-white cursor-pointer">
+                  Hapus Akun
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
+
+  </main>
+
+
+
+  <div id="onboardingModal" class="hidden fixed inset-0 bg-slate-950/60 backdrop-blur-sm px-3 py-5 flex items-center justify-center onboarding-backdrop">
+    <div class="onboarding-shell">
+      <div class="onboarding-grid">
+        <aside class="onboarding-visual">
+          <div class="onboarding-brand-chip">
+            <span>💸</span>
+            <span>Olah Uang</span>
+          </div>
+
+          <div id="onboardingVisualIcon" class="onboarding-hero-icon">👋</div>
+
+          <div class="onboarding-hero-copy">
+            <h3 id="onboardingVisualTitle">Mulai lebih rapi</h3>
+            <p id="onboardingVisualSubtitle">Panduan singkat untuk membantu pengguna baru memahami alur aplikasi.</p>
+          </div>
+
+          <div class="onboarding-phone">
+            <div class="onboarding-phone-top">
+              <span id="onboardingPhoneLabel">Ringkasan Hari Ini</span>
+              <span id="onboardingPhoneBadge">Step 1</span>
+            </div>
+            <div class="onboarding-phone-card">
+              <div id="onboardingMockLine1" class="onboarding-phone-line w-3/5"></div>
+              <div id="onboardingMockLine2" class="onboarding-phone-line mt-3 w-full opacity-80"></div>
+              <div id="onboardingMockLine3" class="onboarding-phone-line mt-3 w-4/5 opacity-60"></div>
+            </div>
+          </div>
+        </aside>
+
+        <section class="onboarding-content">
+
+          <div id="onboardingStepContent">
+            <div id="onboardingEyebrow" class="onboarding-step-badge">Langkah 1 dari 5</div>
+            <h2 id="onboardingTitle" class="onboarding-title">Selamat datang di Olah Uang</h2>
+            <p id="onboardingDescription" class="onboarding-desc">Kenalan singkat dengan aplikasi sebelum mulai mencatat transaksi.</p>
+
+            <div id="onboardingHighlights" class="onboarding-highlight-grid"></div>
+            <div id="onboardingTip" class="onboarding-tip"></div>
+          </div>
+
+          <div class="onboarding-progress-wrap">
+            <div class="onboarding-progress-track">
+              <div id="onboardingProgressFill" class="onboarding-progress-fill"></div>
+            </div>
+            <div id="onboardingDots" class="onboarding-dots"></div>
+
+            <div class="onboarding-actions">
+              <button type="button" id="onboardingBackBtn" onclick="previousOnboardingStep()" class="onboarding-secondary disabled:opacity-40 disabled:cursor-not-allowed">
+                Kembali
+              </button>
+              <div class="flex gap-2">
+                <button type="button" id="onboardingSkipBtn" onclick="finishOnboardingGuide(false)" class="onboarding-secondary">
+                  Lewati
+                </button>
+                <button type="button" id="onboardingNextBtn" onclick="nextOnboardingStep()" class="onboarding-primary">
+                  Lanjut
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="quickCatatModal" class="hidden fixed inset-0 z-50 bg-slate-950/55 backdrop-blur-sm px-4 py-6 flex items-end md:items-center justify-center">
+    <div class="w-full max-w-xl bg-white rounded-3xl border border-gray-100 soft-card p-6">
+      <div class="flex items-start justify-between gap-4 mb-5">
+        <div>
+          <h2 class="text-xl font-extrabold text-gray-900">Catat Transaksi</h2>
+          <p class="text-sm text-gray-400 mt-1">Input cepat tanpa keluar dari Beranda.</p>
+        </div>
+        <button type="button" onclick="closeCatatModal()" class="modal-close-btn shrink-0 cursor-pointer" aria-label="Tutup"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div class="space-y-4">
+        <div class="flex bg-gray-100 p-1 rounded-2xl">
+          <button type="button" id="quickBtnMasuk" onclick="setQuickJenis('masuk')" class="w-1/2 py-2.5 text-sm font-bold rounded-xl text-gray-500 transition cursor-pointer">Pemasukan</button>
+          <button type="button" id="quickBtnKeluar" onclick="setQuickJenis('keluar')" class="w-1/2 py-2.5 text-sm font-bold rounded-xl bg-white shadow text-rose-600 transition cursor-pointer">Pengeluaran</button>
+        </div>
+        <div>
+          <label for="quickKategori" class="block text-xs font-bold text-gray-500 mb-2">Kategori Transaksi</label>
+          <select id="quickKategori" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-600 transition cursor-pointer"></select>
+        </div>
+        <div>
+          <label for="quickAmount" class="block text-xs font-bold text-gray-500 mb-2">Nominal</label>
+          <div class="rupiah-field">
+          <span class="rupiah-prefix">Rp</span>
+          <input type="text" id="quickAmount" data-format="nominal" inputmode="numeric" placeholder="0" class="rupiah-input w-full px-4 py-4 text-lg bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-600 transition" onkeydown="if(event.key==='Enter') submitQuickTransaction()" />
+        </div>
+        </div>
+        <button type="button" onclick="submitQuickTransaction()" class="w-full py-4 bg-gray-800 text-white font-extrabold rounded-2xl hover:bg-gray-900 transition soft-card cursor-pointer">Simpan Transaksi</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="mobile-bottom-nav md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-100 soft-card px-4 pt-2 pb-[calc(0.55rem+env(safe-area-inset-bottom))]">
+    <div id="mobileNavShell" class="mobile-nav-shell grid grid-cols-5 items-end gap-1 max-w-md mx-auto" data-active="beranda">
+      <span id="mobileNavIndicator" class="mobile-nav-indicator" aria-hidden="true"></span>
+      <button type="button" data-nav="beranda" aria-label="Beranda" onclick="showAppView('beranda')" class="bottom-nav-item flex items-center justify-center py-1 cursor-pointer">
+        <span class="nav-bubble"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 11.2L12 4.7l7.5 6.5"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.6 10.2v8.1c0 .8.6 1.4 1.4 1.4h8c.8 0 1.4-.6 1.4-1.4v-8.1"/><path stroke-linecap="round" stroke-linejoin="round" d="M9.7 19.7v-5h4.6v5"/></svg></span>
+      </button>
+      <button type="button" data-nav="riwayat" aria-label="Riwayat" onclick="showAppView('riwayat')" class="bottom-nav-item flex items-center justify-center py-1 cursor-pointer">
+        <span class="nav-bubble"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 4.5h10A1.5 1.5 0 0118.5 6v12a1.5 1.5 0 01-1.5 1.5H7A1.5 1.5 0 015.5 18V6A1.5 1.5 0 017 4.5z"/><path stroke-linecap="round" stroke-linejoin="round" d="M8.5 8h7M8.5 12h7M8.5 16h4.5"/></svg></span>
+      </button>
+      <button type="button" data-nav="catat" aria-label="Catat" onclick="showAppView('catat')" class="bottom-nav-item flex items-center justify-center py-1 cursor-pointer">
+        <span class="nav-bubble"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.7" d="M12 7v10M17 12H7"/><path stroke-linecap="round" stroke-linejoin="round" d="M18.2 5.8l.5-1.1.5 1.1 1.1.5-1.1.5-.5 1.1-.5-1.1-1.1-.5 1.1-.5z"/></svg></span>
+      </button>
+      <button type="button" data-nav="analisis" aria-label="Analisis" onclick="showAppView('analisis')" class="bottom-nav-item flex items-center justify-center py-1 cursor-pointer">
+        <span class="nav-bubble"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 18.5V6"/><path stroke-linecap="round" stroke-linejoin="round" d="M8.5 18.5v-5.5M12 18.5V9.5M15.5 18.5V7.5M19 18.5H5"/><path stroke-linecap="round" stroke-linejoin="round" d="M8 10.5l3.5-3 3.5 1 3-3"/></svg></span>
+      </button>
+      <button type="button" data-nav="setting" aria-label="Setting" onclick="showAppView('setting')" class="bottom-nav-item flex items-center justify-center py-1 cursor-pointer">
+        <span class="nav-bubble"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 16h10"/><path stroke-linecap="round" stroke-linejoin="round" d="M10 8a2 2 0 11-4 0 2 2 0 014 0zM18 16a2 2 0 11-4 0 2 2 0 014 0z"/></svg></span>
+      </button>
+    </div>
+  </nav>
+
+  <script src="./script.js?v=20260630-v112-help-account-delete-align"></script>
+
+  <script>
+    function updateDashboardPwaTopColor() {
+      var isDark = document.documentElement.classList.contains('dark') || document.body.classList.contains('dark');
+      var color = isDark ? '#020617' : '#f7fbf9';
+
+      var themeMeta = document.querySelector('meta[name="theme-color"]');
+      var navMeta = document.querySelector('meta[name="msapplication-navbutton-color"]');
+
+      if (!themeMeta) {
+        themeMeta = document.createElement('meta');
+        themeMeta.setAttribute('name', 'theme-color');
+        document.head.appendChild(themeMeta);
+      }
+
+      if (!navMeta) {
+        navMeta = document.createElement('meta');
+        navMeta.setAttribute('name', 'msapplication-navbutton-color');
+        document.head.appendChild(navMeta);
+      }
+
+      themeMeta.setAttribute('content', color);
+      navMeta.setAttribute('content', color);
+      document.documentElement.style.backgroundColor = color;
+      document.body.style.backgroundColor = color;
+    }
+
+    window.addEventListener('DOMContentLoaded', function () {
+      updateDashboardPwaTopColor();
+      var observer = new MutationObserver(updateDashboardPwaTopColor);
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+      observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      setTimeout(updateDashboardPwaTopColor, 80);
+      setTimeout(updateDashboardPwaTopColor, 350);
+      setTimeout(updateDashboardPwaTopColor, 1000);
+    });
+
+    window.addEventListener('load', updateDashboardPwaTopColor);
+    window.addEventListener('pageshow', updateDashboardPwaTopColor);
+  </script>
+
+</body>
+</html>
