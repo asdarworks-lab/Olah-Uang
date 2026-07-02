@@ -3400,12 +3400,12 @@ async function installPwaApp() {
 
   return Swal.fire({
     icon: 'info',
-    title: 'Install dari olahuang.vercel.app',
+    title: 'Install WebApp dari olahuang.vercel.app',
     html:
       'Browser belum menampilkan prompt install otomatis.<br><br>' +
       '<b>Android Chrome:</b> tekan menu <b>⋮</b> di kanan atas, lalu pilih <b>Install app</b> atau <b>Tambahkan ke layar utama</b>.<br><br>' +
       'Kalau muncul pilihan <b>Aplikasi ini sudah diinstal</b>, berarti Olah Uang sudah terpasang. Pilih opsi itu untuk membuka aplikasi.<br><br>' +
-      '<span style="font-size:.85em;color:#64748b">Web tidak bisa menginstall aplikasi tanpa konfirmasi dari browser. Ya, browser akhirnya punya batas yang masuk akal.</span>',
+      '<span style="font-size:.85em;color:#64748b">Web tidak bisa menginstall aplikasi tanpa konfirmasi dari browser.</span>',
     confirmButtonText: 'Mengerti',
     confirmButtonColor: '#059669'
   });
