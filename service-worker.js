@@ -1,4 +1,4 @@
-const CACHE_NAME = 'olah-uang-pwa-v112';
+const CACHE_NAME = 'olah-uang-pwa-v117';
 
 const APP_SHELL = [
   '/',
