@@ -126,7 +126,7 @@ export default async function handler(req, res) {
 
     const range = getJakartaDayRange();
     const subscriptions = await supabaseFetch('push_subscriptions?is_active=eq.true&select=user_id,endpoint,p256dh,auth');
-    const transactions = await supabaseFetch(`transaksi?created_at=gte.${encodeURIComponent(range.startIso)}&created_at=lt.${encodeURIComponent(range.endIso)}&select=user_id,jenis,kategori,nominal,created_at`);
+    const transactions = await supabaseFetch(`transaksi?created_at=gte.${encodeURIComponent(range.startIso)}&created_at=lt.${encodeURIComponent(range.endIso)}&select=user_id,jenis,kategori,nominal,keterangan,created_at`);
     const groupedTransactions = groupTransactionsByUser(transactions || []);
 
     let sent = 0;
