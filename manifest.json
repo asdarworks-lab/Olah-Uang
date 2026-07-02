@@ -31,5 +31,13 @@
       "type": "image/png",
       "purpose": "any"
     }
+  ],
+  "id": "/index.html",
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://olahuang.vercel.app/manifest.json",
+      "id": "/index.html"
+    }
   ]
 }
