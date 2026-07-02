@@ -7,7 +7,7 @@ const SUPABASE_URL = 'https://uezjncjapumyrkjxzslw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_gMbWszjY1XIou5Cj4wDkjg_UlGiuOd5';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 window.db = db;
-const APP_VERSION = '20260630-v112-help-account-delete-align';
+const APP_VERSION = '20260702-v117-history-date-category-align';
 console.log(`Olah Uang script loaded: ${APP_VERSION}`);
 window.OLAH_UANG_VERSION = APP_VERSION;
 document.documentElement.setAttribute('data-olah-uang-version', APP_VERSION);
@@ -35,6 +35,8 @@ let totalBalanceHidden = localStorage.getItem('olahUangTotalBalanceHidden') === 
 let lastTotalSaldo = 0;
 let activeAdminView = 'overview';
 let quickJenisAktif = 'keluar';
+let editJenisAktif = 'keluar';
+let editingTransactionId = null;
 const AI_INSIGHT_STYLE_VERSION = 'numbered-roast-v6-robust-gemini';
 let currentInsightSummary = null;
 let currentInsightKey = '';
@@ -166,7 +168,7 @@ function renderTotalBalance(totalSaldo = lastTotalSaldo) {
 
   if (privacyText) {
     privacyText.textContent = totalBalanceHidden
-      ? 'Saldo disembunyikan untuk menjaga privasi tampilan.'
+      ? 'Akumulasi seluruh transaksi yang sudah dicatat.'
       : 'Akumulasi seluruh transaksi yang sudah dicatat.';
   }
 }
@@ -1721,7 +1723,7 @@ function syncYearFilterFromRiwayat() {
   updateUI();
 }
 
-async function saveTransactionRecord({ jenis, kategori, nominal }) {
+async function saveTransactionRecord({ jenis, kategori, nominal, keterangan = '' }) {
   if (!currentUser) return false;
 
   if (!kategori) {
@@ -1744,10 +1746,13 @@ async function saveTransactionRecord({ jenis, kategori, nominal }) {
     return false;
   }
 
+  const cleanKeterangan = String(keterangan || '').trim().slice(0, 160);
+
   const { error } = await db.from('transaksi').insert({
     jenis,
     kategori,
     nominal: Math.round(nominal),
+    keterangan: cleanKeterangan || null,
     user_id: currentUser.id
   });
 
@@ -1818,8 +1823,10 @@ async function saveTransactionRecord({ jenis, kategori, nominal }) {
 async function addTransaction() {
   const kategori = $('kategori')?.value;
   const nominal = parseNominalInput($('amount')?.value);
-  const saved = await saveTransactionRecord({ jenis: jenisAktif, kategori, nominal });
+  const keterangan = $('keterangan')?.value || '';
+  const saved = await saveTransactionRecord({ jenis: jenisAktif, kategori, nominal, keterangan });
   if (saved && $('amount')) $('amount').value = '';
+  if (saved && $('keterangan')) $('keterangan').value = '';
   return saved;
 }
 
@@ -1868,12 +1875,14 @@ function closeCatatModal() {
   if (!modal) return;
   modal.classList.add('hidden');
   if ($('quickAmount')) $('quickAmount').value = '';
+  if ($('quickKeterangan')) $('quickKeterangan').value = '';
 }
 
 async function submitQuickTransaction() {
   const kategori = $('quickKategori')?.value;
   const nominal = parseNominalInput($('quickAmount')?.value);
-  const saved = await saveTransactionRecord({ jenis: quickJenisAktif, kategori, nominal });
+  const keterangan = $('quickKeterangan')?.value || '';
+  const saved = await saveTransactionRecord({ jenis: quickJenisAktif, kategori, nominal, keterangan });
   if (saved) closeCatatModal();
   return saved;
 }
@@ -2101,15 +2110,26 @@ function renderHistoryTable(filteredData) {
       const simbol = item.jenis === 'masuk' ? '+' : '-';
       return `
         <tr class="group hover:bg-gray-50 transition-colors border-b border-gray-50">
-          <td class="py-3 text-gray-400">${escapeHTML(formatTanggal(item.created_at))}</td>
-          <td class="py-3 font-medium">${escapeHTML(item.kategori || '-')}</td>
-          <td class="py-3 text-right ${warnaNominal} font-bold">${simbol} ${formatRupiah(item.nominal)}</td>
-          <td class="py-3 text-center align-middle">
-            <button onclick="hapusTransaksi('${escapeHTML(item.id)}')" class="text-gray-300 hover:text-rose-500 hover:bg-rose-50 p-1.5 rounded-md transition-all opacity-60 hover:opacity-100 cursor-pointer" title="Hapus">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
+          <td class="history-date-cell py-3 text-gray-400">${escapeHTML(formatTanggal(item.created_at))}</td>
+          <td class="py-3 font-medium">
+            <div>${escapeHTML(item.kategori || '-')}</div>
+            ${item.keterangan ? `<div class="text-[11px] text-gray-400 mt-1 max-w-[240px] truncate" title="${escapeHTML(item.keterangan)}">${escapeHTML(item.keterangan)}</div>` : ''}
+          </td>
+          <td class="history-amount-cell py-3 text-right ${warnaNominal} font-bold whitespace-nowrap">${simbol} ${formatRupiah(item.nominal)}</td>
+          <td class="history-action-cell py-3 text-center">
+            <div class="history-action-cell">
+              <button type="button" onclick="editTransaksi('${escapeHTML(item.id)}')" class="history-action-btn history-edit-btn" title="Edit transaksi" aria-label="Edit transaksi">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L8.582 18.07a4.5 4.5 0 01-1.897 1.13L4 20l.8-2.685a4.5 4.5 0 011.13-1.897L16.862 4.487z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 7.125L16.875 4.5" />
+                </svg>
+              </button>
+              <button type="button" onclick="hapusTransaksi('${escapeHTML(item.id)}')" class="history-action-btn history-delete-btn" title="Hapus transaksi" aria-label="Hapus transaksi">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
           </td>
         </tr>`;
     }).join('');
@@ -2797,6 +2817,137 @@ async function updateUI() {
   renderHistoryTable(filteredData);
 }
 
+
+function getTransactionCategoryOptions(jenis = 'keluar', selectedCategory = '') {
+  const source = jenis === 'masuk' ? targetPemasukan : rencanaBudget;
+  const categoryNames = Array.from(new Set([
+    ...Object.keys(source || {}),
+    selectedCategory || ''
+  ].filter(Boolean)));
+
+  return categoryNames
+    .map((kategori) => `<option value="${escapeHTML(kategori)}" ${kategori === selectedCategory ? 'selected' : ''}>${escapeHTML(kategori)}</option>`)
+    .join('');
+}
+
+
+function setEditJenis(jenis, selectedCategory = '') {
+  editJenisAktif = jenis === 'masuk' ? 'masuk' : 'keluar';
+
+  const btnMasuk = $('editBtnMasuk');
+  const btnKeluar = $('editBtnKeluar');
+  const selectKategori = $('editKategori');
+  if (!btnMasuk || !btnKeluar || !selectKategori) return;
+
+  if (editJenisAktif === 'masuk') {
+    btnMasuk.className = 'w-1/2 py-2.5 text-sm font-bold rounded-xl bg-emerald-600 text-white shadow-md transition cursor-pointer';
+    btnKeluar.className = 'w-1/2 py-2.5 text-sm font-bold rounded-xl text-gray-500 hover:bg-gray-200 transition cursor-pointer';
+    selectKategori.innerHTML = getTransactionCategoryOptions('masuk', selectedCategory);
+  } else {
+    btnKeluar.className = 'w-1/2 py-2.5 text-sm font-bold rounded-xl bg-rose-600 text-white shadow-md transition cursor-pointer';
+    btnMasuk.className = 'w-1/2 py-2.5 text-sm font-bold rounded-xl text-gray-500 hover:bg-gray-200 transition cursor-pointer';
+    selectKategori.innerHTML = getTransactionCategoryOptions('keluar', selectedCategory);
+  }
+
+  if (selectedCategory) selectKategori.value = selectedCategory;
+}
+
+function closeEditTransactionModal() {
+  const modal = $('editTransactionModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  editingTransactionId = null;
+  if ($('editAmount')) $('editAmount').value = '';
+  if ($('editKeterangan')) $('editKeterangan').value = '';
+}
+
+function openEditTransactionModal(item) {
+  const modal = $('editTransactionModal');
+  if (!modal || !item) return false;
+
+  const currentJenis = item.jenis === 'masuk' ? 'masuk' : 'keluar';
+  const currentKategori = item.kategori || '';
+  editingTransactionId = item.id;
+
+  modal.classList.remove('hidden');
+  setEditJenis(currentJenis, currentKategori);
+
+  if ($('editAmount')) $('editAmount').value = formatNominalDots(item.nominal || 0);
+  if ($('editKeterangan')) $('editKeterangan').value = item.keterangan || '';
+
+  setupNominalInputFormatter(modal);
+  setTimeout(() => $('editAmount')?.focus(), 80);
+  return true;
+}
+
+async function editTransaksi(id) {
+  if (!currentUser?.id) return;
+
+  try {
+    const { data: item, error } = await db
+      .from('transaksi')
+      .select('id, jenis, kategori, nominal, keterangan')
+      .eq('id', id)
+      .eq('user_id', currentUser.id)
+      .single();
+
+    if (error) throw error;
+    if (!item) return showWarning('Transaksi tidak ditemukan', 'Data transaksi tidak ditemukan atau sudah dihapus.');
+
+    return openEditTransactionModal(item);
+  } catch (error) {
+    console.error('[Buka edit transaksi]', error);
+    return showError('Gagal membuka edit transaksi', error);
+  }
+}
+
+async function submitEditTransaction() {
+  if (!currentUser?.id || !editingTransactionId) return;
+
+  const kategori = $('editKategori')?.value || '';
+  const nominal = parseNominalInput($('editAmount')?.value || '');
+  const keterangan = String($('editKeterangan')?.value || '').trim().slice(0, 160);
+
+  if (!kategori) {
+    return showWarning('Kategori wajib dipilih', 'Pilih kategori transaksi dulu. Aplikasi ini pintar, tapi belum bisa menebak isi dompetmu.');
+  }
+
+  if (!Number.isFinite(nominal) || nominal <= 0) {
+    return showWarning('Nominal tidak valid', 'Masukkan nominal lebih dari 0. Nol rupiah itu bukan transaksi, itu kondisi mental rekening.');
+  }
+
+  try {
+    const { error } = await db
+      .from('transaksi')
+      .update({
+        jenis: editJenisAktif,
+        kategori,
+        nominal: Math.round(nominal),
+        keterangan: keterangan || null
+      })
+      .eq('id', editingTransactionId)
+      .eq('user_id', currentUser.id);
+
+    if (error) throw error;
+
+    closeEditTransactionModal();
+    await updateUI();
+
+    return Swal.fire({
+      title: 'Tersimpan!',
+      text: 'Transaksi berhasil diperbarui.',
+      icon: 'success',
+      timer: 1200,
+      showConfirmButton: false
+    });
+  } catch (error) {
+    console.error('[Edit transaksi]', error);
+    return showError('Gagal edit transaksi', error);
+  }
+}
+
+
+
 async function hapusTransaksi(id) {
   if (!currentUser) return;
 
@@ -2900,6 +3051,7 @@ function buildExportRows(data = []) {
       Jam: isValidDate ? date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '',
       Jenis: row.jenis === 'masuk' ? 'Pemasukan' : 'Pengeluaran',
       Kategori: row.kategori || '-',
+      Keterangan: row.keterangan || '',
       Nominal: Number(row.nominal) || 0
     };
   });
@@ -3055,6 +3207,7 @@ async function exportToExcel() {
     { wch: 10 },
     { wch: 14 },
     { wch: 24 },
+    { wch: 34 },
     { wch: 16 }
   ];
 
@@ -4984,6 +5137,7 @@ window.changeItemsPerPage = changeItemsPerPage;
 window.changePage = changePage;
 window.resetUserPageAndUpdate = resetUserPageAndUpdate;
 window.ubahFilterTahun = ubahFilterTahun;
+window.editTransaksi = editTransaksi;
 window.hapusTransaksi = hapusTransaksi;
 window.exportToExcel = exportToExcel;
 window.toggleDarkMode = toggleDarkMode;
@@ -5009,8 +5163,11 @@ window.deleteMyAccount = deleteMyAccount;
 window.openCatatModal = openCatatModal;
 window.handleCatatSekarang = handleCatatSekarang;
 window.closeCatatModal = closeCatatModal;
+window.closeEditTransactionModal = closeEditTransactionModal;
 window.setQuickJenis = setQuickJenis;
+window.setEditJenis = setEditJenis;
 window.submitQuickTransaction = submitQuickTransaction;
+window.submitEditTransaction = submitEditTransaction;
 window.toggleProfileEdit = toggleProfileEdit;
 window.saveProfileSettings = saveProfileSettings;
 window.toggleFinanceEdit = toggleFinanceEdit;
