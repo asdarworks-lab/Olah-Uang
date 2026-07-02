@@ -37,6 +37,7 @@ let activeAdminView = 'overview';
 let quickJenisAktif = 'keluar';
 let deferredPwaInstallPrompt = null;
 let pwaInstallDismissed = localStorage.getItem('olahUangPwaInstallDismissed') === '1';
+let pwaInstallCheckToken = 0;
 let editJenisAktif = 'keluar';
 let editingTransactionId = null;
 const AI_INSIGHT_STYLE_VERSION = 'numbered-roast-v6-robust-gemini';
@@ -3332,7 +3333,84 @@ function isRunningAsPwa() {
     window.navigator.standalone === true;
 }
 
-function updatePwaInstallButton() {
+function isIosDevice() {
+  const userAgent = navigator.userAgent || '';
+  const platform = navigator.platform || '';
+
+  return /iPad|iPhone|iPod/i.test(userAgent) ||
+    (platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function isAndroidDevice() {
+  return /Android/i.test(navigator.userAgent || '');
+}
+
+function getPwaInstallFallbackHtml() {
+  const intro =
+    'Browser belum menampilkan prompt install otomatis.<br><br>';
+
+  const androidGuide =
+    '<b>Android Chrome:</b> tekan menu <b>⋮</b> di kanan atas, lalu pilih <b>Install app</b> atau <b>Tambahkan ke layar utama</b>.<br><br>';
+
+  const iosGuide =
+    '<b>iPhone/iPad:</b> buka Olah Uang lewat <b>Safari</b>, tap tombol <b>Bagikan/Share</b>, lalu pilih <b>Add to Home Screen</b> atau <b>Tambahkan ke Layar Utama</b>.<br>' +
+    'Kalau sedang membuka dari Chrome iPhone, buka ulang link ini di Safari dulu.<br><br>';
+
+  const installedGuide =
+    'Kalau muncul pilihan <b>Aplikasi ini sudah diinstal</b>, berarti Olah Uang sudah terpasang. Pilih opsi itu untuk membuka aplikasi.<br><br>';
+
+  const note =
+    '<span style="font-size:.85em;color:#64748b">Web tidak bisa menginstall aplikasi tanpa konfirmasi dari browser kamu. Di iPhone, pemasangan PWA harus lewat menu Share Safari.</span>';
+
+  if (isIosDevice()) return intro + iosGuide + androidGuide + installedGuide + note;
+  if (isAndroidDevice()) return intro + androidGuide + iosGuide + installedGuide + note;
+
+  return intro + androidGuide + iosGuide + installedGuide + note;
+}
+
+function markPwaInstalled() {
+  pwaInstallDismissed = true;
+  localStorage.setItem('olahUangPwaInstalled', '1');
+  localStorage.setItem('olahUangPwaInstallDismissed', '1');
+}
+
+function hasStoredPwaInstallFlag() {
+  return localStorage.getItem('olahUangPwaInstalled') === '1' ||
+    localStorage.getItem('olahUangPwaInstallDismissed') === '1';
+}
+
+async function isPwaInstalledRelatedApp() {
+  if (!('getInstalledRelatedApps' in navigator)) return false;
+
+  try {
+    const relatedApps = await navigator.getInstalledRelatedApps();
+    return Array.isArray(relatedApps) && relatedApps.some((app) => {
+      return app?.platform === 'webapp' ||
+        app?.url === `${PWA_PRODUCTION_ORIGIN}/manifest.json` ||
+        app?.url === '/manifest.json' ||
+        app?.id === '/index.html' ||
+        app?.id === '/';
+    });
+  } catch (error) {
+    console.warn('[PWA] gagal cek aplikasi terinstall:', error);
+    return false;
+  }
+}
+
+async function isPwaAlreadyInstalled() {
+  if (isRunningAsPwa()) return true;
+  if (hasStoredPwaInstallFlag()) return true;
+
+  const relatedInstalled = await isPwaInstalledRelatedApp();
+  if (relatedInstalled) {
+    markPwaInstalled();
+    return true;
+  }
+
+  return false;
+}
+
+async function updatePwaInstallButton() {
   const buttons = [
     $('pwaInstallBtnDesktop'),
     $('pwaInstallBtnMobile'),
@@ -3341,17 +3419,20 @@ function updatePwaInstallButton() {
 
   if (!buttons.length) return;
 
-  const canShow = !isRunningAsPwa();
+  const currentToken = ++pwaInstallCheckToken;
+  const installed = await isPwaAlreadyInstalled();
+
+  if (currentToken !== pwaInstallCheckToken) return;
+
+  const canShow = !installed;
 
   buttons.forEach((btn) => {
     btn.classList.toggle('is-visible', canShow);
-    btn.classList.toggle('has-install-prompt', !!deferredPwaInstallPrompt);
+    btn.classList.toggle('has-install-prompt', canShow && !!deferredPwaInstallPrompt);
 
     const label = btn.querySelector('span');
     if (label) {
-      label.textContent = isProductionAppOrigin()
-        ? 'Install WebApp'
-        : 'Install WebApp';
+      label.textContent = 'Install WebApp';
     }
 
     btn.title = isProductionAppOrigin()
@@ -3361,8 +3442,9 @@ function updatePwaInstallButton() {
 }
 
 async function installPwaApp() {
-  if (isRunningAsPwa()) {
-    return showWarning('Aplikasi sudah terpasang', 'Olah Uang sudah berjalan sebagai aplikasi PWA.');
+  if (await isPwaAlreadyInstalled()) {
+    updatePwaInstallButton();
+    return showWarning('Aplikasi sudah terpasang', 'Olah Uang sudah terpasang. Buka dari ikon aplikasi di layar utama atau launcher HP.');
   }
 
   if (!isProductionAppOrigin()) {
@@ -3389,8 +3471,7 @@ async function installPwaApp() {
     const choice = await deferredPwaInstallPrompt.userChoice;
 
     if (choice?.outcome === 'accepted') {
-      localStorage.setItem('olahUangPwaInstallDismissed', '1');
-      pwaInstallDismissed = true;
+      markPwaInstalled();
     }
 
     deferredPwaInstallPrompt = null;
@@ -3401,24 +3482,25 @@ async function installPwaApp() {
   return Swal.fire({
     icon: 'info',
     title: 'Install WebApp dari olahuang.vercel.app',
-    html:
-      'Browser belum menampilkan prompt install otomatis.<br><br>' +
-      '<b>Android Chrome:</b> tekan menu <b>⋮</b> di kanan atas, lalu pilih <b>Install app</b> atau <b>Tambahkan ke layar utama</b>.<br><br>' +
-      'Kalau muncul pilihan <b>Aplikasi ini sudah diinstal</b>, berarti Olah Uang sudah terpasang. Pilih opsi itu untuk membuka aplikasi.<br><br>' +
-      '<span style="font-size:.85em;color:#64748b">Web tidak bisa menginstall aplikasi tanpa konfirmasi dari browser.</span>',
+    html: getPwaInstallFallbackHtml(),
     confirmButtonText: 'Mengerti',
     confirmButtonColor: '#059669'
   });
 }
 
-window.addEventListener('beforeinstallprompt', (event) => {
+window.addEventListener('beforeinstallprompt', async (event) => {
   event.preventDefault();
+
+  if (await isPwaAlreadyInstalled()) {
+    deferredPwaInstallPrompt = null;
+    updatePwaInstallButton();
+    return;
+  }
+
   deferredPwaInstallPrompt = event;
   pwaInstallDismissed = false;
-  localStorage.removeItem('olahUangPwaInstallDismissed');
   updatePwaInstallButton();
 });
-
 
 window.addEventListener('DOMContentLoaded', () => {
   setTimeout(updatePwaInstallButton, 250);
@@ -3426,12 +3508,20 @@ window.addEventListener('DOMContentLoaded', () => {
 
 window.addEventListener('load', () => {
   setTimeout(updatePwaInstallButton, 700);
+  setTimeout(updatePwaInstallButton, 2000);
+});
+
+window.addEventListener('focus', () => {
+  updatePwaInstallButton();
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) updatePwaInstallButton();
 });
 
 window.addEventListener('appinstalled', () => {
   deferredPwaInstallPrompt = null;
-  pwaInstallDismissed = true;
-  localStorage.setItem('olahUangPwaInstallDismissed', '1');
+  markPwaInstalled();
   updatePwaInstallButton();
 });
 
