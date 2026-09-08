@@ -13,6 +13,7 @@
         var color = isDark ? '#020617' : '#f7fbf9';
         document.documentElement.classList.toggle('dark', isDark);
         document.documentElement.style.backgroundColor = color;
+        document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
         var themeMeta = document.getElementById('themeColorMeta');
         var navMeta = document.getElementById('navButtonColorMeta');
         if (themeMeta) themeMeta.setAttribute('content', color);
@@ -115,7 +116,7 @@
       background: #020617 !important;
     }
 
-    body[data-page="dashboard-user"]:not(.dark) {
+    html:not(.dark) body[data-page="dashboard-user"]:not(.dark) {
       background: #f7fbf9 !important;
     }
 
@@ -125,8 +126,7 @@
       border-color: #1e293b !important;
     }
 
-    body:not(.dark) .app-header,
-    html:not(.dark) body .app-header {
+    html:not(.dark) body:not(.dark) .app-header {
       background: #f7fbf9 !important;
     }
 
@@ -3488,7 +3488,6 @@
   </style>
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
-  <meta name="theme-color" content="#020617">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Olah Uang">
@@ -4088,32 +4087,11 @@
     </div>
   </nav>
 
-  <script src="./script.js?v=20260702-v130-no-black-buttons"></script>
+  <script src="./script.js?v=20260908-v133-dark-top"></script>
 
   <script>
     function updateDashboardPwaTopColor() {
-      var isDark = document.documentElement.classList.contains('dark') || document.body.classList.contains('dark');
-      var color = isDark ? '#020617' : '#f7fbf9';
-
-      var themeMeta = document.querySelector('meta[name="theme-color"]');
-      var navMeta = document.querySelector('meta[name="msapplication-navbutton-color"]');
-
-      if (!themeMeta) {
-        themeMeta = document.createElement('meta');
-        themeMeta.setAttribute('name', 'theme-color');
-        document.head.appendChild(themeMeta);
-      }
-
-      if (!navMeta) {
-        navMeta = document.createElement('meta');
-        navMeta.setAttribute('name', 'msapplication-navbutton-color');
-        document.head.appendChild(navMeta);
-      }
-
-      themeMeta.setAttribute('content', color);
-      navMeta.setAttribute('content', color);
-      document.documentElement.style.backgroundColor = color;
-      document.body.style.backgroundColor = color;
+      updateAppPwaThemeColor(document.documentElement.classList.contains('dark'));
     }
 
     window.addEventListener('DOMContentLoaded', function () {
